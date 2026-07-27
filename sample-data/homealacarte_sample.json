@@ -1,0 +1,143 @@
+{
+  "items": [
+    {
+      "key": "sample_tomato",
+      "name": "Tomato",
+      "grams": 100,
+      "kcal": 18,
+      "protein_g": 0.9,
+      "carbs_g": 3.9,
+      "fat_g": 0.2,
+      "fiber_g": 1.2,
+      "category": "Produce::Vegetables",
+      "source": "Synthetic sample data",
+      "url": "",
+      "price_per_kg": 2.5,
+      "measure_unit": "piece",
+      "grams_per_measure_unit": 120,
+      "purchase_unit": "500 g pack",
+      "purchase_quantity_grams": 500
+    },
+    {
+      "key": "sample_bread",
+      "name": "Wholemeal bread",
+      "grams": 100,
+      "kcal": 247,
+      "protein_g": 13,
+      "carbs_g": 41,
+      "fat_g": 3.4,
+      "fiber_g": 7,
+      "category": "Bakery::Bread",
+      "source": "Synthetic sample data",
+      "url": "",
+      "price_per_kg": 4,
+      "measure_unit": "slice",
+      "grams_per_measure_unit": 30,
+      "purchase_unit": "500 g loaf",
+      "purchase_quantity_grams": 500
+    },
+    {
+      "key": "sample_cheese",
+      "name": "Grated cheese",
+      "grams": 100,
+      "kcal": 380,
+      "protein_g": 28,
+      "carbs_g": 1,
+      "fat_g": 30,
+      "fiber_g": 0,
+      "category": "Dairy::Cheese",
+      "source": "Synthetic sample data",
+      "url": "",
+      "price_per_kg": 12,
+      "measure_unit": "g",
+      "grams_per_measure_unit": 1,
+      "purchase_unit": "200 g bag",
+      "purchase_quantity_grams": 200
+    },
+    {
+      "key": "sample_hand_soap",
+      "name": "Liquid hand soap",
+      "category": "Household::Hygiene",
+      "estimated_price": 2.5,
+      "purchase_unit": "300 ml bottle",
+      "purchase_quantity": 1,
+      "measure_unit": "bottle",
+      "notes": "Synthetic sample item"
+    }
+  ],
+  "dishes": [
+    {
+      "key": "sample_tomato_toast",
+      "name": "Tomato and cheese toast",
+      "servings": 2,
+      "recipe_url": "https://example.com/sample-recipe",
+      "source": "Synthetic sample recipe",
+      "source_notes": [
+        "Toast the bread, add sliced tomato and cheese, then grill briefly."
+      ],
+      "nutri_score": "B",
+      "components": [
+        {
+          "item_key": "sample_bread",
+          "quantity": 4,
+          "quantity_unit": "slice",
+          "source_quantity": "4 slices"
+        },
+        {
+          "item_key": "sample_tomato",
+          "quantity": 2,
+          "quantity_unit": "piece",
+          "source_quantity": "2 tomatoes"
+        },
+        {
+          "item_key": "sample_cheese",
+          "grams": 80,
+          "source_quantity": "80 g grated cheese"
+        }
+      ]
+    }
+  ],
+  "people": [
+    {
+      "key": "sample_alex",
+      "name": "Alex",
+      "kind": "adult",
+      "kcal_target": 2100,
+      "description": "Synthetic adult profile for the public demo."
+    },
+    {
+      "key": "sample_sam",
+      "name": "Sam",
+      "kind": "child",
+      "kcal_target": 1700,
+      "description": "Synthetic child profile for the public demo."
+    }
+  ],
+  "menu": [
+    {
+      "day": "Lundi",
+      "meal": "Dejeuner",
+      "item_key": "sample_tomato_toast",
+      "people": [
+        "sample_alex",
+        "sample_sam"
+      ],
+      "quantity": 1,
+      "quantity_unit": "portion"
+    }
+  ],
+  "stock": [
+    {
+      "item_key": "sample_bread",
+      "quantity": 2,
+      "quantity_unit": "unit"
+    }
+  ],
+  "extra_needs": [
+    {
+      "item_key": "sample_hand_soap",
+      "quantity": 1,
+      "quantity_unit": "unit"
+    }
+  ]
+}

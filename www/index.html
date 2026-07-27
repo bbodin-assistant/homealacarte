@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
+    <title>Home à la Carte</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="./style.css?v=homealacarte-26">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#family" data-tab="family" aria-label="Home à la Carte">
+        <svg viewBox="0 0 48 48" aria-hidden="true">
+          <path d="m7 22 17-14 17 14v18H7Z"/>
+          <path d="M20 40V28h8v12M31 18c-1 7-5 10-11 9 1-6 5-9 11-9Z"/>
+        </svg>
+        <span>
+          <strong>Home à la Carte</strong>
+          <small data-i18n="brand_subtitle">Plan your home, à votre façon</small>
+        </span>
+      </a>
+      <div class="header-actions">
+        <button id="source-status" class="source-badge" type="button" data-i18n-title="account_sync">
+          <span class="source-dot"></span>
+          <span id="source-label">Données locales</span>
+          <svg class="source-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+        </button>
+        <button id="color-my-life" class="color-button" type="button" data-i18n="color_my_life">
+          Color my life
+        </button>
+        <label class="language-control">
+          <span class="sr-only">Langue</span>
+          <select id="language-select">
+            <option value="fr">FR</option>
+            <option value="en">EN</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <nav class="main-nav" aria-label="Navigation principale">
+          <button class="nav-item active" data-tab="family">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2"/><path d="M3 20v-3c0-4 2.5-7 6-7s6 3 6 7v3M15 13c3 0 5 2 5 5v2"/></svg>
+            <span data-i18n="nav_family">Foyer</span>
+          </button>
+          <button class="nav-item" data-tab="menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M9 5v14M14 5v14"/></svg>
+            <span data-i18n="nav_menu">Menu</span>
+          </button>
+          <button class="nav-item" data-tab="grocery">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 4 2 1 2.5 10h9l3-7H6M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM17 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></svg>
+            <span data-i18n="nav_grocery">Courses</span>
+            <span id="grocery-count" class="nav-count">0</span>
+          </button>
+          <button class="nav-item" data-tab="dishes">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h16M6 13a6 6 0 0 1 12 0M12 4v3M3 17h18"/></svg>
+            <span data-i18n="nav_dishes">Plats</span>
+          </button>
+          <button class="nav-item" data-tab="items">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16H7zM10 8h4M10 12h4M10 16h4"/></svg>
+            <span data-i18n="nav_items">Items</span>
+            <span id="ingredient-incomplete-count" class="nav-count" hidden>0</span>
+          </button>
+          <button class="nav-item" data-tab="data">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5"/></svg>
+            <span data-i18n="nav_data">Mes données</span>
+          </button>
+        </nav>
+        <div class="sidebar-footer">
+          <button id="about-open" class="secondary-action" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
+            <span data-i18n="about">À propos</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <div id="status" class="status" role="status" aria-live="polite">
+          <span class="spinner"></span>
+          <span data-i18n="loading">Chargement des données…</span>
+        </div>
+        <div id="error-panel" class="error-panel" role="alert" hidden></div>
+
+        <section id="family-view" class="view active" data-view="family">
+          <div class="page-heading family-heading">
+            <div>
+              <p class="eyebrow" data-i18n="family_eyebrow">Organisation du foyer</p>
+              <h1 data-i18n="family_title">Les membres du foyer</h1>
+              <p data-i18n="family_intro">Ajoutez les adultes et les enfants du foyer. Ils pourront être associés aux repas et aux profils nutritionnels.</p>
+            </div>
+          </div>
+          <div id="family-grid" class="family-grid"></div>
+        </section>
+
+        <section id="menu-view" class="view" data-view="menu">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" data-i18n="overview_eyebrow">Vue d’ensemble</p>
+              <h1 data-i18n="menu_title">Menu de la semaine</h1>
+              <p data-i18n="menu_intro">Une vue claire des repas et apports quotidiens.</p>
+            </div>
+            <div class="menu-profile-controls">
+              <label class="profile-control">
+                <span data-i18n="nutrition_profile">Profil nutrition</span>
+                <select id="profile-select"></select>
+              </label>
+              <label class="show-only-control">
+                <input id="show-selected-only" type="checkbox">
+                <span data-i18n="show_selected_only">Afficher uniquement ses repas</span>
+              </label>
+            </div>
+          </div>
+          <div class="panel menu-panel">
+            <div class="table-scroll">
+              <table id="weekly-menu" class="weekly-menu"></table>
+            </div>
+          </div>
+        </section>
+
+        <section id="grocery-view" class="view" data-view="grocery">
+          <div class="planner-mode-switch grocery-mode-switch" role="tablist" aria-label="Vue des courses">
+            <button class="active" type="button" data-grocery-mode="list"><span data-i18n="grocery_list">Courses</span><span id="grocery-tab-count" class="mode-count">0</span></button>
+            <button type="button" data-grocery-mode="stock"><span data-i18n="stock_title">Stock disponible</span><span id="stock-tab-count" class="mode-count">0</span></button>
+            <button type="button" data-grocery-mode="needs"><span data-i18n="extra_needs">Besoins supplémentaires</span><span id="needs-tab-count" class="mode-count">0</span></button>
+          </div>
+
+          <div class="grocery-subview active" data-grocery-panel="list">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="grocery_eyebrow">Prête pour le magasin</p>
+                <h1 data-i18n="grocery_title">Liste de courses</h1>
+              </div>
+              <div class="page-actions">
+                <label class="grocery-filter-control">
+                  <input id="grocery-hide-stocked" type="checkbox">
+                  <span data-i18n="hide_stocked_items">Masquer les articles avec un stock suffisant</span>
+                </label>
+                <button id="download-pdf" class="button primary">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M4 20h16"/></svg>
+                  <span data-i18n="download_pdf">Télécharger le PDF</span>
+                </button>
+              </div>
+            </div>
+            <div class="grocery-summary">
+              <div>
+                <span data-i18n="estimated_total">Total estimé</span>
+                <strong id="grocery-total">—</strong>
+              </div>
+              <div class="grocery-progress">
+                <span id="grocery-progress-label">0 / 0</span>
+                <div><i id="grocery-progress-bar"></i></div>
+              </div>
+            </div>
+            <div id="grocery-grid" class="grocery-grid"></div>
+          </div>
+
+          <div class="grocery-subview" data-grocery-panel="stock">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="stock_eyebrow">Dans les placards</p>
+                <h1 data-i18n="stock_title">Stock disponible</h1>
+              </div>
+            </div>
+            <div class="stock-panel panel standalone-stock-panel">
+              <form id="stock-add-form" class="stock-add household-add">
+                <label>
+                  <span data-i18n="catalog_item">Article</span>
+                  <select id="stock-add-item" required></select>
+                </label>
+                <label>
+                  <span data-i18n="quantity">Quantité</span>
+                  <input id="stock-add-quantity" type="number" min="0.01" step="0.01" required>
+                </label>
+                <label>
+                  <span data-i18n="unit">Unité</span>
+                  <select id="stock-add-unit">
+                    <option value="g">g</option>
+                    <option value="unit" data-i18n="units">unités</option>
+                  </select>
+                </label>
+                <button class="button ghost" type="submit" data-i18n="add_stock">Ajouter au stock</button>
+              </form>
+              <div id="stock-list" class="stock-list"></div>
+            </div>
+          </div>
+
+          <div class="grocery-subview" data-grocery-panel="needs">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="extra_needs_eyebrow">En plus du menu</p>
+                <h1 data-i18n="extra_needs">Besoins supplémentaires</h1>
+              </div>
+            </div>
+            <div class="panel household-plan-panel">
+              <form id="custom-add-form" class="custom-add household-add">
+                <fieldset class="extra-add-mode">
+                  <legend data-i18n="add_need_mode">Type d’article</legend>
+                  <label><input type="radio" name="extra-add-mode" value="existing" checked><span data-i18n="existing_item">Depuis le catalogue</span></label>
+                  <label><input type="radio" name="extra-add-mode" value="custom"><span data-i18n="custom_item">Article personnalisé</span></label>
+                </fieldset>
+                <label id="custom-existing-field">
+                  <span data-i18n="existing_item">Depuis le catalogue</span>
+                  <select id="custom-add-existing"></select>
+                </label>
+                <label id="custom-name-field" hidden>
+                  <span data-i18n="name">Nom</span>
+                  <input id="custom-add-name">
+                </label>
+                <label id="custom-category-field">
+                  <span data-i18n="category">Catégorie</span>
+                  <input id="custom-add-category" value="Autres" readonly required>
+                </label>
+                <label>
+                  <span data-i18n="needed_quantity">Quantité nécessaire</span>
+                  <input id="custom-add-quantity" type="number" min="0.01" step="0.01" value="1" required>
+                </label>
+                <label>
+                  <span data-i18n="unit">Unité</span>
+                  <input id="custom-add-measure-unit" value="unités" readonly required>
+                </label>
+                <label>
+                  <span data-i18n="unit_price">Prix unitaire</span>
+                  <input id="custom-add-price" type="number" min="0" step="0.01" value="0" readonly required>
+                </label>
+                <button class="button primary" type="submit" data-i18n="add_extra_need">Ajouter aux besoins</button>
+              </form>
+              <div id="custom-list" class="custom-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="dishes-view" class="view" data-view="dishes">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" data-i18n="recipes_eyebrow">Bibliothèque</p>
+              <h1 data-i18n="dishes_title">Plats et recettes</h1>
+              <p data-i18n="dishes_intro">Valeurs par portion et composition détaillée.</p>
+            </div>
+            <button id="add-dish" class="button primary" type="button">
+              <span aria-hidden="true">+</span>
+              <span data-i18n="add_dish">Ajouter un plat</span>
+            </button>
+          </div>
+          <div class="dish-filter-panel panel">
+            <label class="search standalone">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+              <input id="dish-search" type="search" placeholder="Rechercher un plat…">
+            </label>
+            <fieldset class="dish-range-filter">
+              <legend data-i18n="cost_per_portion">Coût par portion</legend>
+              <output id="dish-cost-output">0 € – 15 €</output>
+              <div class="dual-range" data-dual-range="cost">
+                <input id="dish-cost-min" type="range" min="0" max="15" step="0.01" value="0" aria-label="Coût minimum par portion">
+                <input id="dish-cost-max" type="range" min="0" max="15" step="0.01" value="15" aria-label="Coût maximum par portion">
+              </div>
+            </fieldset>
+            <fieldset class="dish-range-filter">
+              <legend data-i18n="kcal_per_portion">Kcal par portion</legend>
+              <output id="dish-kcal-output">0 – 1 500 kcal</output>
+              <div class="dual-range" data-dual-range="kcal">
+                <input id="dish-kcal-min" type="range" min="0" max="1500" step="1" value="0" aria-label="Kcal minimum par portion">
+                <input id="dish-kcal-max" type="range" min="0" max="1500" step="1" value="1500" aria-label="Kcal maximum par portion">
+              </div>
+            </fieldset>
+            <button id="dish-clear-filters" class="button ghost" type="button" data-i18n="clear_filters">Effacer</button>
+          </div>
+          <div id="dish-grid" class="dish-grid"></div>
+        </section>
+
+        <section id="items-view" class="view" data-view="items">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" data-i18n="items_eyebrow">Catalogue</p>
+              <h1 data-i18n="items_title">Items</h1>
+              <p data-i18n="items_intro">Aliments, ingrédients et produits du foyer disponibles dans l’application.</p>
+            </div>
+          </div>
+          <div id="item-catalogue" class="item-catalogue panel"></div>
+          <form id="ingredient-form" class="ingredient-editor panel" hidden>
+            <div class="ingredient-editor-heading">
+              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour aux items</button>
+              <strong id="ingredient-editor-name"></strong>
+              <span id="ingredient-completeness" class="ingredient-completeness"></span>
+              <button id="ingredient-delete" class="button danger" type="button" data-i18n="delete">Supprimer</button>
+            </div>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_identity_title">Identité et unités</h2>
+                <p data-i18n="ingredient_identity_intro">Le nom, le rayon et les unités utilisées dans les recettes.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field">
+                  <span data-i18n="name">Nom</span>
+                  <input id="ingredient-name" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="category">Catégorie</span>
+                  <input id="ingredient-category">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="measure_unit_name">Nom de l’unité de mesure</span>
+                  <input id="ingredient-measure-unit" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="grams_per_unit">Grammes par unité</span>
+                  <input id="ingredient-grams-per-unit" type="number" min="0.0001" step="0.0001" required>
+                </label>
+              </div>
+            </section>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_nutrition_title">Nutrition</h2>
+                <p data-i18n="ingredient_nutrition_intro">Valeurs correspondant à la quantité de référence indiquée.</p>
+              </div>
+              <div class="ingredient-editor-grid ingredient-nutrition-grid">
+                <label class="dialog-field">
+                  <span data-i18n="nutrition_reference_grams">Référence nutritionnelle (g)</span>
+                  <input id="ingredient-grams" type="number" min="0.0001" step="0.0001" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="kcal_for_reference">Kcal pour cette référence</span>
+                  <input id="ingredient-kcal" type="number" min="0" step="0.01" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="protein_grams">Protéines (g)</span>
+                  <input id="ingredient-protein" type="number" min="0" step="0.01" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="carbs_grams">Glucides (g)</span>
+                  <input id="ingredient-carbs" type="number" min="0" step="0.01" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="fat_grams">Lipides (g)</span>
+                  <input id="ingredient-fat" type="number" min="0" step="0.01" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="fiber_grams">Fibres (g)</span>
+                  <input id="ingredient-fiber" type="number" min="0" step="0.01" required>
+                </label>
+              </div>
+            </section>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_sources_title">Sources nutritionnelles</h2>
+                <p data-i18n="ingredient_sources_intro">Origine des valeurs nutritionnelles et lien de référence.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field">
+                  <span data-i18n="source">Source</span>
+                  <input id="ingredient-source">
+                </label>
+                <label class="dialog-field dialog-field-wide">
+                  <span data-i18n="source_url">Lien de la source</span>
+                  <input id="ingredient-url" type="url" placeholder="https://…">
+                </label>
+              </div>
+            </section>
+            <section class="ingredient-editor-section ingredient-purchase-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_purchase_title">Prix et dernier achat</h2>
+                <p data-i18n="ingredient_purchase_intro">Conditionnement, prix observé et informations du dernier ticket de caisse.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field">
+                  <span data-i18n="price_per_kg">Prix au kg</span>
+                  <input id="ingredient-price" type="number" min="0" step="0.01" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="estimated_purchase_price">Prix calculé du conditionnement</span>
+                  <input id="ingredient-purchase-price" readonly>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="purchase_unit">Unité d’achat</span>
+                  <input id="ingredient-purchase-unit" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="purchase_quantity_grams">Poids d’une unité d’achat (g)</span>
+                  <input id="ingredient-purchase-grams" type="number" min="0.0001" step="0.0001" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="price_checked_at">Date du prix / dernier achat</span>
+                  <input id="ingredient-price-checked-at" type="date">
+                </label>
+                <label class="dialog-field dialog-field-wide ingredient-price-source-field">
+                  <span data-i18n="price_source">Source du prix / détail du dernier achat</span>
+                  <textarea id="ingredient-price-source" rows="3"></textarea>
+                </label>
+              </div>
+            </section>
+            <label class="ingredient-incomplete-control">
+              <input id="ingredient-incomplete" type="checkbox">
+              <span data-i18n="ingredient_still_incomplete">La description de cet ingrédient est encore incomplète</span>
+            </label>
+            <div class="ingredient-editor-actions">
+              <p id="ingredient-form-message" class="field-error" role="alert"></p>
+              <button id="ingredient-save" class="button primary" type="submit" data-i18n="save_changes" disabled>Enregistrer</button>
+            </div>
+          </form>
+          <form id="household-item-form" class="ingredient-editor panel" hidden>
+            <div class="ingredient-editor-heading">
+              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour aux items</button>
+              <strong id="household-item-editor-name"></strong>
+              <span class="item-type-badge" data-i18n="general_item">Item général</span>
+              <button id="household-item-delete" class="button danger" type="button" data-i18n="delete">Supprimer</button>
+            </div>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="item_identity_title">Identité et unités</h2>
+                <p data-i18n="general_item_intro">Produit sans informations nutritionnelles, utilisable dans le stock et les besoins.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field"><span data-i18n="name">Nom</span><input id="household-item-name" required></label>
+                <label class="dialog-field"><span data-i18n="category">Catégorie</span><input id="household-item-category" required></label>
+                <label class="dialog-field"><span data-i18n="measure_unit_name">Nom de l’unité de mesure</span><input id="household-item-measure-unit" required></label>
+                <label class="dialog-field"><span data-i18n="purchase_unit">Unité d’achat</span><input id="household-item-purchase-unit" required></label>
+                <label class="dialog-field"><span data-i18n="purchase_quantity">Quantité par achat</span><input id="household-item-purchase-quantity" type="number" min="0.0001" step="0.0001" required></label>
+              </div>
+            </section>
+            <section class="ingredient-editor-section ingredient-purchase-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_purchase_title">Prix et dernier achat</h2>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field"><span data-i18n="unit_price">Prix unitaire</span><input id="household-item-price" type="number" min="0" step="0.01" required></label>
+                <label class="dialog-field"><span data-i18n="last_bought_at">Dernier achat</span><input id="household-item-last-bought" type="date"></label>
+                <label class="dialog-field"><span data-i18n="lasting_days">Durée estimée (jours)</span><input id="household-item-lasting-days" type="number" min="0.01" step="0.01"></label>
+                <label class="dialog-field dialog-field-wide"><span data-i18n="notes">Notes</span><textarea id="household-item-notes" rows="3"></textarea></label>
+              </div>
+            </section>
+            <div class="ingredient-editor-actions">
+              <p id="household-item-form-message" class="field-error" role="alert"></p>
+              <button id="household-item-save" class="button primary" type="submit" data-i18n="save_changes" disabled>Enregistrer</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="data-view" class="view" data-view="data">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" data-i18n="data_eyebrow">Votre espace</p>
+              <h1 data-i18n="my_data">Mes données</h1>
+              <p data-i18n="data_intro">Gérez la synchronisation, l’import, le téléchargement et la réinitialisation de vos données.</p>
+            </div>
+          </div>
+          <section class="data-overview panel" aria-labelledby="data-overview-title">
+            <div class="data-overview-heading">
+              <div>
+                <p class="eyebrow" data-i18n="data_account_eyebrow">Compte et stockage</p>
+                <h2 id="data-overview-title" data-i18n="data_account_title">Votre identité et vos copies</h2>
+              </div>
+            </div>
+            <dl class="data-facts">
+              <div><dt data-i18n="account_email">Compte</dt><dd id="data-account-email">—</dd></div>
+              <div><dt data-i18n="account_identifier">Identifiant utilisateur</dt><dd id="data-account-id">—</dd></div>
+              <div><dt data-i18n="local_copy_size">Copie hors ligne</dt><dd id="data-local-size">—</dd><small id="data-local-date"></small></div>
+              <div><dt data-i18n="online_copy_size">Copie en ligne</dt><dd id="data-online-size">—</dd><small id="data-online-date"></small></div>
+            </dl>
+            <p id="data-action-message" class="data-action-message" role="status" aria-live="polite"></p>
+          </section>
+          <section id="account-section" class="account-section panel" aria-labelledby="account-section-title" tabindex="-1">
+            <div class="account-section-heading">
+              <div>
+                <p class="eyebrow" data-i18n="online_sync">Sauvegarde en ligne</p>
+                <h2 id="account-section-title" data-i18n="account_title">Compte du foyer</h2>
+                <p data-i18n="account_intro">Un compte partagé synchronise les données du foyer entre vos appareils. La copie locale reste disponible en cas de panne.</p>
+                <p class="sync-frequency-detail" data-i18n="sync_frequency_detail">La copie en ligne est vérifiée au démarrage, à la connexion et lors d’une synchronisation manuelle. Il n’y a pas de vérification périodique en arrière-plan.</p>
+              </div>
+            </div>
+            <form id="account-form">
+              <div class="account-section-content">
+                <div class="account-current-status">
+                  <span class="source-dot" aria-hidden="true"></span>
+                  <div>
+                    <strong id="account-status-label"></strong>
+                    <small id="account-status-detail"></small>
+                  </div>
+                </div>
+                <details class="sync-status-help">
+                  <summary data-i18n="sync_help_title">Comprendre tous les statuts</summary>
+                  <dl>
+                    <div class="sync-help-status sync-synced"><dt><span class="source-dot"></span><span data-i18n="sync_synced">En ligne + hors ligne</span></dt><dd data-i18n="sync_synced_detail">Les données sont enregistrées en ligne dans Supabase et hors ligne sur cet appareil.</dd></div>
+                    <div class="sync-help-status sync-saving"><dt><span class="source-dot"></span><span data-i18n="sync_saving">Envoi en ligne…</span></dt><dd data-i18n="sync_saving_detail">Les modifications sont déjà enregistrées hors ligne sur cet appareil et sont en cours d’envoi vers Supabase.</dd></div>
+                    <div class="sync-help-status sync-connecting"><dt><span class="source-dot"></span><span data-i18n="sync_connecting">Connexion en ligne…</span></dt><dd data-i18n="sync_connecting_detail">La copie hors ligne est disponible sur cet appareil. Connexion à la copie en ligne en cours.</dd></div>
+                    <div class="sync-help-status sync-signed-out"><dt><span class="source-dot"></span><span data-i18n="sync_help_signed_out">Hors ligne uniquement — compte déconnecté</span></dt><dd data-i18n="sync_signed_out_detail">Les données sont enregistrées hors ligne sur cet appareil uniquement. Connectez-vous pour les sauvegarder aussi en ligne.</dd></div>
+                    <div class="sync-help-status sync-local"><dt><span class="source-dot"></span><span data-i18n="sync_help_local">Hors ligne uniquement — sauvegarde non configurée</span></dt><dd data-i18n="sync_local_detail">Les données sont enregistrées hors ligne sur cet appareil uniquement. Aucune copie en ligne n’est configurée.</dd></div>
+                    <div class="sync-help-status sync-offline"><dt><span class="source-dot"></span><span data-i18n="sync_help_offline">Hors ligne uniquement — serveur inaccessible</span></dt><dd data-i18n="sync_offline_detail">Les données sont enregistrées hors ligne sur cet appareil. Supabase est actuellement inaccessible ; la copie en ligne sera actualisée au retour de la connexion.</dd></div>
+                    <div class="sync-help-status sync-conflict"><dt><span class="source-dot"></span><span data-i18n="sync_conflict">Conflit à résoudre</span></dt><dd data-i18n="sync_conflict_detail">Les copies en ligne et hors ligne sont différentes. Les données hors ligne restent disponibles pendant que vous choisissez la version à conserver.</dd></div>
+                    <div class="sync-help-status sync-error"><dt><span class="source-dot"></span><span data-i18n="sync_error">Erreur de synchronisation</span></dt><dd data-i18n="sync_error_detail">Les données restent enregistrées hors ligne sur cet appareil, mais la sauvegarde en ligne a rencontré une erreur.</dd></div>
+                  </dl>
+                </details>
+                <div id="account-signed-out" class="account-panel">
+                  <label class="dialog-field">
+                    <span data-i18n="email">Adresse e-mail</span>
+                    <input id="account-email" type="email" autocomplete="username" required>
+                  </label>
+                  <label class="dialog-field">
+                    <span data-i18n="password">Mot de passe</span>
+                    <input id="account-password" type="password" autocomplete="current-password" minlength="6" required>
+                  </label>
+                  <label class="account-consent">
+                    <input id="account-privacy-consent" type="checkbox">
+                    <span data-i18n="account_privacy_consent">Je consens au stockage des informations de foyer, de repas et de nutrition que je choisis de saisir, y compris celles pouvant révéler une information de santé. Je confirme avoir informé les autres personnes, obtenu leur accord lorsque nécessaire et disposer de l’autorité requise pour les mineurs.</span>
+                  </label>
+                  <p id="account-message" class="account-message" role="status" aria-live="polite"></p>
+                  <div class="account-actions">
+                    <button id="account-create" class="button ghost" type="button" data-i18n="create_account">Créer le compte</button>
+                    <button id="account-sign-in" class="button primary" type="submit" data-i18n="sign_in">Se connecter</button>
+                  </div>
+                </div>
+                <div id="account-signed-in" class="account-panel" hidden>
+                  <p><span data-i18n="signed_in_as">Connecté en tant que</span> <strong id="account-email-label"></strong></p>
+                  <div class="account-actions">
+                    <button id="account-sign-out" class="button ghost" type="button" data-i18n="sign_out">Se déconnecter</button>
+                    <button id="account-sync-now" class="button primary" type="button" data-i18n="sync_now">Synchroniser</button>
+                  </div>
+                </div>
+                <div id="account-conflict" class="account-panel account-conflict" hidden>
+                  <p data-i18n="conflict_intro">Les données locales et en ligne ont changé. Choisissez la version à conserver.</p>
+                  <div class="account-actions">
+                    <button id="account-use-online" class="button ghost" type="button" data-i18n="use_online_data">Utiliser la version en ligne</button>
+                    <button id="account-use-local" class="button primary" type="button" data-i18n="upload_local_data">Envoyer la version locale</button>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </section>
+          <section id="privacy-request-section" class="privacy-request-section panel" aria-labelledby="privacy-request-title">
+            <div class="account-section-heading">
+              <p class="eyebrow" data-i18n="privacy_request_eyebrow">Contact privé</p>
+              <h2 id="privacy-request-title" data-i18n="privacy_request_title">Exercer mes droits</h2>
+              <p data-i18n="privacy_request_intro">Envoyez une demande privée. Elle est enregistrée dans Supabase avec votre compte vérifié et n’apparaît jamais dans une issue GitHub publique.</p>
+            </div>
+            <div id="privacy-request-signed-out" class="privacy-request-signed-out">
+              <p data-i18n="privacy_request_sign_in">Connectez-vous ci-dessus pour envoyer et suivre une demande privée.</p>
+            </div>
+            <div id="privacy-request-signed-in" hidden>
+              <form id="privacy-request-form" class="privacy-request-form">
+                <label class="dialog-field">
+                  <span data-i18n="privacy_request_type">Type de demande</span>
+                  <select id="privacy-request-type" required>
+                    <option value="access" data-i18n="privacy_type_access">Accès à mes données</option>
+                    <option value="rectification" data-i18n="privacy_type_rectification">Rectification</option>
+                    <option value="erasure" data-i18n="privacy_type_erasure">Effacement</option>
+                    <option value="restriction" data-i18n="privacy_type_restriction">Limitation du traitement</option>
+                    <option value="objection" data-i18n="privacy_type_objection">Opposition</option>
+                    <option value="portability" data-i18n="privacy_type_portability">Portabilité</option>
+                    <option value="other" data-i18n="privacy_type_other">Autre question privée</option>
+                  </select>
+                </label>
+                <label class="dialog-field privacy-request-message">
+                  <span data-i18n="privacy_request_message">Votre demande</span>
+                  <textarea id="privacy-request-message" minlength="10" maxlength="4000" rows="5" required></textarea>
+                </label>
+                <div class="privacy-request-actions">
+                  <p id="privacy-request-feedback" role="status" aria-live="polite"></p>
+                  <button id="privacy-request-submit" class="button primary" type="submit" data-i18n="privacy_request_send">Envoyer en privé</button>
+                </div>
+              </form>
+              <div class="privacy-request-history">
+                <h3 data-i18n="privacy_request_history">Mes demandes</h3>
+                <p class="privacy-request-deadline" data-i18n="privacy_request_deadline">Une réponse est normalement fournie sous un mois. Bruno consulte régulièrement cette liste privée.</p>
+                <div id="privacy-request-list" class="privacy-request-list"></div>
+              </div>
+            </div>
+          </section>
+          <div class="data-management-grid">
+            <button id="import-json" class="data-management-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM15 3v5h4M12 18v-7M8.5 14.5 12 11l3.5 3.5"/></svg>
+              <strong data-i18n="import_json">Téléverser un fichier JSON</strong>
+              <span data-i18n="import_data_hint">Remplacer les données par un fichier JSON</span>
+            </button>
+            <button id="export-data" class="data-management-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6zM12 7v9M8.5 12.5 12 16l3.5-3.5"/></svg>
+              <strong data-i18n="download_data">Télécharger le fichier JSON</strong>
+              <span data-i18n="download_data_hint">Conserver une copie complète sur votre appareil</span>
+            </button>
+            <button id="reset-data" class="data-management-card danger-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+              <strong data-i18n="reset_data">Supprimer mes données</strong>
+              <span data-i18n="reset_data_hint">Effacer immédiatement les copies locale et en ligne ainsi que le compte</span>
+            </button>
+            <button id="about-data" class="data-management-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
+              <strong data-i18n="about">À propos</strong>
+              <span data-i18n="about_data_hint">Technologie, partage et protection des données</span>
+            </button>
+          </div>
+          <input id="json-input" type="file" accept=".json,application/json" hidden>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="family-dialog" class="menu-item-dialog family-dialog" aria-labelledby="family-dialog-title">
+      <form id="family-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p id="family-dialog-eyebrow" class="eyebrow" data-i18n="new_family_member">Nouveau membre</p>
+            <h2 id="family-dialog-title" data-i18n="add_family_member">Ajouter une personne</h2>
+            <p id="family-dialog-intro" data-i18n="family_dialog_intro">Choisissez un profil simple pour personnaliser le planning.</p>
+          </div>
+          <button id="family-dialog-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields family-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="family_name">Prénom</span>
+            <input id="family-member-name" autocomplete="off" required>
+          </label>
+          <fieldset class="family-role-picker dialog-field-wide">
+            <legend data-i18n="choose_member_type">Adulte ou enfant ?</legend>
+            <div class="family-role-options">
+              <label>
+                <input id="family-member-adult" type="radio" name="family-kind" value="adult" checked>
+                <span>
+                  <i class="role-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="12" r="8"/><path d="M10 43V30c0-9 6-14 14-14s14 5 14 14v13M18 43V29M30 43V29"/></svg></i>
+                  <strong data-i18n="adult">Adulte</strong>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="family-kind" value="child">
+                <span>
+                  <i class="role-icon child-role" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="14" r="7"/><path d="M12 43V32c0-8 5-12 12-12s12 4 12 12v11M19 43V32M29 43V32"/></svg></i>
+                  <strong data-i18n="child">Enfant</strong>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="calorie_target">Objectif calorique (facultatif)</span>
+            <input id="family-member-kcal" type="number" min="1" step="1" inputmode="numeric" placeholder="2000">
+          </label>
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="meal_habits">Habitudes alimentaires</span>
+            <textarea
+              id="family-member-description"
+              rows="4"
+              data-i18n-placeholder="meal_habits_optional"
+              placeholder="Préférences, boissons, habitudes et jours de présence (facultatif)"
+            ></textarea>
+          </label>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="family-dialog-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button id="family-dialog-submit" class="button primary" type="submit" data-i18n="validate">Valider</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="menu-item-dialog" class="menu-item-dialog" aria-labelledby="menu-item-dialog-title">
+      <form id="menu-item-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="add_menu_item">Ajouter au menu</p>
+            <h2 id="menu-item-dialog-title" data-i18n="new_menu_item">Nouvel élément</h2>
+            <p id="menu-item-context"></p>
+          </div>
+          <button id="menu-item-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="item">Aliment ou plat</span>
+            <select id="menu-item-select" required></select>
+          </label>
+          <label class="dialog-field">
+            <span data-i18n="quantity">Quantité</span>
+            <input id="menu-item-quantity" type="number" min="0.01" step="0.01" value="1" required>
+          </label>
+          <label class="dialog-field">
+            <span data-i18n="unit">Unité</span>
+            <select id="menu-item-unit" required>
+              <option value="portion">portion</option>
+              <option value="g">g</option>
+              <option value="unit" data-i18n="units">unités</option>
+            </select>
+          </label>
+          <fieldset class="dialog-people dialog-field-wide">
+            <legend data-i18n="people">Personnes</legend>
+            <div id="menu-item-people"></div>
+            <p id="menu-item-people-error" class="field-error" data-i18n="select_person" hidden>Sélectionnez au moins une personne.</p>
+          </fieldset>
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="notes">Notes</span>
+            <input id="menu-item-notes">
+          </label>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="menu-item-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button class="button primary" type="submit" data-i18n="validate">Valider</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dish-details-dialog" class="menu-item-dialog dish-details-dialog" aria-labelledby="dish-details-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="dish_details">Détail du plat</p>
+            <h2 id="dish-details-title"></h2>
+            <p id="dish-details-context"></p>
+            <div id="dish-details-recipe" class="dish-details-recipe">
+              <span id="dish-details-no-link" data-i18n="no_recipe_link">Aucun lien de recette disponible</span>
+              <span id="dish-details-url" class="dish-details-url" hidden></span>
+              <a id="dish-details-recipe-link" class="button primary" target="_blank" rel="noopener noreferrer" data-i18n="open_recipe">Ouvrir la recette en ligne</a>
+            </div>
+          </div>
+          <button id="dish-details-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="dish-details-content">
+          <p id="dish-details-menu-note" class="dish-details-menu-note" hidden></p>
+          <div id="dish-details-metrics" class="dish-details-metrics"></div>
+          <section id="dish-details-ingredients-section">
+            <h3 data-i18n="recipe_ingredients">Ingrédients de la recette</h3>
+            <ul id="dish-details-ingredients" class="dish-details-ingredients"></ul>
+          </section>
+          <section id="dish-details-source-section">
+            <h3 data-i18n="recipe_notes">Source et notes de la recette</h3>
+            <strong id="dish-details-source" class="dish-details-source"></strong>
+            <div id="dish-details-notes" class="dish-details-notes"></div>
+          </section>
+          <section id="dish-menu-editor" class="dish-menu-editor" hidden>
+            <h3 data-i18n="edit_menu_item">Modifier ce repas</h3>
+            <p data-i18n="edit_menu_intro">Modifiez les personnes et choisissez une valeur en portions, grammes ou unités.</p>
+            <div class="dish-menu-editor-grid">
+              <label class="dialog-field">
+                <span data-i18n="day">Jour</span>
+                <select id="dish-menu-day"></select>
+              </label>
+              <label class="dialog-field">
+                <span data-i18n="meal">Repas</span>
+                <select id="dish-menu-meal"></select>
+              </label>
+              <label class="dialog-field">
+                <span data-i18n="quantity_value">Valeur</span>
+                <input id="dish-menu-quantity" type="number" min="0.01" step="0.01">
+              </label>
+              <label class="dialog-field">
+                <span data-i18n="quantity_type">Type de quantité</span>
+                <select id="dish-menu-unit">
+                  <option value="portion" data-i18n="portions">Portions</option>
+                  <option value="g" data-i18n="quantity_grams">Quantité en grammes</option>
+                  <option value="unit" data-i18n="quantity_units">Quantité en unités</option>
+                </select>
+                <small id="dish-menu-unit-value" class="dish-menu-unit-value" hidden></small>
+              </label>
+              <fieldset class="dialog-people dish-menu-people-field">
+                <legend data-i18n="people">Personnes</legend>
+                <div id="dish-menu-people"></div>
+                <p id="dish-menu-people-error" class="field-error" data-i18n="select_person" hidden>Sélectionnez au moins une personne.</p>
+              </fieldset>
+            </div>
+            <div class="dish-menu-editor-actions">
+              <button id="dish-details-save" class="button primary" type="button" data-i18n="save_changes" hidden>Enregistrer</button>
+            </div>
+          </section>
+        </div>
+        <div class="menu-dialog-actions dish-details-actions">
+          <button id="dish-details-edit" class="button ghost" type="button" data-i18n="edit_dish" hidden>Modifier le plat</button>
+          <button id="dish-details-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="new-dish-dialog" class="menu-item-dialog new-dish-dialog" aria-labelledby="new-dish-title">
+      <form id="new-dish-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="recipes_eyebrow">Bibliothèque</p>
+            <h2 id="new-dish-title">Nouveau plat</h2>
+            <p id="new-dish-intro">Décrivez la recette et ajoutez au moins un ingrédient.</p>
+          </div>
+          <button id="new-dish-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="new-dish-content">
+          <div class="new-dish-fields">
+            <label class="dialog-field">
+              <span data-i18n="dish_name">Nom du plat</span>
+              <input id="new-dish-name" required>
+            </label>
+            <label class="dialog-field">
+              <span data-i18n="recipe_servings">Nombre de portions</span>
+              <input id="new-dish-servings" type="number" min="0.01" step="0.01" value="4" required>
+            </label>
+            <label class="dialog-field dialog-field-wide">
+              <span data-i18n="recipe_url">Lien de la recette</span>
+              <input id="new-dish-url" type="url" placeholder="https://…">
+            </label>
+            <label class="dialog-field">
+              <span data-i18n="source">Source</span>
+              <input id="new-dish-source">
+            </label>
+            <label class="dialog-field">
+              <span data-i18n="nutri_score">Nutri-Score</span>
+              <select id="new-dish-nutri-score">
+                <option value="" data-i18n="not_available">Non renseigné</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+              </select>
+            </label>
+            <label class="dialog-field dialog-field-wide">
+              <span data-i18n="recipe_notes">Source et notes de la recette</span>
+              <textarea id="new-dish-notes" rows="3"></textarea>
+            </label>
+          </div>
+          <section class="new-dish-components">
+            <div class="new-dish-components-heading">
+              <h3 data-i18n="recipe_ingredients">Ingrédients de la recette</h3>
+              <button id="new-dish-add-component" class="icon-button new-dish-add-component" type="button" data-i18n-title="add_ingredient" aria-label="Ajouter un ingrédient">+</button>
+            </div>
+            <div class="new-dish-component-head" aria-hidden="true">
+              <span data-i18n="ingredient">Ingrédient</span>
+              <span data-i18n="custom_item">Personnalisé</span>
+              <span data-i18n="quantity">Quantité</span>
+              <span data-i18n="unit">Unité</span>
+              <span></span>
+            </div>
+            <div id="new-dish-component-list"></div>
+            <p id="new-dish-error" class="field-error" role="alert"></p>
+          </section>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="new-dish-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button id="new-dish-save" class="button primary" type="submit" data-i18n="save_dish">Enregistrer le plat</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="grocery-details-dialog" class="menu-item-dialog grocery-details-dialog" aria-labelledby="grocery-details-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="ingredient_details">Détail de l’ingrédient</p>
+            <h2 id="grocery-details-title"></h2>
+            <p data-i18n="ingredient_used_by">Plats du menu utilisant cet ingrédient</p>
+          </div>
+          <button id="grocery-details-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div id="grocery-details-list" class="grocery-details-list"></div>
+        <div class="menu-dialog-actions">
+          <button id="grocery-details-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="menu-item-dialog confirm-dialog" aria-labelledby="confirm-dialog-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="confirmation">Confirmation</p>
+            <h2 id="confirm-dialog-title"></h2>
+            <p id="confirm-dialog-message"></p>
+          </div>
+          <button id="confirm-dialog-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="confirm-dialog-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button id="confirm-dialog-accept" class="button danger" type="button" data-i18n="delete">Supprimer</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="meal-replace-dialog" class="menu-item-dialog meal-replace-dialog" aria-labelledby="meal-replace-title">
+      <form id="meal-replace-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="replace_meal">Remplacer le repas</p>
+            <h2 id="meal-replace-title" data-i18n="replace_meal_title">Choisir un autre plat</h2>
+            <p id="meal-replace-context"></p>
+          </div>
+          <button id="meal-replace-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="replace_with">Remplacer par</span>
+            <select id="meal-replace-select" required></select>
+          </label>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="meal-replace-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button class="button primary" type="submit" data-i18n="validate">Valider</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="about-dialog" class="menu-item-dialog about-dialog" aria-labelledby="about-dialog-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="about_eyebrow">Le projet</p>
+            <h2 id="about-dialog-title" data-i18n="about_title">À propos de Home à la Carte</h2>
+            <p data-i18n="about_intro">Un planificateur local-first et open source pour organiser le foyer, les menus, le stock et les courses.</p>
+          </div>
+          <button id="about-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="about-content">
+          <section>
+            <h3 data-i18n="about_technology_title">Technologie et partage</h3>
+            <p data-i18n="about_technology">L’application est un site statique sans Node ni serveur applicatif : HTML, CSS et JavaScript pour l’interface, Rust/WebAssembly pour les calculs et le PDF, IndexedDB pour la copie locale, et Supabase en option pour la synchronisation.</p>
+            <p data-i18n="about_license">Le code est partagé sous licence MIT : chacun peut l’utiliser, le modifier et l’héberger, en conservant la notice de licence.</p>
+            <p><a href="https://github.com/bbodin/homealacarte" target="_blank" rel="noopener noreferrer" data-i18n="about_source_code">Voir le code source et contribuer sur GitHub</a></p>
+          </section>
+          <section class="about-privacy">
+            <h3 data-i18n="about_privacy_title">Données personnelles et RGPD</h3>
+            <p><span data-i18n="about_privacy_controller">Responsable du traitement de cette instance :</span> <a id="about-controller-contact" target="_blank" rel="noopener noreferrer" data-i18n="not_configured">Non renseigné</a>. <span data-i18n="about_privacy_email_use">L’adresse e-mail sert uniquement à créer le compte et à synchroniser les données choisies par l’utilisateur.</span></p>
+            <p data-i18n="about_privacy_local">Finalité : fournir l’organisation du foyer, des repas, des besoins, du stock et des courses. Les données peuvent inclure l’adresse e-mail, les noms ou pseudonymes, les habitudes alimentaires, les objectifs nutritionnels, les menus, le stock et les achats saisis. La base légale du compte est l’exécution du service demandé ; un consentement explicite est demandé pour les informations pouvant révéler la santé. Le titulaire confirme avoir informé les autres personnes et obtenu les autorisations nécessaires.</p>
+            <p data-i18n="about_privacy_storage">Une copie nécessaire au fonctionnement hors ligne est conservée dans IndexedDB sur l’appareil. Avec un compte, le document et les éventuelles demandes privées sont aussi envoyés au projet Supabase hébergé dans la région Europe. Des sous-traitants Supabase peuvent traiter des données hors EEE selon son DPA et ses clauses contractuelles types. Il n’y a ni publicité, ni analyse d’audience, ni vente de données.</p>
+            <p data-i18n="about_privacy_retention">Un compte contenant des données est destiné à être supprimé après un an sans activité ; un compte vide après une semaine. Sur le plan gratuit, cette purge d’inactivité reprend lorsque le projet est actif car Supabase peut le mettre en pause. Supprimer mes données efface immédiatement le document, les demandes privées, le compte en ligne et la copie de cet appareil. L’exploitant ne crée aucune sauvegarde ; les copies ou journaux techniques éventuels du fournisseur suivent ses propres conditions.</p>
+            <p data-i18n="about_privacy_controls">Mes données permet l’accès et la portabilité par téléchargement JSON, la rectification dans les écrans, l’effacement immédiat et l’envoi d’une demande privée au responsable. Une réponse est normalement fournie sous un mois. Une réclamation peut être adressée à la CNIL. Aucun profilage commercial ni décision produisant un effet juridique n’est réalisé.</p>
+            <div class="privacy-actions">
+              <button id="about-download-data" class="button ghost" type="button" data-i18n="privacy_download">Accéder et télécharger mes données</button>
+              <button id="about-edit-data" class="button ghost" type="button" data-i18n="privacy_correct">Rectifier les données du foyer</button>
+              <button id="about-request-erasure" class="button danger" type="button" data-i18n="reset_data">Supprimer mes données</button>
+            </div>
+            <div class="about-links">
+              <a href="https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre3" target="_blank" rel="noopener noreferrer" data-i18n="about_link_rights">Droits d’accès, rectification, effacement et portabilité</a>
+              <a href="https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/dealing-requests-individuals_en" target="_blank" rel="noopener noreferrer" data-i18n="about_link_requests">Traiter une demande RGPD</a>
+              <a href="https://commission.europa.eu/law/law-topic/data-protection/rules-business-and-organisations/principles-gdpr/overview-principles/what-data-can-we-process-and-under-which-conditions_en" target="_blank" rel="noopener noreferrer" data-i18n="about_link_gdpr">Principes officiels du RGPD</a>
+              <a href="https://supabase.com/docs/guides/deployment/shared-responsibility-model" target="_blank" rel="noopener noreferrer" data-i18n="about_link_supabase">Responsabilité partagée Supabase</a>
+              <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener noreferrer" data-i18n="about_link_rls">Sécurité RLS Supabase</a>
+            </div>
+          </section>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="about-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script type="module" src="./app.js?v=homealacarte-26"></script>
+  </body>
+</html>

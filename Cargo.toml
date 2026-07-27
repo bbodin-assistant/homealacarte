@@ -1,0 +1,22 @@
+[package]
+name = "homealacarte-web"
+version = "0.1.0"
+edition = "2024"
+description = "Local-first Home à la Carte planning core compiled to WebAssembly."
+license = "MIT"
+repository = "https://github.com/bbodin/homealacarte"
+homepage = "https://github.com/bbodin/homealacarte"
+readme = "README.md"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde-wasm-bindgen = "0.6"
+sha2 = "0.10"
+wasm-bindgen = "0.2"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
