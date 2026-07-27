@@ -47,7 +47,7 @@ function jsonSize(value) {
 
 async function loadConfig() {
   if (!configPromise) {
-    configPromise = import("./supabase-config.js?v=homealacarte-26")
+    configPromise = import("./supabase-config.js?v=homealacarte-27")
       .then(({ SUPABASE_CONFIG }) => {
         const projectUrl = String(SUPABASE_CONFIG?.projectUrl || "").replace(/\/+$/, "");
         const publishableKey = String(SUPABASE_CONFIG?.publishableKey || "");

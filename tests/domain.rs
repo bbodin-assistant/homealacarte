@@ -675,6 +675,12 @@ fn family_members_can_be_added_removed_and_exported() {
     assert!(people_file.content.contains("\"kind\": \"adult\""));
     assert!(people_file.content.contains("\"name\": \"Test adult\""));
     assert!(people_file.content.contains("\"description\": \"Drinks sparkling water.\""));
+
+    let empty = engine.replace_people(Vec::new()).unwrap();
+    assert!(empty.people.is_empty());
+    assert!(empty.planner.is_empty());
+    assert!(empty.profile.is_none());
+    assert!(engine.export_data("consolidated").unwrap().contains("\"people\": []"));
 }
 
 #[test]

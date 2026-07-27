@@ -13,8 +13,8 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-26";
-import { t, translations } from "./translations.js?v=homealacarte-26";
+} from "./storage.js?v=homealacarte-27";
+import { t, translations } from "./translations.js?v=homealacarte-27";
 
 const STORAGE_PREFIX = "homealacarte-";
 const DATA_SCHEMA_VERSION = 6;
@@ -51,7 +51,7 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-26", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-27", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,

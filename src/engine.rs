@@ -60,9 +60,6 @@ impl Engine {
 
     pub fn replace_people(&mut self, mut people: Vec<Person>) -> Result<AppSnapshot, String> {
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
-        if people.is_empty() {
-            return Err("at least one family member is required".to_string());
-        }
         let mut keys = HashSet::new();
         for (index, person) in people.iter_mut().enumerate() {
             person.key = person.key.trim().to_string();
