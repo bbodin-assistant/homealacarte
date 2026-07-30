@@ -13,8 +13,8 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-28";
-import { t, translations } from "./translations.js?v=homealacarte-28";
+} from "./storage.js?v=homealacarte-29";
+import { t, translations } from "./translations.js?v=homealacarte-29";
 
 const STORAGE_PREFIX = "homealacarte-";
 const DATA_SCHEMA_VERSION = 6;
@@ -51,7 +51,7 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-28", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-29", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -1728,7 +1728,10 @@ function renderStock() {
   $("#empty-stock").disabled = state.stockDraft.length === 0;
   $("#stock-list").innerHTML = state.stockDraft.map((item) => `
     <div class="stock-row" data-stock-key="${escapeHtml(item.item_key)}" data-stock-household="${item.household ? "true" : "false"}">
-      <strong title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong>
+      <strong class="stock-row-name">
+        <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+        <small>${escapeHtml(displayCategory(item.category))}</small>
+      </strong>
       <input class="stock-control" data-stock-field="quantity" type="number" min="0" step="0.01" value="${formatInputNumber(item.quantity)}">
       <select class="stock-control" data-stock-field="quantity_unit">
         ${item.household
@@ -1743,7 +1746,7 @@ function renderStock() {
   `).join("") || `<p class="stock-empty">${t(state.language, "empty")}</p>`;
 
   $("#stock-add-item").innerHTML = (state.snapshot.stock_options || [])
-    .map((item) => `<option value="${escapeHtml(item.item_key)}">${escapeHtml(item.name)}</option>`)
+    .map((item) => `<option value="${escapeHtml(item.item_key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)
     .join("");
   setStockAddUnit();
   $("#stock-add-form").querySelector("button").disabled = !$("#stock-add-item").value;
@@ -2879,6 +2882,7 @@ $("#stock-add-form").addEventListener("submit", (event) => {
     state.stockDraft.push({
       item_key: itemKey,
       name: option.name,
+      category: option.category,
       quantity,
       quantity_unit: quantityUnit,
       measure_unit: option.measure_unit,

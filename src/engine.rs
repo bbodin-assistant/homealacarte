@@ -939,6 +939,7 @@ pub fn build_snapshot(
                 StockItemView {
                     item_key: key.clone(),
                     name: ingredient.name.clone(),
+                    category: ingredient.category.clone(),
                     quantity: if uses_measure_unit {
                         grams / ingredient.grams_per_measure_unit
                     } else {
@@ -962,6 +963,7 @@ pub fn build_snapshot(
         household_items.get(key.as_str()).map(|item| StockItemView {
             item_key: key.clone(),
             name: item.name.clone(),
+            category: item.category.clone(),
             quantity: *quantity,
             quantity_unit: "unit".to_string(),
             measure_unit: item.measure_unit.clone(),
@@ -981,6 +983,7 @@ pub fn build_snapshot(
         .map(|item| StockItemView {
             item_key: item.key.clone(),
             name: item.name.clone(),
+            category: item.category.clone(),
             quantity: 0.0,
             quantity_unit: if item.measure_unit == "g" { "g" } else { "unit" }.to_string(),
             measure_unit: item.measure_unit.clone(),
@@ -990,6 +993,7 @@ pub fn build_snapshot(
         .chain(dataset.household_items.iter().map(|item| StockItemView {
             item_key: item.key.clone(),
             name: item.name.clone(),
+            category: item.category.clone(),
             quantity: 0.0,
             quantity_unit: "unit".to_string(),
             measure_unit: item.measure_unit.clone(),

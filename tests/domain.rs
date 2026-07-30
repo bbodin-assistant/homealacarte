@@ -217,8 +217,15 @@ fn synthetic_data_supports_groceries_stock_export_and_pdf() {
         snapshot
             .stock_options
             .iter()
-            .any(|item| item.name == "Test cleaner" && item.household)
+            .any(|item| {
+                item.name == "Test cleaner"
+                    && item.category == "Household"
+                    && item.household
+            })
     );
+    assert!(snapshot.stock.iter().any(|item| {
+        item.name == "Test tomato" && item.category == "Produce::Vegetables"
+    }));
     let consolidated: serde_json::Value =
         serde_json::from_str(&engine.export_data("consolidated").unwrap()).unwrap();
     assert!(consolidated.get("items").is_some());

@@ -200,6 +200,7 @@ pub struct StockUpdate {
 pub struct StockItemView {
     pub item_key: String,
     pub name: String,
+    pub category: String,
     pub quantity: f64,
     pub quantity_unit: String,
     pub measure_unit: String,
