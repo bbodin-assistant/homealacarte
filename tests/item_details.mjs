@@ -64,6 +64,8 @@ const [app, index] = await Promise.all([
 assert.match(app, /data-item-details=/);
 assert.match(app, /openCatalogueItemDetails/);
 assert.match(app, /priceHistoryMarkup/);
+assert.match(app, /grocery-details-edit/);
 assert.match(index, /id="grocery-details-information"/);
+assert.match(index, /id="grocery-details-edit"/);
 
 console.log("Catalog and grocery item details share matching data and price-chart geometry.");

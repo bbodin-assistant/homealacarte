@@ -1769,7 +1769,7 @@ function groceryItemUsage(item) {
 }
 
 function detailValue(value, suffix = "") {
-  if (value == null || value === "") return t(state.language, "not_available");
+  if (value == null || value === "" || !Number.isFinite(Number(value))) return null;
   return `${formatNumber(value, 2)}${suffix}`;
 }
 
@@ -1777,7 +1777,9 @@ function detailFields(rows) {
   return `<dl class="item-detail-fields">${rows.map(([label, value, raw = false]) => `
     <div>
       <dt>${escapeHtml(label)}</dt>
-      <dd>${raw ? value : escapeHtml(value == null || value === "" ? t(state.language, "not_available") : value)}</dd>
+      ${value == null || value === ""
+        ? `<dd class="item-detail-missing"><span aria-hidden="true">!</span>${escapeHtml(t(state.language, "not_available"))}</dd>`
+        : `<dd>${raw ? value : escapeHtml(value)}</dd>`}
     </div>
   `).join("")}</dl>`;
 }
@@ -1855,7 +1857,7 @@ function itemInformationMarkup(items, groceryItem) {
     [t(state.language, "source"), item.source],
     [t(state.language, "source_url"), sourceUrl
       ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a>`
-      : escapeHtml(item.url || t(state.language, "not_available")), true],
+      : item.url ? escapeHtml(item.url) : null, true],
   ]) : "";
   const purchase = food ? detailFields([
     [t(state.language, "grams_per_unit"), detailValue(item.grams_per_measure_unit, " g")],
@@ -1892,6 +1894,12 @@ function openItemDetails(items, groceryItem = null) {
   const usages = groceryItemUsage(usageItem);
   $("#grocery-details-title").textContent = item?.name || groceryItem.name;
   $("#grocery-details-information").innerHTML = itemInformationMarkup(items, groceryItem);
+  const editButton = $("#grocery-details-edit");
+  editButton.hidden = !item;
+  editButton.dataset.itemKey = item ? encodeURIComponent(item.key) : "";
+  editButton.dataset.itemKind = item
+    ? (Object.hasOwn(item, "kcal") ? "food" : "general")
+    : "";
   $("#grocery-details-list").innerHTML = usages.map((usage) => `
       <article class="grocery-usage ${usage.direct ? "direct" : ""}">
         <strong>${escapeHtml(usage.name)}</strong>
@@ -3484,6 +3492,18 @@ $("#grocery-details-list").addEventListener("click", (event) => {
 });
 $("#grocery-details-close").addEventListener("click", closeGroceryDetails);
 $("#grocery-details-done").addEventListener("click", closeGroceryDetails);
+$("#grocery-details-edit").addEventListener("click", (event) => {
+  const button = event.currentTarget;
+  if (!button.dataset.itemKey || !button.dataset.itemKind) return;
+  const kind = button.dataset.itemKind;
+  const key = decodeURIComponent(button.dataset.itemKey);
+  closeGroceryDetails();
+  state.itemCatalogueTab = kind === "food" ? "food" : "other";
+  localStorage.setItem("homealacarte-item-catalogue-tab", state.itemCatalogueTab);
+  switchTab("items");
+  renderItemsCatalogue();
+  openItemEditor(key, kind);
+});
 
 async function bootstrap() {
   applyColorTheme(state.colorTheme);

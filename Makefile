@@ -1,6 +1,6 @@
 WASM_PACK ?= $(HOME)/.cargo/bin/wasm-pack
 DATA_DIR ?= ./sample-data
-PERSONAL_DATA_DIR ?= ./perso-data
+PERSONAL_DATA_DIR ?= ./data
 PERSONAL_IMPORT ?= ./private-import/homealacarte.json
 PERSONAL_BASE_DIR ?= ./dataweb
 PERSONAL_OVERLAY_DIR ?= ./perso-data
