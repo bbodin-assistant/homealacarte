@@ -9,6 +9,7 @@ assert.deepEqual(buildScheduledDishRow({
   people: ["alex", "sam"],
   quantity: "2",
   quantityUnit: "portion",
+  notes: "Serve warm",
 }), {
   day: "Monday",
   meal: "Dinner",
@@ -16,7 +17,7 @@ assert.deepEqual(buildScheduledDishRow({
   people: ["alex", "sam"],
   quantity: 2,
   quantity_unit: "portion",
-  notes: "",
+  notes: "Serve warm",
 });
 assert.throws(() => buildScheduledDishRow({
   dishKey: "vegetable_curry",
@@ -41,7 +42,12 @@ const [app, index] = await Promise.all([
 ]);
 assert.match(index, /id="dish-details-schedule"/);
 assert.match(index, /id="dish-details-schedule-cancel"/);
+assert.match(index, /id="dish-menu-notes"/);
+assert.match(index, /id="new-dish-notes-list"/);
 assert.match(app, /openDishScheduleEditor/);
 assert.match(app, /state\.draft\.push\(scheduledRow\)/);
+assert.match(app, /source_notes: dishSourceNotesPayload\(\)/);
+assert.match(app, /data-component-source-quantity/);
+assert.match(app, /source_quantity: row\.querySelector\("\[data-component-source-quantity\]"\)/);
 
 console.log("Dish details can build and append a validated scheduled menu row.");

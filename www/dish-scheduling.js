@@ -5,6 +5,7 @@ export function buildScheduledDishRow({
   people,
   quantity,
   quantityUnit,
+  notes = "",
 }) {
   const numericQuantity = Number(quantity);
   if (!String(dishKey || "").trim()) throw new Error("A dish is required.");
@@ -27,6 +28,6 @@ export function buildScheduledDishRow({
     people: [...people],
     quantity: numericQuantity,
     quantity_unit: quantityUnit,
-    notes: "",
+    notes: String(notes || "").trim(),
   };
 }

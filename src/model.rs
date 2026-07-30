@@ -216,6 +216,8 @@ pub struct StockUpdate {
     pub quantity: f64,
     pub quantity_unit: String,
     #[serde(default)]
+    pub notes: Option<String>,
+    #[serde(default)]
     pub household: bool,
 }
 
@@ -228,6 +230,8 @@ pub struct StockItemView {
     pub quantity_unit: String,
     pub measure_unit: String,
     pub grams_per_measure_unit: f64,
+    #[serde(default)]
+    pub notes: String,
     #[serde(default)]
     pub household: bool,
 }
@@ -242,6 +246,8 @@ pub struct CustomGroceryItem {
     pub purchase_unit: String,
     pub purchase_quantity: f64,
     pub estimated_price: f64,
+    #[serde(default)]
+    pub notes: Option<String>,
     #[serde(default)]
     pub custom: bool,
 }

@@ -71,5 +71,16 @@ assert.match(index, /id="grocery-details-information"/);
 assert.match(index, /id="grocery-details-edit"/);
 assert.match(index, /id="ingredient-price-history-list"/);
 assert.match(index, /id="household-item-price-history-list"/);
+assert.match(index, /id="stock-add-notes"/);
+assert.match(index, /id="custom-add-notes"/);
+assert.match(app, /data-stock-field="notes"/);
+assert.match(app, /data-custom-field="notes"/);
+for (const source of [app, index]) {
+  for (const input of source.matchAll(/<input\b[^>]*\btype="number"[^>]*>/g)) {
+    assert.match(input[0], /\bstep="any"/);
+  }
+  assert.doesNotMatch(source, /<input\b[^>]*\btype="(?:date|url)"/);
+}
+assert.doesNotMatch(app, /Math\.round\(\(Number\(value\)/);
 
 console.log("Catalog and grocery item details share matching data and price-chart geometry.");

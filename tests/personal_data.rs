@@ -130,6 +130,7 @@ fn legacy_personal_files_become_one_valid_current_document() {
             item_key: "apple_test".to_string(),
             quantity: 2.0,
             quantity_unit: "unit".to_string(),
+            notes: None,
             household: false,
         }])
         .unwrap();

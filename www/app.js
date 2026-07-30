@@ -106,7 +106,10 @@ const formatMoney = (value) => new Intl.NumberFormat(
   state.language === "fr" ? "fr-FR" : "en-GB",
   { style: "currency", currency: "EUR" },
 ).format(value || 0);
-const formatInputNumber = (value) => Math.round((Number(value) || 0) * 10_000) / 10_000;
+const formatInputNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(number) : "";
+};
 const formatBytes = (value) => {
   const bytes = Number(value || 0);
   if (!bytes) return `0 ${t(state.language, "bytes")}`;
@@ -643,11 +646,11 @@ function priceHistoryRowMarkup(observation = {}) {
     <div class="item-price-history-row">
       <label class="item-price-history-date">
         <span class="sr-only">${escapeHtml(t(state.language, "observation_date"))}</span>
-        <input type="date" value="${escapeHtml(observation.date || "")}" data-price-observation-date>
+        <input type="text" inputmode="numeric" placeholder="${escapeHtml(t(state.language, "date_format_hint"))}" value="${escapeHtml(observation.date || "")}" data-price-observation-date>
       </label>
       <label class="item-price-history-price">
         <span class="sr-only">${escapeHtml(t(state.language, "observed_price"))}</span>
-        <input type="number" min="0" step="0.0001" value="${escapeHtml(observation.price ?? "")}" data-price-observation-price required>
+        <input type="number" min="0" step="any" value="${escapeHtml(observation.price ?? "")}" data-price-observation-price required>
       </label>
       <label class="item-price-history-description">
         <span class="sr-only">${escapeHtml(t(state.language, "observation_description"))}</span>
@@ -1280,6 +1283,32 @@ function setDishComponentMode(row, mode) {
   updateDishFormSaveState();
 }
 
+function dishSourceNoteMarkup(note = "") {
+  return `
+    <div class="dish-source-note-row">
+      <textarea rows="3" data-dish-source-note aria-label="${escapeHtml(t(state.language, "recipe_note"))}">${escapeHtml(note)}</textarea>
+      <button class="icon-button remove-dish-source-note" type="button" aria-label="${escapeHtml(t(state.language, "remove_recipe_note"))}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+      </button>
+    </div>`;
+}
+
+function dishSourceNotesPayload() {
+  return $$("#new-dish-notes-list [data-dish-source-note]")
+    .map((input) => input.value.trim())
+    .filter(Boolean);
+}
+
+function renderDishSourceNotes(notes = []) {
+  const rows = notes.length ? notes : [""];
+  $("#new-dish-notes-list").innerHTML = rows.map(dishSourceNoteMarkup).join("");
+}
+
+function addDishSourceNote() {
+  $("#new-dish-notes-list").insertAdjacentHTML("beforeend", dishSourceNoteMarkup());
+  $("#new-dish-notes-list .dish-source-note-row:last-child textarea").focus();
+}
+
 function addNewDishComponent(component = null, servings = 1) {
   const first = state.snapshot.item_options.find((item) => item.kind === "ingredient");
   if (!first) return;
@@ -1299,7 +1328,7 @@ function addNewDishComponent(component = null, servings = 1) {
       <input data-component-custom-toggle type="checkbox">
       <span>${escapeHtml(t(state.language, "custom_item"))}</span>
     </label>
-    <input data-component-quantity type="number" min="0.01" step="0.01" value="${formatInputNumber(quantity)}" required aria-label="${escapeHtml(t(state.language, "quantity"))}">
+    <input data-component-quantity type="number" min="0.000000001" step="any" value="${formatInputNumber(quantity)}" required aria-label="${escapeHtml(t(state.language, "quantity"))}">
     <div class="dish-component-unit-cell">
       <select data-component-unit required></select>
       <input data-component-custom-unit placeholder="${escapeHtml(t(state.language, "unit_name"))}" aria-label="${escapeHtml(t(state.language, "unit_name"))}" autocomplete="off" hidden>
@@ -1307,6 +1336,10 @@ function addNewDishComponent(component = null, servings = 1) {
     <button class="icon-button remove-dish-component" type="button" title="${escapeHtml(t(state.language, "remove_ingredient"))}" aria-label="${escapeHtml(t(state.language, "remove_ingredient"))}">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
     </button>
+    <label class="dish-component-source-quantity">
+      <span>${escapeHtml(t(state.language, "component_source_quantity"))}</span>
+      <input data-component-source-quantity value="${escapeHtml(component?.source_quantity || "")}" placeholder="${escapeHtml(t(state.language, "component_source_quantity_placeholder"))}">
+    </label>
   `;
   $("#new-dish-component-list").append(row);
   setNewDishComponentUnit(row);
@@ -1326,7 +1359,7 @@ function dishFormSignature() {
     recipe_url: $("#new-dish-url").value.trim(),
     source: $("#new-dish-source").value.trim(),
     nutri_score: $("#new-dish-nutri-score").value,
-    notes: $("#new-dish-notes").value.trim(),
+    source_notes: dishSourceNotesPayload(),
     components: $$("#new-dish-component-list .new-dish-component-row").map((row) => ({
       mode: row.dataset.componentMode,
       item_key: row.querySelector("[data-component-item]").value,
@@ -1334,6 +1367,7 @@ function dishFormSignature() {
       quantity: Number(row.querySelector("[data-component-quantity]").value),
       quantity_unit: row.querySelector("[data-component-unit]").value,
       custom_unit: row.querySelector("[data-component-custom-unit]").value.trim(),
+      source_quantity: row.querySelector("[data-component-source-quantity]").value.trim(),
     })),
   });
 }
@@ -1383,7 +1417,7 @@ function openDishForm(dish = null) {
   $("#new-dish-nutri-status").textContent = dish
     ? dishNutriScoreDetail(dish)
     : t(state.language, "nutri_score_field_help");
-  $("#new-dish-notes").value = (dish?.source_notes || []).join("\n");
+  renderDishSourceNotes(dish?.source_notes || []);
   $("#new-dish-error").textContent = "";
   $("#new-dish-component-list").innerHTML = "";
   if (dish?.components?.length) {
@@ -1607,6 +1641,7 @@ function openDishDetails(dishKey, menuIndex) {
       .join("");
     $("#dish-menu-meal").value = row.meal;
     $("#dish-menu-quantity").value = formatInputNumber(row.quantity);
+    $("#dish-menu-notes").value = row.notes || "";
     $("#dish-menu-unit").value = ["portion", "g", "unit"].includes(row.quantity_unit)
       ? row.quantity_unit
       : "portion";
@@ -1700,6 +1735,7 @@ function dishMenuEditorSignature() {
     people: [...$("#dish-menu-people").querySelectorAll("input:checked")]
       .map((input) => input.value)
       .sort(),
+    notes: $("#dish-menu-notes").value.trim(),
   });
 }
 
@@ -1749,6 +1785,7 @@ function openDishScheduleEditor() {
     .map((meal) => `<option value="${escapeHtml(meal)}">${escapeHtml(meal)}</option>`)
     .join("");
   $("#dish-menu-quantity").value = "1";
+  $("#dish-menu-notes").value = "";
   $("#dish-menu-unit").value = "portion";
   $("#dish-menu-people").innerHTML = state.snapshot.people.map((person, index) => {
     const selected = person.key === state.snapshot.profile
@@ -2067,6 +2104,7 @@ function customGroceryPayload() {
     purchase_unit: item.purchase_unit,
     purchase_quantity: Number(item.purchase_quantity),
     estimated_price: Number(item.estimated_price),
+    notes: item.notes || "",
     custom: Boolean(item.custom),
   }));
 }
@@ -2086,9 +2124,10 @@ function renderCustomGrocery() {
         <small class="item-origin ${item.custom ? "custom" : "catalogue"}">${escapeHtml(t(state.language, item.custom ? "custom_item" : "catalogue_item"))}</small>
       </strong>
       <span class="custom-category">${escapeHtml(displayCategory(item.category))}</span>
-      <input class="custom-quantity" data-custom-field="quantity" type="number" min="0.01" step="0.01" value="${formatInputNumber(item.quantity)}" aria-label="${escapeHtml(t(state.language, "quantity"))}">
+      <input class="custom-quantity" data-custom-field="quantity" type="number" min="0.000000001" step="any" value="${formatInputNumber(item.quantity)}" aria-label="${escapeHtml(t(state.language, "quantity"))}">
       <span class="custom-unit">${escapeHtml(item.measure_unit)}</span>
       <span class="custom-price">${escapeHtml(formatMoney(item.estimated_price))}</span>
+      <input class="custom-notes" data-custom-field="notes" value="${escapeHtml(item.notes || "")}" aria-label="${escapeHtml(t(state.language, "notes"))}" placeholder="${escapeHtml(t(state.language, "need_notes_placeholder"))}">
       <button class="icon-button remove-custom" type="button" title="${escapeHtml(t(state.language, "remove_custom_grocery"))}" aria-label="${escapeHtml(t(state.language, "remove_custom_grocery"))}">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
       </button>
@@ -2101,6 +2140,7 @@ function renderCustomGrocery() {
       <span>${t(state.language, "quantity")}</span>
       <span>${t(state.language, "unit")}</span>
       <span>${t(state.language, "unit_price")}</span>
+      <span>${t(state.language, "notes")}</span>
       <span></span>
     </div>
     ${rows}
@@ -2115,6 +2155,7 @@ function populateHouseholdFields() {
   $("#custom-add-category").value = displayCategory(option.category);
   $("#custom-add-measure-unit").value = option.measure_unit;
   $("#custom-add-price").value = formatInputNumber(option.estimated_price);
+  $("#custom-add-notes").value = option.notes || "";
 }
 
 function setExtraNeedMode(mode) {
@@ -2131,16 +2172,18 @@ function setExtraNeedMode(mode) {
     $("#custom-add-category").value = t(state.language, "other");
     $("#custom-add-measure-unit").value = t(state.language, "units");
     $("#custom-add-price").value = "0";
+    $("#custom-add-notes").value = "";
   } else {
     populateHouseholdFields();
   }
 }
 
 function stockPayload() {
-  return state.stockDraft.map(({ item_key, quantity, quantity_unit, household }) => ({
+  return state.stockDraft.map(({ item_key, quantity, quantity_unit, notes, household }) => ({
     item_key,
     quantity: Number(quantity),
     quantity_unit,
+    notes: notes || "",
     household: Boolean(household),
   }));
 }
@@ -2154,13 +2197,14 @@ function renderStock() {
         <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
         <small>${escapeHtml(displayCategory(item.category))}</small>
       </strong>
-      <input class="stock-control" data-stock-field="quantity" type="number" min="0" step="0.01" value="${formatInputNumber(item.quantity)}">
+      <input class="stock-control" data-stock-field="quantity" type="number" min="0" step="any" value="${formatInputNumber(item.quantity)}">
       <select class="stock-control" data-stock-field="quantity_unit">
         ${item.household
           ? `<option value="unit">${escapeHtml(item.measure_unit)}</option>`
           : `<option value="g" ${item.quantity_unit === "g" ? "selected" : ""}>g</option>
             ${item.measure_unit !== "g" ? `<option value="unit" ${item.quantity_unit === "unit" ? "selected" : ""}>${escapeHtml(item.measure_unit)}</option>` : ""}`}
       </select>
+      <input class="stock-control stock-notes" data-stock-field="notes" value="${escapeHtml(item.notes || "")}" aria-label="${escapeHtml(t(state.language, "notes"))}" placeholder="${escapeHtml(t(state.language, "stock_notes_placeholder"))}">
       <button class="icon-button remove-stock" type="button" title="${escapeHtml(t(state.language, "remove_stock"))}" aria-label="${escapeHtml(t(state.language, "remove_stock"))}">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
       </button>
@@ -2644,6 +2688,10 @@ $("#add-dish").addEventListener("click", openNewDishDialog);
 $("#new-dish-close").addEventListener("click", closeNewDishDialog);
 $("#new-dish-cancel").addEventListener("click", closeNewDishDialog);
 $("#new-dish-add-component").addEventListener("click", () => addNewDishComponent());
+$("#new-dish-add-note").addEventListener("click", () => {
+  addDishSourceNote();
+  updateDishFormSaveState();
+});
 $("#new-dish-form").addEventListener("input", updateDishFormSaveState);
 $("#new-dish-form").addEventListener("change", updateDishFormSaveState);
 $("#new-dish-component-list").addEventListener("change", (event) => {
@@ -2658,6 +2706,13 @@ $("#new-dish-component-list").addEventListener("click", (event) => {
   const remove = event.target.closest(".remove-dish-component");
   if (!remove) return;
   remove.closest(".new-dish-component-row").remove();
+  updateDishFormSaveState();
+});
+$("#new-dish-notes-list").addEventListener("click", (event) => {
+  const remove = event.target.closest(".remove-dish-source-note");
+  if (!remove) return;
+  remove.closest(".dish-source-note-row").remove();
+  if (!$("#new-dish-notes-list .dish-source-note-row")) renderDishSourceNotes();
   updateDishFormSaveState();
 });
 $("#new-dish-form").addEventListener("submit", (event) => {
@@ -2713,7 +2768,8 @@ $("#new-dish-form").addEventListener("submit", (event) => {
       item_key: itemKey,
       quantity,
       quantity_unit: quantityUnit,
-      source_quantity: `${formatInputNumber(quantity)} ${quantityUnit}`,
+      source_quantity: row.querySelector("[data-component-source-quantity]").value.trim()
+        || `${formatInputNumber(quantity)} ${quantityUnit}`,
     };
   });
   if (!name || !Number.isFinite(servings) || servings <= 0
@@ -2731,10 +2787,7 @@ $("#new-dish-form").addEventListener("submit", (event) => {
       recipe_url: $("#new-dish-url").value.trim(),
       source: $("#new-dish-source").value.trim(),
       nutri_score: $("#new-dish-nutri-score").value,
-      source_notes: $("#new-dish-notes").value
-        .split(/\n+/)
-        .map((note) => note.trim())
-        .filter(Boolean),
+      source_notes: dishSourceNotesPayload(),
       components,
     },
     customIngredients,
@@ -3020,6 +3073,7 @@ $("#dish-details-save").addEventListener("click", () => {
       people,
       quantity,
       quantityUnit: $("#dish-menu-unit").value,
+      notes: $("#dish-menu-notes").value.trim(),
     });
     state.draft.push(scheduledRow);
     closeDishDetails();
@@ -3034,6 +3088,7 @@ $("#dish-details-save").addEventListener("click", () => {
   row.meal = $("#dish-menu-meal").value;
   row.quantity = quantity;
   row.quantity_unit = $("#dish-menu-unit").value;
+  row.notes = $("#dish-menu-notes").value.trim();
   closeDishDetails();
   renderMenu();
   scheduleMenuUpdate();
@@ -3396,7 +3451,7 @@ $("#stock-list").addEventListener("input", (event) => {
   if (!target) return;
   if (control.dataset.stockField === "quantity") {
     target.quantity = Number(control.value);
-  } else {
+  } else if (control.dataset.stockField === "quantity_unit") {
     const nextUnit = control.value;
     const previousUnit = target.quantity_unit;
     const gramsPerUnit = Number(target.grams_per_measure_unit || 1);
@@ -3409,6 +3464,8 @@ $("#stock-list").addEventListener("input", (event) => {
     }
     target.quantity_unit = nextUnit;
     renderStock();
+  } else {
+    target.notes = control.value;
   }
   scheduleStockUpdate();
 });
@@ -3441,6 +3498,9 @@ $("#stock-add-form").addEventListener("submit", (event) => {
   );
   if (current) {
     current.quantity = Number(current.quantity) + quantity;
+    if ($("#stock-add-notes").value.trim()) {
+      current.notes = $("#stock-add-notes").value.trim();
+    }
   } else {
     state.stockDraft.push({
       item_key: itemKey,
@@ -3450,10 +3510,12 @@ $("#stock-add-form").addEventListener("submit", (event) => {
       quantity_unit: quantityUnit,
       measure_unit: option.measure_unit,
       grams_per_measure_unit: Number(option.grams_per_measure_unit || 1),
+      notes: $("#stock-add-notes").value.trim(),
       household: Boolean(option.household),
     });
   }
   $("#stock-add-quantity").value = "";
+  $("#stock-add-notes").value = "";
   renderStock();
   scheduleStockUpdate();
 });
@@ -3465,7 +3527,11 @@ $("#custom-list").addEventListener("input", (event) => {
   if (!control || !row) return;
   const target = state.customDraft.find((item) => item.key === row.dataset.customKey);
   if (!target) return;
-  target.quantity = Number(control.value);
+  if (control.dataset.customField === "quantity") {
+    target.quantity = Number(control.value);
+  } else {
+    target.notes = control.value;
+  }
   scheduleCustomGroceryUpdate();
 });
 
@@ -3497,6 +3563,7 @@ $("#custom-add-form").addEventListener("submit", (event) => {
   const quantity = Number($("#custom-add-quantity").value);
   const measureUnit = $("#custom-add-measure-unit").value.trim();
   const estimatedPrice = Number($("#custom-add-price").value);
+  const notes = $("#custom-add-notes").value.trim();
   if (!name || !category || !measureUnit || quantity <= 0 || estimatedPrice < 0) return;
   const suffix = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
   if (option && state.customDraft.some((item) => item.key === option.key)) return;
@@ -3509,10 +3576,12 @@ $("#custom-add-form").addEventListener("submit", (event) => {
     purchase_unit: option?.purchase_unit || measureUnit,
     purchase_quantity: option?.purchase_quantity || 1,
     estimated_price: estimatedPrice,
+    notes,
     custom,
   });
   $("#custom-add-name").value = "";
   $("#custom-add-quantity").value = "1";
+  $("#custom-add-notes").value = "";
   renderCustomGrocery();
   setExtraNeedMode(custom ? "custom" : "existing");
   scheduleCustomGroceryUpdate();

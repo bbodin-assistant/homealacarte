@@ -175,7 +175,7 @@
                 </label>
                 <label>
                   <span data-i18n="quantity">Quantité</span>
-                  <input id="stock-add-quantity" type="number" min="0.01" step="0.01" required>
+                  <input id="stock-add-quantity" type="number" min="0.000000001" step="any" required>
                 </label>
                 <label>
                   <span data-i18n="unit">Unité</span>
@@ -183,6 +183,10 @@
                     <option value="g">g</option>
                     <option value="unit" data-i18n="units">unités</option>
                   </select>
+                </label>
+                <label class="stock-add-notes-field">
+                  <span data-i18n="notes">Notes</span>
+                  <input id="stock-add-notes" data-i18n-placeholder="stock_notes_placeholder" placeholder="Origine, emplacement ou détail facultatif">
                 </label>
                 <button class="button ghost" type="submit" data-i18n="add_stock">Ajouter au stock</button>
               </form>
@@ -221,7 +225,7 @@
                 </label>
                 <label>
                   <span data-i18n="needed_quantity">Quantité nécessaire</span>
-                  <input id="custom-add-quantity" type="number" min="0.01" step="0.01" value="1" required>
+                  <input id="custom-add-quantity" type="number" min="0.000000001" step="any" value="1" required>
                 </label>
                 <label>
                   <span data-i18n="unit">Unité</span>
@@ -229,7 +233,11 @@
                 </label>
                 <label>
                   <span data-i18n="unit_price">Prix unitaire</span>
-                  <input id="custom-add-price" type="number" min="0" step="0.01" value="0" readonly required>
+                  <input id="custom-add-price" type="number" min="0" step="any" value="0" readonly required>
+                </label>
+                <label class="custom-add-notes-field">
+                  <span data-i18n="notes">Notes</span>
+                  <input id="custom-add-notes" data-i18n-placeholder="need_notes_placeholder" placeholder="Contexte ou détail facultatif">
                 </label>
                 <button class="button ghost add-extra-need-button" type="submit" data-i18n="add_extra_need">Ajouter aux besoins</button>
               </form>
@@ -338,7 +346,7 @@
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="grams_per_unit">Grammes par unité</span>
-                  <input id="ingredient-grams-per-unit" type="number" min="0.0001" step="0.0001" required>
+                  <input id="ingredient-grams-per-unit" type="number" min="0.000000001" step="any" required>
                 </label>
               </div>
             </section>
@@ -350,43 +358,43 @@
               <div class="ingredient-editor-grid ingredient-nutrition-grid">
                 <label class="dialog-field">
                   <span data-i18n="nutrition_reference_grams">Référence nutritionnelle (g)</span>
-                  <input id="ingredient-grams" type="number" min="0.0001" step="0.0001" required>
+                  <input id="ingredient-grams" type="number" min="0.000000001" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="kcal_for_reference">Kcal pour cette référence</span>
-                  <input id="ingredient-kcal" type="number" min="0" step="0.01" required>
+                  <input id="ingredient-kcal" type="number" min="0" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="protein_grams">Protéines (g)</span>
-                  <input id="ingredient-protein" type="number" min="0" step="0.01" required>
+                  <input id="ingredient-protein" type="number" min="0" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="carbs_grams">Glucides (g)</span>
-                  <input id="ingredient-carbs" type="number" min="0" step="0.01" required>
+                  <input id="ingredient-carbs" type="number" min="0" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="fat_grams">Lipides (g)</span>
-                  <input id="ingredient-fat" type="number" min="0" step="0.01" required>
+                  <input id="ingredient-fat" type="number" min="0" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="fiber_grams">Fibres (g)</span>
-                  <input id="ingredient-fiber" type="number" min="0" step="0.01" required>
+                  <input id="ingredient-fiber" type="number" min="0" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="sugars_grams">Sucres (g)</span>
-                  <input id="ingredient-sugars" type="number" min="0" step="0.01">
+                  <input id="ingredient-sugars" type="number" min="0" step="any">
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="saturated_fat_grams">Acides gras saturés (g)</span>
-                  <input id="ingredient-saturated-fat" type="number" min="0" step="0.01">
+                  <input id="ingredient-saturated-fat" type="number" min="0" step="any">
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="salt_grams">Sel (g)</span>
-                  <input id="ingredient-salt" type="number" min="0" step="0.01">
+                  <input id="ingredient-salt" type="number" min="0" step="any">
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="fruit_vegetable_legume_percent">Fruits, légumes et légumineuses (%)</span>
-                  <input id="ingredient-fvl-percent" type="number" min="0" max="100" step="0.01">
+                  <input id="ingredient-fvl-percent" type="number" min="0" max="100" step="any">
                 </label>
               </div>
               <p class="nutri-score-field-help" data-i18n="nutri_score_field_help">Ces quatre valeurs sont nécessaires au calcul automatique du Nutri-Score 2023 pour les aliments généraux.</p>
@@ -403,7 +411,7 @@
                 </label>
                 <label class="dialog-field dialog-field-wide">
                   <span data-i18n="source_url">Lien de la source</span>
-                  <input id="ingredient-url" type="url" placeholder="https://…">
+                  <input id="ingredient-url" type="text" inputmode="url" placeholder="https://…">
                 </label>
               </div>
             </section>
@@ -415,7 +423,7 @@
               <div class="ingredient-editor-grid">
                 <label class="dialog-field">
                   <span data-i18n="price_per_kg">Prix au kg</span>
-                  <input id="ingredient-price" type="number" min="0" step="0.01" required>
+                  <input id="ingredient-price" type="number" min="0" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="estimated_purchase_price">Prix calculé du conditionnement</span>
@@ -427,11 +435,11 @@
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="purchase_quantity_grams">Poids d’une unité d’achat (g)</span>
-                  <input id="ingredient-purchase-grams" type="number" min="0.0001" step="0.0001" required>
+                  <input id="ingredient-purchase-grams" type="number" min="0.000000001" step="any" required>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="price_checked_at">Date du prix / dernier achat</span>
-                  <input id="ingredient-price-checked-at" type="date">
+                  <input id="ingredient-price-checked-at" type="text" inputmode="numeric" data-i18n-placeholder="date_format_hint" placeholder="AAAA-MM-JJ">
                 </label>
                 <label class="dialog-field dialog-field-wide ingredient-price-source-field">
                   <span data-i18n="price_source">Source du prix / détail du dernier achat</span>
@@ -484,7 +492,7 @@
                 <label class="dialog-field"><span data-i18n="category">Catégorie</span><input id="household-item-category" required></label>
                 <label class="dialog-field"><span data-i18n="measure_unit_name">Nom de l’unité de mesure</span><input id="household-item-measure-unit" required></label>
                 <label class="dialog-field"><span data-i18n="purchase_unit">Unité d’achat</span><input id="household-item-purchase-unit" required></label>
-                <label class="dialog-field"><span data-i18n="purchase_quantity">Quantité par achat</span><input id="household-item-purchase-quantity" type="number" min="0.0001" step="0.0001" required></label>
+                <label class="dialog-field"><span data-i18n="purchase_quantity">Quantité par achat</span><input id="household-item-purchase-quantity" type="number" min="0.000000001" step="any" required></label>
               </div>
             </section>
             <section class="ingredient-editor-section ingredient-purchase-section">
@@ -492,9 +500,9 @@
                 <h2 data-i18n="ingredient_purchase_title">Prix et dernier achat</h2>
               </div>
               <div class="ingredient-editor-grid">
-                <label class="dialog-field"><span data-i18n="unit_price">Prix unitaire</span><input id="household-item-price" type="number" min="0" step="0.01" required></label>
-                <label class="dialog-field"><span data-i18n="last_bought_at">Dernier achat</span><input id="household-item-last-bought" type="date"></label>
-                <label class="dialog-field"><span data-i18n="lasting_days">Durée estimée (jours)</span><input id="household-item-lasting-days" type="number" min="0.01" step="0.01"></label>
+                <label class="dialog-field"><span data-i18n="unit_price">Prix unitaire</span><input id="household-item-price" type="number" min="0" step="any" required></label>
+                <label class="dialog-field"><span data-i18n="last_bought_at">Dernier achat</span><input id="household-item-last-bought" type="text" inputmode="numeric" data-i18n-placeholder="date_format_hint" placeholder="AAAA-MM-JJ"></label>
+                <label class="dialog-field"><span data-i18n="lasting_days">Durée estimée (jours)</span><input id="household-item-lasting-days" type="number" min="0.000000001" step="any"></label>
                 <label class="dialog-field dialog-field-wide"><span data-i18n="notes">Notes</span><textarea id="household-item-notes" rows="3"></textarea></label>
               </div>
               <div class="item-price-history-editor">
@@ -718,7 +726,7 @@
           </fieldset>
           <label class="dialog-field dialog-field-wide">
             <span data-i18n="calorie_target">Objectif calorique (facultatif)</span>
-            <input id="family-member-kcal" type="number" min="1" step="1" inputmode="numeric" placeholder="2000">
+            <input id="family-member-kcal" type="number" min="0.000000001" step="any" inputmode="decimal" placeholder="2000">
           </label>
           <label class="dialog-field dialog-field-wide">
             <span data-i18n="meal_habits">Habitudes alimentaires</span>
@@ -756,7 +764,7 @@
           </label>
           <label class="dialog-field">
             <span data-i18n="quantity">Quantité</span>
-            <input id="menu-item-quantity" type="number" min="0.01" step="0.01" value="1" required>
+            <input id="menu-item-quantity" type="number" min="0.000000001" step="any" value="1" required>
           </label>
           <label class="dialog-field">
             <span data-i18n="unit">Unité</span>
@@ -827,7 +835,7 @@
               </label>
               <label class="dialog-field">
                 <span data-i18n="quantity_value">Valeur</span>
-                <input id="dish-menu-quantity" type="number" min="0.01" step="0.01">
+                <input id="dish-menu-quantity" type="number" min="0.000000001" step="any">
               </label>
               <label class="dialog-field">
                 <span data-i18n="quantity_type">Type de quantité</span>
@@ -843,6 +851,10 @@
                 <div id="dish-menu-people"></div>
                 <p id="dish-menu-people-error" class="field-error" data-i18n="select_person" hidden>Sélectionnez au moins une personne.</p>
               </fieldset>
+              <label class="dialog-field dish-menu-notes-field">
+                <span data-i18n="notes">Notes</span>
+                <textarea id="dish-menu-notes" rows="3"></textarea>
+              </label>
             </div>
             <div class="dish-menu-editor-actions">
               <button id="dish-details-schedule-cancel" class="button ghost" type="button" data-i18n="cancel" hidden>Annuler</button>
@@ -878,11 +890,11 @@
             </label>
             <label class="dialog-field">
               <span data-i18n="recipe_servings">Nombre de portions</span>
-              <input id="new-dish-servings" type="number" min="0.01" step="0.01" value="4" required>
+              <input id="new-dish-servings" type="number" min="0.000000001" step="any" value="4" required>
             </label>
             <label class="dialog-field dialog-field-wide">
               <span data-i18n="recipe_url">Lien de la recette</span>
-              <input id="new-dish-url" type="url" placeholder="https://…">
+              <input id="new-dish-url" type="text" inputmode="url" placeholder="https://…">
             </label>
             <label class="dialog-field">
               <span data-i18n="source">Source</span>
@@ -900,10 +912,16 @@
               </select>
               <small id="new-dish-nutri-status" class="field-hint"></small>
             </label>
-            <label class="dialog-field dialog-field-wide">
-              <span data-i18n="recipe_notes">Source et notes de la recette</span>
-              <textarea id="new-dish-notes" rows="3"></textarea>
-            </label>
+            <div class="dialog-field dialog-field-wide dish-source-notes-field">
+              <div class="dish-source-notes-heading">
+                <span data-i18n="recipe_notes">Source et notes de la recette</span>
+                <button id="new-dish-add-note" class="button ghost compact" type="button">
+                  <span aria-hidden="true">+</span>
+                  <span data-i18n="add_recipe_note">Ajouter une note</span>
+                </button>
+              </div>
+              <div id="new-dish-notes-list" class="dish-source-notes-list"></div>
+            </div>
           </div>
           <section class="new-dish-components">
             <div class="new-dish-components-heading">

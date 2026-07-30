@@ -72,6 +72,27 @@ impl Default for Engine {
     }
 }
 
+fn preserve_or_replace_note(
+    notes: &mut BTreeMap<String, String>,
+    previous: &BTreeMap<String, String>,
+    key: &str,
+    edited: Option<&str>,
+) {
+    match edited {
+        Some(value) if !value.trim().is_empty() => {
+            notes.insert(key.to_string(), value.trim().to_string());
+        }
+        Some(_) => {
+            notes.remove(key);
+        }
+        None => {
+            if let Some(value) = previous.get(key) {
+                notes.insert(key.to_string(), value.clone());
+            }
+        }
+    }
+}
+
 impl Engine {
     pub fn load(&mut self, sources: Vec<SourceFile>, config: AppConfig) -> Result<AppSnapshot, String> {
         let dataset = load_dataset(sources, &config.language)?;
@@ -206,9 +227,12 @@ impl Engine {
                 }
                 if input.quantity > EPSILON {
                     *household_stock.entry(key.to_string()).or_insert(0.0) += input.quantity;
-                    if let Some(note) = previous_notes.get(key) {
-                        stock_notes.insert(key.to_string(), note.clone());
-                    }
+                    preserve_or_replace_note(
+                        &mut stock_notes,
+                        &previous_notes,
+                        key,
+                        input.notes.as_deref(),
+                    );
                 }
                 continue;
             }
@@ -227,9 +251,12 @@ impl Engine {
             if grams > EPSILON {
                 stock_units.insert(key.to_string(), quantity_unit);
                 *stock.entry(key.to_string()).or_insert(0.0) += grams;
-                if let Some(note) = previous_notes.get(key) {
-                    stock_notes.insert(key.to_string(), note.clone());
-                }
+                preserve_or_replace_note(
+                    &mut stock_notes,
+                    &previous_notes,
+                    key,
+                    input.notes.as_deref(),
+                );
             }
         }
         dataset.stock = stock;
@@ -340,9 +367,12 @@ impl Engine {
             }
 
             if item_keys.contains(key.as_str()) {
-                if let Some(note) = previous_notes.get(&key) {
-                    need_notes.insert(key.clone(), note.clone());
-                }
+                preserve_or_replace_note(
+                    &mut need_notes,
+                    &previous_notes,
+                    &key,
+                    input.notes.as_deref(),
+                );
                 needs.insert(key, input.quantity);
                 continue;
             }
@@ -378,9 +408,12 @@ impl Engine {
             } else {
                 dataset.household_items.push(item);
             }
-            if let Some(note) = previous_notes.get(&key) {
-                need_notes.insert(key.clone(), note.clone());
-            }
+            preserve_or_replace_note(
+                &mut need_notes,
+                &previous_notes,
+                &key,
+                input.notes.as_deref(),
+            );
             needs.insert(key, input.quantity);
         }
         dataset.household_needs = needs;
@@ -1291,6 +1324,7 @@ pub fn build_snapshot(
                     quantity_unit: if uses_measure_unit { "unit" } else { "g" }.to_string(),
                     measure_unit: ingredient.measure_unit.clone(),
                     grams_per_measure_unit: ingredient.grams_per_measure_unit,
+                    notes: dataset.stock_notes.get(key).cloned().unwrap_or_default(),
                     household: false,
                 }
             })
@@ -1311,6 +1345,7 @@ pub fn build_snapshot(
             quantity_unit: "unit".to_string(),
             measure_unit: item.measure_unit.clone(),
             grams_per_measure_unit: 1.0,
+            notes: dataset.stock_notes.get(key).cloned().unwrap_or_default(),
             household: true,
         })
     }));
@@ -1331,6 +1366,7 @@ pub fn build_snapshot(
             quantity_unit: if item.measure_unit == "g" { "g" } else { "unit" }.to_string(),
             measure_unit: item.measure_unit.clone(),
             grams_per_measure_unit: item.grams_per_measure_unit,
+            notes: dataset.stock_notes.get(&item.key).cloned().unwrap_or_default(),
             household: false,
         })
         .chain(dataset.household_items.iter().map(|item| StockItemView {
@@ -1341,6 +1377,7 @@ pub fn build_snapshot(
             quantity_unit: "unit".to_string(),
             measure_unit: item.measure_unit.clone(),
             grams_per_measure_unit: 1.0,
+            notes: dataset.stock_notes.get(&item.key).cloned().unwrap_or_default(),
             household: true,
         }))
         .collect::<Vec<_>>();
@@ -1364,6 +1401,7 @@ pub fn build_snapshot(
                     purchase_unit: item.purchase_unit.clone(),
                     purchase_quantity: item.purchase_quantity,
                     estimated_price: item.estimated_price,
+                    notes: dataset.household_need_notes.get(key).cloned(),
                     custom: item.custom,
                 });
             }
@@ -1376,6 +1414,7 @@ pub fn build_snapshot(
                 purchase_unit: item.purchase_unit.clone(),
                 purchase_quantity: item.purchase_quantity_grams / item.grams_per_measure_unit,
                 estimated_price: item.purchase_quantity_grams * item.price_per_kg / 1000.0,
+                notes: dataset.household_need_notes.get(key).cloned(),
                 custom: false,
             })
         })
@@ -1398,6 +1437,7 @@ pub fn build_snapshot(
             purchase_unit: item.purchase_unit.clone(),
             purchase_quantity: item.purchase_quantity,
             estimated_price: item.estimated_price,
+            notes: dataset.household_need_notes.get(&item.key).cloned(),
             custom: item.custom,
         })
         .chain(dataset.ingredients.iter().map(|item| CustomGroceryItem {
@@ -1409,6 +1449,7 @@ pub fn build_snapshot(
             purchase_unit: item.purchase_unit.clone(),
             purchase_quantity: item.purchase_quantity_grams / item.grams_per_measure_unit,
             estimated_price: item.purchase_quantity_grams * item.price_per_kg / 1000.0,
+            notes: dataset.household_need_notes.get(&item.key).cloned(),
             custom: false,
         }))
         .collect::<Vec<_>>();
