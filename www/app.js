@@ -13,8 +13,8 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-27";
-import { t, translations } from "./translations.js?v=homealacarte-27";
+} from "./storage.js?v=homealacarte-28";
+import { t, translations } from "./translations.js?v=homealacarte-28";
 
 const STORAGE_PREFIX = "homealacarte-";
 const DATA_SCHEMA_VERSION = 6;
@@ -51,7 +51,7 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-27", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-28", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -1725,6 +1725,7 @@ function stockPayload() {
 
 function renderStock() {
   setCountBadge("#stock-tab-count", state.stockDraft.length);
+  $("#empty-stock").disabled = state.stockDraft.length === 0;
   $("#stock-list").innerHTML = state.stockDraft.map((item) => `
     <div class="stock-row" data-stock-key="${escapeHtml(item.item_key)}" data-stock-household="${item.household ? "true" : "false"}">
       <strong title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong>
@@ -2803,6 +2804,20 @@ $("#json-input").addEventListener("change", async (event) => {
   event.target.value = "";
 });
 $("#reset-data").addEventListener("click", confirmPrivateDataDeletion);
+
+$("#empty-stock").addEventListener("click", () => {
+  if (!state.stockDraft.length) return;
+  openConfirmation({
+    title: t(state.language, "empty_stock_confirm_title"),
+    message: t(state.language, "empty_stock_confirm_message"),
+    confirmLabel: t(state.language, "empty_stock"),
+    action: () => {
+      state.stockDraft = [];
+      renderStock();
+      scheduleStockUpdate();
+    },
+  });
+});
 
 $("#stock-list").addEventListener("input", (event) => {
   const control = event.target.closest("[data-stock-field]");
