@@ -1,11 +1,16 @@
 mod engine;
 mod loader;
 mod model;
+mod personal_data;
 mod pdf;
 
 pub use engine::{Engine, build_grocery, build_snapshot, exclude_grocery_items};
 pub use loader::load_dataset;
 pub use model::*;
+pub use personal_data::{
+    PersonalDataReport, PersonalMergeAudit, consolidate_personal_sources,
+    merge_personal_documents,
+};
 pub use pdf::generate_grocery_pdf;
 
 use loader::MenuInput;
@@ -111,10 +116,22 @@ impl HomeALaCarteEngine {
         to_js(&self.inner.replace_ingredient(ingredient).map_err(js_error)?)
     }
 
+    pub fn add_ingredient(&mut self, ingredient: JsValue) -> Result<JsValue, JsValue> {
+        let ingredient: Ingredient =
+            serde_wasm_bindgen::from_value(ingredient).map_err(js_error)?;
+        to_js(&self.inner.add_ingredient(ingredient).map_err(js_error)?)
+    }
+
     pub fn replace_household_item(&mut self, item: JsValue) -> Result<JsValue, JsValue> {
         let item: HouseholdItem =
             serde_wasm_bindgen::from_value(item).map_err(js_error)?;
         to_js(&self.inner.replace_household_item(item).map_err(js_error)?)
+    }
+
+    pub fn add_household_item(&mut self, item: JsValue) -> Result<JsValue, JsValue> {
+        let item: HouseholdItem =
+            serde_wasm_bindgen::from_value(item).map_err(js_error)?;
+        to_js(&self.inner.add_household_item(item).map_err(js_error)?)
     }
 
     pub fn delete_item(&mut self, key: String) -> Result<JsValue, JsValue> {

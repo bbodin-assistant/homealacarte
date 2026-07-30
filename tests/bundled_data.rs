@@ -41,12 +41,12 @@ fn public_sample_data_uses_the_current_schema() {
         .ingredients
         .iter()
         .find(|ingredient| ingredient.key == "sample_tomato")
-        .expect("synthetic sample ingredient");
-    assert_eq!(sample_item.source, "Synthetic sample data");
-    assert_eq!(sample_item.sugars_g, None);
-    assert_eq!(sample_item.saturated_fat_g, None);
-    assert_eq!(sample_item.salt_g, None);
-    assert_eq!(sample_item.fruit_vegetable_legume_percent, None);
+        .expect("sample ingredient");
+    assert!(sample_item.source.contains("Anses Ciqual 2025"));
+    assert_eq!(sample_item.sugars_g, Some(3.22));
+    assert_eq!(sample_item.saturated_fat_g, Some(0.01));
+    assert_eq!(sample_item.salt_g, Some(0.01));
+    assert_eq!(sample_item.fruit_vegetable_legume_percent, Some(100.0));
     assert!(dataset.people.iter().all(|person| person.key.starts_with("sample_")));
 }
 

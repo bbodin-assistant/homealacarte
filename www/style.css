@@ -594,6 +594,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .account-current-status > div { min-width: 0; display: grid; gap: 3px; }
 .account-current-status strong { font-size: 13px; }
 .account-current-status small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.account-current-status.sync-error, .account-current-status.sync-conflict { color: #9b302a; background: #f9dfdc; }
+.account-current-status.sync-error small, .account-current-status.sync-conflict small { color: inherit; }
+.account-current-status.sync-error .source-dot, .account-current-status.sync-conflict .source-dot { background: #b8433c; box-shadow: 0 0 0 4px rgba(184,67,60,.12); }
 .sync-status-help { padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
 .sync-status-help summary { padding: 12px 0; color: var(--accent-dark); cursor: pointer; font-size: 12px; font-weight: 800; }
 .sync-status-help dl { max-height: 260px; margin: 0; padding: 0 4px 12px; overflow: auto; }
@@ -653,9 +656,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .dish-details-metrics strong { font-family: Georgia, serif; font-size: 17px; font-weight: 500; }
 .dish-details-metrics span { color: var(--muted); font-size: 9px; text-transform: uppercase; }
 .dish-details-ingredients { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 14px; margin: 0; padding: 0; list-style: none; }
-.dish-details-ingredients li { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
-.dish-details-ingredients li > span:first-child { min-width: 0; display: grid; gap: 2px; }
-.dish-details-ingredients li > span:last-child { flex: 0 0 auto; color: var(--muted); font-size: 9px; text-align: right; }
+.dish-details-ingredients li { border-bottom: 1px solid var(--line); }
+.dish-details-ingredient { width: 100%; display: flex; align-items: start; justify-content: space-between; gap: 12px; padding: 9px 0; color: inherit; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.dish-details-ingredient:hover strong, .dish-details-ingredient:focus-visible strong { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 2px; }
+.dish-details-ingredient:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.dish-details-ingredient > span:first-child { min-width: 0; display: grid; gap: 2px; }
+.dish-details-ingredient > span:last-child { flex: 0 0 auto; color: var(--muted); font-size: 9px; text-align: right; }
 .dish-details-ingredients strong { font-size: 11px; }
 .dish-details-ingredients small { color: var(--muted); font-size: 9px; }
 .dish-details-source { color: var(--accent-dark); font-size: 12px; }
@@ -700,7 +706,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .dish-component-item-cell, .dish-component-unit-cell { min-width: 0; }
 .dish-component-custom-toggle { display: flex; align-items: center; justify-content: center; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 800; }
 .dish-component-custom-toggle input { accent-color: var(--accent); }
-.dish-menu-editor-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+.dish-menu-editor-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .ingredient-editor { display: grid; gap: 20px; padding: 22px; }
 .ingredient-editor-heading { display: grid; grid-template-columns: auto minmax(180px, 1fr) auto auto; gap: 12px; align-items: center; }
 .ingredient-editor-heading > strong { font-family: Georgia, serif; font-size: 21px; font-weight: 500; }
@@ -717,10 +723,22 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .ingredient-incomplete-control input { accent-color: var(--accent); }
 .ingredient-editor-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .ingredient-editor-actions .field-error { margin: 0; }
+.item-filter-panel { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(210px, auto) auto; gap: 12px; align-items: end; margin-bottom: 14px; padding: 13px; }
+.item-filter-panel .search { min-width: 0; align-self: stretch; }
+.item-category-filter { display: grid; gap: 5px; }
+.item-category-filter > span { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.item-category-filter select { min-width: 210px; height: 39px; padding: 8px 32px 8px 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 11px; }
 .item-catalogue { overflow: hidden; }
+.item-catalogue-tabs { display: flex; gap: 4px; padding: 7px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.item-catalogue-tab { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 120px; padding: 9px 14px; color: var(--muted); background: transparent; border: 0; border-radius: 9px; cursor: pointer; font-size: 11px; font-weight: 850; }
+.item-catalogue-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 70%, transparent); }
+.item-catalogue-tab.active { color: var(--accent-dark); background: var(--surface); box-shadow: 0 1px 4px rgba(50, 40, 30, .08); }
+.item-catalogue-tab-count { min-width: 20px; padding: 2px 6px; color: inherit; background: color-mix(in srgb, currentColor 10%, transparent); border-radius: 999px; font-size: 9px; font-weight: 900; }
+.item-catalogue-empty { margin: 0; padding: 30px 18px; color: var(--muted); text-align: center; font-size: 11px; }
 .item-catalogue-head, .item-catalogue-row { display: grid; grid-template-columns: minmax(180px, 1.2fr) 130px minmax(180px, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; }
 .item-catalogue-head { color: var(--muted); background: var(--paper); border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-.item-catalogue-row { border-bottom: 1px solid var(--line); }
+.item-catalogue-row { border-bottom: 1px solid var(--line); cursor: pointer; }
+.item-catalogue-row:hover, .item-catalogue-row:focus-visible { background: color-mix(in srgb, var(--accent-soft) 35%, transparent); outline: none; }
 .item-catalogue-row:last-child { border-bottom: 0; }
 .item-catalogue-row > strong { font-size: 12px; }
 .item-catalogue-name { min-width: 0; display: grid; gap: 4px; }
@@ -829,6 +847,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .item-origin.custom { color: var(--accent-dark); background: var(--accent-soft); }
 .custom-row > span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .custom-add { display: grid; grid-template-columns: minmax(190px, 1.4fr) minmax(150px, 1fr) 100px 110px 100px auto; gap: 10px; align-items: end; padding: 14px; background: #f8f5ef; }
+.add-extra-need-button { white-space: nowrap; }
 .extra-add-mode { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0 0 4px; border: 0; }
 .extra-add-mode legend { width: 100%; margin-bottom: 2px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .extra-add-mode label { position: relative; display: block; cursor: pointer; }
@@ -839,11 +858,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .grocery-category { break-inside: avoid; margin-bottom: 18px; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 8px 24px rgba(66,52,39,.05); }
 .grocery-category h2 { margin: 0; padding: 12px 15px; color: white; background: var(--ink); font-family: Georgia, serif; font-size: 18px; font-weight: 500; }
 .grocery-subcategory h3 { margin: 0; padding: 8px 15px; color: var(--muted); background: #f1ede5; border-bottom: 1px solid var(--line); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
-.grocery-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; align-items: start; padding: 11px 13px; border-bottom: 1px solid var(--line); }
+.grocery-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; align-items: start; padding: 11px 13px; border-bottom: 1px solid var(--line); cursor: pointer; }
 .grocery-item:last-child { border-bottom: 0; }
-.grocery-item:hover { background: rgba(180,94,70,.025); }
+.grocery-item:hover, .grocery-item:focus-visible { background: rgba(180,94,70,.055); outline: none; }
 .grocery-item-check { min-width: 0; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 9px; align-items: start; cursor: pointer; }
-.grocery-item input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--green); }
+.grocery-item input { width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--green); cursor: pointer; }
 .grocery-item strong { display: block; font-size: 12px; line-height: 1.35; }
 .grocery-item small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
 .grocery-item-end { display: grid; justify-items: end; gap: 6px; }
@@ -855,9 +874,30 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .stock-status.enough { color: var(--green); background: var(--green-soft); }
 .stock-status.partial { color: #8a5b14; background: #f8e8bd; }
 .grocery-empty { margin: 0; padding: 28px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 15px; text-align: center; }
-.grocery-details-button { padding: 3px 7px; color: var(--accent-dark); background: transparent; border: 1px solid rgba(180,94,70,.28); border-radius: 999px; cursor: pointer; font-size: 9px; font-weight: 800; }
-.grocery-details-button:hover { color: white; background: var(--accent); border-color: var(--accent); }
-.grocery-details-list { max-height: min(440px, calc(100vh - 220px)); display: grid; gap: 9px; padding: 20px 24px; overflow: auto; }
+.grocery-details-dialog { width: min(820px, calc(100vw - 24px)); overflow: hidden; }
+.grocery-details-dialog > div { max-height: calc(100dvh - 24px); display: flex; flex-direction: column; overflow: hidden; }
+.grocery-details-content { min-height: 0; display: grid; gap: 24px; padding: 20px 24px; overflow: auto; overscroll-behavior: contain; }
+.grocery-details-content section, .grocery-details-information { display: grid; gap: 10px; }
+.grocery-details-content h3 { margin: 0; color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+.grocery-details-information { gap: 24px; }
+.grocery-details-list { display: grid; gap: 9px; }
+.item-detail-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; overflow: hidden; background: var(--line); border: 1px solid var(--line); border-radius: 12px; }
+.item-detail-fields > div { min-width: 0; display: grid; gap: 4px; padding: 11px 13px; background: var(--surface); }
+.item-detail-fields dt { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.item-detail-fields dd { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: 11px; line-height: 1.45; white-space: pre-wrap; }
+.item-detail-fields a { color: var(--accent-dark); }
+.price-history-chart { padding: 10px; overflow: hidden; background: #f8f5ef; border: 1px solid var(--line); border-radius: 12px; }
+.price-history-chart svg { width: 100%; height: auto; overflow: visible; }
+.price-history-chart line { stroke: var(--line-strong); stroke-width: 1; }
+.price-history-chart path { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }
+.price-history-chart circle { fill: var(--surface); stroke: var(--accent-dark); stroke-width: 3; }
+.price-history-chart text { fill: var(--muted); stroke: none; stroke-width: 0; font-size: 10px; font-weight: 400; }
+.price-history-chart .price-chart-date.end { text-anchor: end; }
+.price-history-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.price-history-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 9px; align-items: baseline; padding: 9px 11px; background: #f8f5ef; border-radius: 9px; }
+.price-history-list strong { color: var(--accent-dark); font-size: 11px; }
+.price-history-list span { color: var(--muted); font-size: 10px; }
+.price-history-list small { min-width: 0; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
 .grocery-usage { display: grid; gap: 4px; padding: 13px 14px; background: #f8f5ef; border: 1px solid var(--line); border-radius: 11px; }
 .grocery-usage strong { font-family: Georgia, serif; font-size: 16px; font-weight: 500; }
 .grocery-usage small { color: var(--muted); font-size: 10px; }
@@ -868,11 +908,24 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .confirm-dialog { width: min(470px, calc(100vw - 32px)); }
 .meal-replace-dialog { width: min(520px, calc(100vw - 32px)); }
 
-.dish-filter-panel { display: grid; grid-template-columns: minmax(250px, 1fr) auto auto auto; gap: 12px; align-items: end; margin-bottom: 18px; padding: 13px; }
+.dish-filter-panel { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto auto auto; gap: 12px; align-items: end; margin-bottom: 18px; padding: 13px; }
 .dish-filter-panel .search { min-width: 0; align-self: stretch; }
 .dish-range-filter { width: 210px; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; align-items: center; margin: 0; padding: 0; border: 0; }
 .dish-range-filter legend { margin-bottom: 5px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .dish-range-filter output { grid-column: 1 / -1; color: var(--ink); font-size: 10px; font-weight: 800; text-align: center; }
+.dish-nutri-filter { min-width: 170px; margin: 0; padding: 0; border: 0; }
+.dish-nutri-filter legend { margin-bottom: 5px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.dish-nutri-options { display: flex; gap: 4px; }
+.dish-nutri-options label { position: relative; cursor: pointer; }
+.dish-nutri-options input { position: absolute; opacity: 0; pointer-events: none; }
+.dish-nutri-options span { width: 29px; height: 29px; display: grid; place-items: center; color: white; border: 3px solid transparent; border-radius: 50%; font-size: 11px; font-weight: 900; opacity: .52; transition: opacity .15s, transform .15s, border-color .15s; }
+.dish-nutri-options .metric-a span { background: #038141; }
+.dish-nutri-options .metric-b span { background: #85bb2f; }
+.dish-nutri-options .metric-c span { color: #352e14; background: #fecb02; }
+.dish-nutri-options .metric-d span { background: #ee8100; }
+.dish-nutri-options .metric-e span { background: #e63e11; }
+.dish-nutri-options input:checked + span { border-color: var(--ink); opacity: 1; transform: translateY(-1px); }
+.dish-nutri-options input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dual-range { --range-start: 0%; --range-end: 100%; position: relative; grid-column: 1 / -1; height: 22px; }
 .dual-range::before { position: absolute; top: 9px; right: 0; left: 0; height: 4px; background: linear-gradient(to right, var(--line-strong) 0 var(--range-start), var(--accent) var(--range-start) var(--range-end), var(--line-strong) var(--range-end) 100%); border-radius: 999px; content: ""; }
 .dual-range input[type="range"] { position: absolute; inset: 0; width: 100%; height: 22px; margin: 0; appearance: none; background: transparent; cursor: pointer; pointer-events: none; }
@@ -904,6 +957,13 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
 .dish-metrics .metric-e strong { background: #e63e11; }
 .dish-metrics .nutri-score-missing strong { color: #8a5b14; }
 .button:disabled { cursor: not-allowed; opacity: .45; }
+
+@media (max-width: 1180px) {
+  .custom-add { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .custom-add .button { grid-column: 1 / -1; }
+  .dish-filter-panel { grid-template-columns: 1fr 1fr; }
+  .dish-filter-panel .search { grid-column: 1 / -1; }
+}
 
 @media (max-width: 900px) {
   .topbar { padding-inline: 18px; }
@@ -1023,6 +1083,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
   .dish-details-actions { align-items: stretch; flex-wrap: wrap; }
   .dish-details-actions > span { width: 100%; margin: 0; }
   .dish-details-actions .button { flex: 1 1 auto; justify-content: center; text-align: center; }
+  .grocery-details-content { padding: 18px; }
+  .item-detail-fields { grid-template-columns: 1fr; }
+  .price-history-list li { grid-template-columns: auto 1fr; }
+  .price-history-list small { grid-column: 1 / -1; }
   .dish-grid { grid-template-columns: 1fr; }
   .dish-filter-panel { grid-template-columns: 1fr; }
   .dish-filter-panel .search { grid-column: auto; }
@@ -1032,7 +1096,11 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
   .new-dish-components { overflow-x: auto; }
   .new-dish-component-head, #new-dish-component-list { min-width: 610px; }
   .ingredient-editor { padding: 16px; }
+  .item-filter-panel { grid-template-columns: 1fr; }
+  .item-category-filter select { width: 100%; min-width: 0; }
   .ingredient-editor-heading, .ingredient-editor-grid { grid-template-columns: 1fr; }
+  .item-catalogue-tabs { width: 100%; }
+  .item-catalogue-tab { flex: 1; min-width: 0; }
   .ingredient-editor-grid .dialog-field-wide { grid-column: auto; }
   .ingredient-editor-actions { align-items: stretch; flex-direction: column; }
   .item-catalogue-head { display: none; }
@@ -1066,6 +1134,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
     max-height: calc(100dvh - 12px);
     margin: auto;
   }
+  .grocery-details-dialog { width: calc(100vw - 12px); margin: 6px; }
+  .grocery-details-dialog > div { height: calc(100dvh - 12px); max-height: none; }
+  .grocery-details-content { padding: 14px; }
   .dish-details-dialog > div { height: 100%; max-height: none; }
   .dish-details-dialog .menu-dialog-heading { padding: 14px; }
   .dish-details-dialog .menu-dialog-actions { padding: 10px 14px 14px; }

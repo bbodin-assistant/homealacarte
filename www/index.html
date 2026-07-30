@@ -6,7 +6,7 @@
     <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
     <title>Home à la Carte</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./style.css?v=homealacarte-30">
+    <link rel="stylesheet" href="./style.css?v=homealacarte-51">
   </head>
   <body>
     <header class="topbar">
@@ -61,7 +61,7 @@
           </button>
           <button class="nav-item" data-tab="items">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16H7zM10 8h4M10 12h4M10 16h4"/></svg>
-            <span data-i18n="nav_items">Items</span>
+            <span data-i18n="nav_items">Catalogue</span>
             <span id="ingredient-incomplete-count" class="nav-count" hidden>0</span>
           </button>
           <button class="nav-item" data-tab="data">
@@ -196,6 +196,9 @@
                 <p class="eyebrow" data-i18n="extra_needs_eyebrow">En plus du menu</p>
                 <h1 data-i18n="extra_needs">Besoins supplémentaires</h1>
               </div>
+              <div class="page-actions">
+                <button id="empty-extra-needs" class="button danger" type="button" data-i18n="empty_extra_needs">Vider la liste</button>
+              </div>
             </div>
             <div class="panel household-plan-panel">
               <form id="custom-add-form" class="custom-add household-add">
@@ -228,7 +231,7 @@
                   <span data-i18n="unit_price">Prix unitaire</span>
                   <input id="custom-add-price" type="number" min="0" step="0.01" value="0" readonly required>
                 </label>
-                <button class="button primary" type="submit" data-i18n="add_extra_need">Ajouter aux besoins</button>
+                <button class="button ghost add-extra-need-button" type="submit" data-i18n="add_extra_need">Ajouter aux besoins</button>
               </form>
               <div id="custom-list" class="custom-list"></div>
             </div>
@@ -268,6 +271,16 @@
                 <input id="dish-kcal-max" type="range" min="0" max="1500" step="1" value="1500" aria-label="Kcal maximum par portion">
               </div>
             </fieldset>
+            <fieldset class="dish-nutri-filter">
+              <legend data-i18n="nutri_score_filter">Filtrer par Nutri-Score</legend>
+              <div class="dish-nutri-options">
+                <label class="metric-a"><input type="checkbox" value="A" data-dish-nutri-score="A"><span>A</span></label>
+                <label class="metric-b"><input type="checkbox" value="B" data-dish-nutri-score="B"><span>B</span></label>
+                <label class="metric-c"><input type="checkbox" value="C" data-dish-nutri-score="C"><span>C</span></label>
+                <label class="metric-d"><input type="checkbox" value="D" data-dish-nutri-score="D"><span>D</span></label>
+                <label class="metric-e"><input type="checkbox" value="E" data-dish-nutri-score="E"><span>E</span></label>
+              </div>
+            </fieldset>
             <button id="dish-clear-filters" class="button ghost" type="button" data-i18n="clear_filters">Effacer</button>
           </div>
           <div id="nutri-score-audit" class="nutri-score-audit panel"></div>
@@ -277,15 +290,30 @@
         <section id="items-view" class="view" data-view="items">
           <div class="page-heading">
             <div>
-              <p class="eyebrow" data-i18n="items_eyebrow">Catalogue</p>
-              <h1 data-i18n="items_title">Items</h1>
+              <p class="eyebrow" data-i18n="items_eyebrow">Alimentation et foyer</p>
+              <h1 data-i18n="items_title">Catalogue</h1>
               <p data-i18n="items_intro">Aliments, ingrédients et produits du foyer disponibles dans l’application.</p>
             </div>
+            <button id="add-catalogue-item" class="button primary" type="button">
+              <span aria-hidden="true">+</span>
+              <span id="add-catalogue-item-label" data-i18n="add_catalogue_item">Ajouter un article</span>
+            </button>
+          </div>
+          <div id="item-filter-panel" class="item-filter-panel panel">
+            <label class="search standalone">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+              <input id="item-search" type="search" data-i18n-placeholder="search_items" placeholder="Rechercher un article par nom…">
+            </label>
+            <label class="item-category-filter">
+              <span data-i18n="category">Catégorie</span>
+              <select id="item-category-filter"></select>
+            </label>
+            <button id="item-clear-filters" class="button ghost" type="button" data-i18n="clear_filters">Effacer</button>
           </div>
           <div id="item-catalogue" class="item-catalogue panel"></div>
           <form id="ingredient-form" class="ingredient-editor panel" hidden>
             <div class="ingredient-editor-heading">
-              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour aux items</button>
+              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour au catalogue</button>
               <strong id="ingredient-editor-name"></strong>
               <span id="ingredient-completeness" class="ingredient-completeness"></span>
               <button id="ingredient-delete" class="button danger" type="button" data-i18n="delete">Supprimer</button>
@@ -422,7 +450,7 @@
           </form>
           <form id="household-item-form" class="ingredient-editor panel" hidden>
             <div class="ingredient-editor-heading">
-              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour aux items</button>
+              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour au catalogue</button>
               <strong id="household-item-editor-name"></strong>
               <span class="item-type-badge" data-i18n="general_item">Item général</span>
               <button id="household-item-delete" class="button danger" type="button" data-i18n="delete">Supprimer</button>
@@ -748,8 +776,8 @@
             <div id="dish-details-notes" class="dish-details-notes"></div>
           </section>
           <section id="dish-menu-editor" class="dish-menu-editor" hidden>
-            <h3 data-i18n="edit_menu_item">Modifier ce repas</h3>
-            <p data-i18n="edit_menu_intro">Modifiez les personnes et choisissez une valeur en portions, grammes ou unités.</p>
+            <h3 id="dish-menu-editor-title" data-i18n="edit_menu_item">Modifier ce repas</h3>
+            <p id="dish-menu-editor-intro" data-i18n="edit_menu_intro">Modifiez les personnes et choisissez une valeur en portions, grammes ou unités.</p>
             <div class="dish-menu-editor-grid">
               <label class="dialog-field">
                 <span data-i18n="day">Jour</span>
@@ -779,11 +807,13 @@
               </fieldset>
             </div>
             <div class="dish-menu-editor-actions">
+              <button id="dish-details-schedule-cancel" class="button ghost" type="button" data-i18n="cancel" hidden>Annuler</button>
               <button id="dish-details-save" class="button primary" type="button" data-i18n="save_changes" hidden>Enregistrer</button>
             </div>
           </section>
         </div>
         <div class="menu-dialog-actions dish-details-actions">
+          <button id="dish-details-schedule" class="button primary" type="button" data-i18n="schedule_dish" hidden>Planifier ce plat</button>
           <button id="dish-details-edit" class="button ghost" type="button" data-i18n="edit_dish" hidden>Modifier le plat</button>
           <button id="dish-details-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
         </div>
@@ -864,15 +894,21 @@
       <div>
         <div class="menu-dialog-heading">
           <div>
-            <p class="eyebrow" data-i18n="ingredient_details">Détail de l’ingrédient</p>
+            <p class="eyebrow" data-i18n="item_details">Détail de l’article</p>
             <h2 id="grocery-details-title"></h2>
-            <p data-i18n="ingredient_used_by">Plats du menu utilisant cet ingrédient</p>
+            <p data-i18n="item_known_information">Toutes les informations connues sur cet article</p>
           </div>
           <button id="grocery-details-close" class="dialog-close" type="button" aria-label="Fermer">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
           </button>
         </div>
-        <div id="grocery-details-list" class="grocery-details-list"></div>
+        <div class="grocery-details-content">
+          <div id="grocery-details-information" class="grocery-details-information"></div>
+          <section id="grocery-details-usages">
+            <h3 data-i18n="ingredient_used_by">Plats du menu utilisant cet ingrédient</h3>
+            <div id="grocery-details-list" class="grocery-details-list"></div>
+          </section>
+        </div>
         <div class="menu-dialog-actions">
           <button id="grocery-details-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
         </div>
@@ -969,6 +1005,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=homealacarte-30"></script>
+    <script type="module" src="./app.js?v=homealacarte-51"></script>
   </body>
 </html>

@@ -4,6 +4,10 @@
 /target/
 /test-results/
 /data/
+/dataweb/
+/olddata/
+/perso-data/
+/private-import/
 /.idea/
 __pycache__/
 *.py[cod]
@@ -17,4 +21,5 @@ __pycache__/
 *.key
 id_rsa
 id_ed25519
-/CIQUAL
+/CIQUAL/*
+!/CIQUAL/*.py

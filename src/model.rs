@@ -17,6 +17,15 @@ pub fn default_language() -> String {
     "fr".to_string()
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PriceObservation {
+    #[serde(default)]
+    pub date: String,
+    pub price: f64,
+    #[serde(default)]
+    pub description: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Ingredient {
     pub key: String,
@@ -47,6 +56,8 @@ pub struct Ingredient {
     pub price_source: String,
     #[serde(default)]
     pub price_checked_at: String,
+    #[serde(default)]
+    pub price_history: Vec<PriceObservation>,
     pub measure_unit: String,
     pub grams_per_measure_unit: f64,
     pub purchase_unit: String,
@@ -130,6 +141,8 @@ pub struct HouseholdItem {
     pub purchase_unit: String,
     pub purchase_quantity: f64,
     pub estimated_price: f64,
+    #[serde(default)]
+    pub price_history: Vec<PriceObservation>,
     pub measure_unit: String,
     pub last_bought_at: String,
     pub lasting_days: Option<f64>,
@@ -146,8 +159,10 @@ pub struct Dataset {
     pub menu: Vec<MenuRow>,
     pub stock: BTreeMap<String, f64>,
     pub stock_units: BTreeMap<String, String>,
+    pub stock_notes: BTreeMap<String, String>,
     pub household_items: Vec<HouseholdItem>,
     pub household_needs: BTreeMap<String, f64>,
+    pub household_need_notes: BTreeMap<String, String>,
     pub household_stock: BTreeMap<String, f64>,
     pub source_hash: String,
 }

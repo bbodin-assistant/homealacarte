@@ -13,36 +13,25 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-30";
-import { t, translations } from "./translations.js?v=homealacarte-30";
+} from "./storage.js?v=homealacarte-51";
+import { t, translations } from "./translations.js?v=homealacarte-51";
+import {
+  catalogItemsForGrocery,
+  combinedPriceHistory,
+  menuUsageContext,
+  priceChartGeometry,
+} from "./item-details.js?v=homealacarte-51";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-51";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-51";
+import {
+  catalogueCategories,
+  filterCatalogueItems,
+} from "./catalogue-filters.js?v=homealacarte-51";
+
+document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
 const DATA_SCHEMA_VERSION = 6;
-const BLANK_PRIVATE_DATA = JSON.stringify({
-  items: [{
-    key: "starter_water",
-    name: "Water",
-    grams: 100,
-    kcal: 0,
-    protein_g: 0,
-    carbs_g: 0,
-    fat_g: 0,
-    fiber_g: 0,
-    category: "Basics",
-    source: "Home à la Carte starter item",
-    url: "",
-    price_per_kg: 0,
-    measure_unit: "g",
-    grams_per_measure_unit: 1,
-    purchase_unit: "1 L bottle",
-    purchase_quantity_grams: 1000,
-  }],
-  dishes: [],
-  people: [],
-  menu: [],
-  stock: [],
-  extra_needs: [],
-});
 function storedJson(key, fallback = null) {
   try {
     return JSON.parse(localStorage.getItem(key) || "null") ?? fallback;
@@ -51,7 +40,7 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-30", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-51", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -62,6 +51,9 @@ const state = {
   stockDraft: [],
   customDraft: [],
   activeTab: "family",
+  itemCatalogueTab: localStorage.getItem("homealacarte-item-catalogue-tab") === "other"
+    ? "other"
+    : "food",
   groceryMode: localStorage.getItem("homealacarte-grocery-mode") || "list",
   menuSelectedOnly: localStorage.getItem("homealacarte-menu-selected-only") === "true",
   groceryHideStocked: localStorage.getItem("homealacarte-grocery-hide-stocked") === "true",
@@ -91,9 +83,11 @@ const state = {
   dishDetailsDishKey: null,
   dishDetailsOriginal: null,
   dishDetailsItemUnit: "unit",
+  dishDetailsScheduling: false,
   dishFormKey: null,
   dishFormOriginal: "",
   ingredientSelectedKey: null,
+  itemEditorCreating: false,
   ingredientOriginal: "",
   householdItemOriginal: "",
   draggedMenuIndex: null,
@@ -631,11 +625,12 @@ function renderGroceryModeCounts() {
 function ingredientFormPayload() {
   const existing = state.snapshot.ingredients
     .find((ingredient) => ingredient.key === state.ingredientSelectedKey);
-  if (!existing) return null;
+  if (!existing && !state.itemEditorCreating) return null;
+  const name = $("#ingredient-name").value.trim();
   return {
-    key: existing.key,
-    name: $("#ingredient-name").value.trim(),
-    custom: Boolean(existing.custom),
+    key: existing?.key || customIngredientKey(name),
+    name,
+    custom: existing ? Boolean(existing.custom) : true,
     incomplete: $("#ingredient-incomplete").checked,
     grams: Number($("#ingredient-grams").value),
     kcal: Number($("#ingredient-kcal").value),
@@ -714,6 +709,9 @@ function populateIngredientForm(key) {
   const ingredient = state.snapshot.ingredients.find((item) => item.key === key);
   if (!ingredient) return;
   state.ingredientSelectedKey = ingredient.key;
+  state.itemEditorCreating = false;
+  $("#ingredient-delete").hidden = false;
+  $("#ingredient-save").textContent = t(state.language, "save_changes");
   $("#ingredient-editor-name").textContent = ingredient.name;
   $("#ingredient-name").value = ingredient.name;
   $("#ingredient-category").value = displayCategory(ingredient.category);
@@ -754,11 +752,12 @@ function populateIngredientForm(key) {
 function householdItemFormPayload() {
   const existing = (state.snapshot.household_items || [])
     .find((item) => item.key === state.ingredientSelectedKey);
-  if (!existing) return null;
+  if (!existing && !state.itemEditorCreating) return null;
+  const name = $("#household-item-name").value.trim();
   const lastingDays = $("#household-item-lasting-days").value;
   return {
-    key: existing.key,
-    name: $("#household-item-name").value.trim(),
+    key: existing?.key || customIngredientKey(name),
+    name,
     category: normalizedCategory($("#household-item-category").value.trim()),
     purchase_unit: $("#household-item-purchase-unit").value.trim(),
     purchase_quantity: Number($("#household-item-purchase-quantity").value),
@@ -767,7 +766,7 @@ function householdItemFormPayload() {
     last_bought_at: $("#household-item-last-bought").value,
     lasting_days: lastingDays === "" ? null : Number(lastingDays),
     notes: $("#household-item-notes").value.trim(),
-    custom: Boolean(existing.custom),
+    custom: existing ? Boolean(existing.custom) : true,
   };
 }
 
@@ -799,6 +798,9 @@ function populateHouseholdItemForm(key) {
   const item = (state.snapshot.household_items || []).find((candidate) => candidate.key === key);
   if (!item) return;
   state.ingredientSelectedKey = item.key;
+  state.itemEditorCreating = false;
+  $("#household-item-delete").hidden = false;
+  $("#household-item-save").textContent = t(state.language, "save_changes");
   $("#household-item-editor-name").textContent = item.name;
   $("#household-item-name").value = item.name;
   $("#household-item-category").value = displayCategory(item.category);
@@ -816,14 +818,20 @@ function populateHouseholdItemForm(key) {
 
 function closeItemEditor() {
   state.ingredientSelectedKey = null;
+  state.itemEditorCreating = false;
   state.ingredientOriginal = "";
   state.householdItemOriginal = "";
   $("#ingredient-form").hidden = true;
   $("#household-item-form").hidden = true;
+  $("#add-catalogue-item").hidden = false;
+  $("#item-filter-panel").hidden = false;
   $("#item-catalogue").hidden = false;
 }
 
 function openItemEditor(key, kind) {
+  state.itemEditorCreating = false;
+  $("#add-catalogue-item").hidden = true;
+  $("#item-filter-panel").hidden = true;
   $("#item-catalogue").hidden = true;
   const food = kind === "food";
   $("#ingredient-form").hidden = !food;
@@ -832,19 +840,114 @@ function openItemEditor(key, kind) {
   else populateHouseholdItemForm(key);
 }
 
+function openNewCatalogueItem() {
+  state.ingredientSelectedKey = null;
+  state.itemEditorCreating = true;
+  $("#add-catalogue-item").hidden = true;
+  $("#item-filter-panel").hidden = true;
+  $("#item-catalogue").hidden = true;
+  const food = state.itemCatalogueTab === "food";
+  $("#ingredient-form").hidden = !food;
+  $("#household-item-form").hidden = food;
+  const selectedCategory = displayCategory($("#item-category-filter").value);
+  if (food) {
+    $("#ingredient-editor-name").textContent = t(state.language, "new_food_item");
+    $("#ingredient-delete").hidden = true;
+    $("#ingredient-save").textContent = t(state.language, "add_catalogue_item");
+    $("#ingredient-name").value = "";
+    $("#ingredient-category").value = selectedCategory;
+    $("#ingredient-measure-unit").value = "g";
+    $("#ingredient-grams-per-unit").value = "1";
+    $("#ingredient-grams").value = "100";
+    $("#ingredient-kcal").value = "0";
+    $("#ingredient-protein").value = "0";
+    $("#ingredient-carbs").value = "0";
+    $("#ingredient-fat").value = "0";
+    $("#ingredient-fiber").value = "0";
+    $("#ingredient-sugars").value = "";
+    $("#ingredient-saturated-fat").value = "";
+    $("#ingredient-salt").value = "";
+    $("#ingredient-fvl-percent").value = "";
+    $("#ingredient-price").value = "0";
+    $("#ingredient-price-source").value = "";
+    $("#ingredient-price-checked-at").value = "";
+    $("#ingredient-purchase-unit").value = "1 kg";
+    $("#ingredient-purchase-grams").value = "1000";
+    $("#ingredient-source").value = "";
+    $("#ingredient-url").value = "";
+    $("#ingredient-incomplete").checked = true;
+    $("#ingredient-completeness").className = "ingredient-completeness incomplete";
+    $("#ingredient-completeness").textContent = t(state.language, "ingredient_incomplete");
+    $("#ingredient-form-message").textContent = "";
+    state.ingredientOriginal = "";
+    updateIngredientSaveState();
+    $("#ingredient-name").focus();
+    return;
+  }
+  $("#household-item-editor-name").textContent = t(state.language, "new_general_item");
+  $("#household-item-delete").hidden = true;
+  $("#household-item-save").textContent = t(state.language, "add_catalogue_item");
+  $("#household-item-name").value = "";
+  $("#household-item-category").value = selectedCategory || t(state.language, "other");
+  $("#household-item-measure-unit").value = t(state.language, "units");
+  $("#household-item-purchase-unit").value = t(state.language, "units");
+  $("#household-item-purchase-quantity").value = "1";
+  $("#household-item-price").value = "0";
+  $("#household-item-last-bought").value = "";
+  $("#household-item-lasting-days").value = "";
+  $("#household-item-notes").value = "";
+  $("#household-item-form-message").textContent = "";
+  state.householdItemOriginal = "";
+  updateHouseholdItemSaveState();
+  $("#household-item-name").focus();
+}
+
+function configureItemCategoryFilter(items) {
+  const select = $("#item-category-filter");
+  const categories = catalogueCategories(items);
+  const selected = categories.includes(select.value) ? select.value : "";
+  select.innerHTML = `
+    <option value="">${escapeHtml(t(state.language, "all_categories"))}</option>
+    ${categories.map((category) =>
+    `<option value="${escapeHtml(category)}">${escapeHtml(displayCategory(category))}</option>`)
+    .join("")}`;
+  select.value = selected;
+  return selected;
+}
+
 function renderItemsCatalogue() {
   const ingredients = state.snapshot.ingredients || [];
+  const householdItems = state.snapshot.household_items || [];
   const incompleteCount = ingredients.filter((ingredient) => ingredient.incomplete).length;
   setCountBadge("#ingredient-incomplete-count", incompleteCount);
-  const rows = [
-    ...ingredients.map((item) => ({ ...item, item_kind: "food" })),
-    ...(state.snapshot.household_items || []).map((item) => ({
+  $("#add-catalogue-item-label").textContent = t(
+    state.language,
+    state.itemCatalogueTab === "food" ? "add_food_item" : "add_general_item",
+  );
+  const catalogueRows = state.itemCatalogueTab === "food"
+    ? ingredients.map((item) => ({ ...item, item_kind: "food" }))
+    : householdItems.map((item) => ({
       ...item,
       item_kind: "general",
       incomplete: false,
-    })),
-  ].sort((left, right) => left.name.localeCompare(right.name, state.language));
+    }));
+  const selectedCategory = configureItemCategoryFilter(catalogueRows);
+  const rows = filterCatalogueItems(catalogueRows, {
+    name: $("#item-search").value,
+    category: selectedCategory,
+  })
+    .sort((left, right) => left.name.localeCompare(right.name, state.language));
   $("#item-catalogue").innerHTML = `
+    <div class="item-catalogue-tabs" role="tablist" aria-label="${escapeHtml(t(state.language, "item_type"))}">
+      <button class="item-catalogue-tab${state.itemCatalogueTab === "food" ? " active" : ""}" type="button" role="tab" aria-selected="${state.itemCatalogueTab === "food"}" data-item-catalogue-tab="food">
+        <span>${escapeHtml(t(state.language, "food_items_tab"))}</span>
+        <span class="item-catalogue-tab-count">${ingredients.length}</span>
+      </button>
+      <button class="item-catalogue-tab${state.itemCatalogueTab === "other" ? " active" : ""}" type="button" role="tab" aria-selected="${state.itemCatalogueTab === "other"}" data-item-catalogue-tab="other">
+        <span>${escapeHtml(t(state.language, "other_items_tab"))}</span>
+        <span class="item-catalogue-tab-count">${householdItems.length}</span>
+      </button>
+    </div>
     <div class="item-catalogue-head">
       <span>${escapeHtml(t(state.language, "name"))}</span>
       <span>${escapeHtml(t(state.language, "item_type"))}</span>
@@ -852,7 +955,7 @@ function renderItemsCatalogue() {
       <span></span>
     </div>
     ${rows.map((item) => `
-      <div class="item-catalogue-row">
+      <div class="item-catalogue-row" role="button" tabindex="0" data-item-details="${escapeHtml(encodeURIComponent(item.key))}" data-item-kind="${item.item_kind}" aria-label="${escapeHtml(`${t(state.language, "details")}: ${item.name}`)}">
         <strong class="item-catalogue-name">
           <span>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>
           ${item.item_kind === "food" && ingredientNutriScoreMissing(item)
@@ -868,7 +971,7 @@ function renderItemsCatalogue() {
           </button>
         </span>
       </div>
-    `).join("")}
+    `).join("") || `<p class="item-catalogue-empty">${escapeHtml(t(state.language, catalogueRows.length ? "no_matching_items" : state.itemCatalogueTab === "food" ? "no_food_items" : "no_other_items"))}</p>`}
   `;
   if (!$("#ingredient-form").hidden && state.ingredientSelectedKey) {
     const exists = ingredients.some((item) => item.key === state.ingredientSelectedKey);
@@ -1405,6 +1508,7 @@ function openDishDetails(dishKey, menuIndex) {
   state.dishDetailsDishKey = dish?.key || null;
   state.dishDetailsOriginal = null;
   state.dishDetailsItemUnit = item?.measure_unit || "unit";
+  state.dishDetailsScheduling = false;
   const peopleNames = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
   const context = row
     ? [
@@ -1420,8 +1524,13 @@ function openDishDetails(dishKey, menuIndex) {
   $("#dish-details-menu-note").hidden = !row?.notes;
   $("#dish-menu-editor").hidden = !row;
   $("#dish-details-save").hidden = !row;
+  $("#dish-details-schedule-cancel").hidden = true;
+  $("#dish-details-schedule").hidden = Boolean(row) || !dish;
   $("#dish-details-edit").hidden = Boolean(row) || !dish;
   if (row) {
+    $("#dish-menu-editor-title").textContent = t(state.language, "edit_menu_item");
+    $("#dish-menu-editor-intro").textContent = t(state.language, "edit_menu_intro");
+    $("#dish-details-save").textContent = t(state.language, "save_changes");
     $("#dish-menu-day").innerHTML = state.snapshot.days
       .map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
       .join("");
@@ -1471,11 +1580,13 @@ function openDishDetails(dishKey, menuIndex) {
     $("#dish-details-nutri-status").textContent = dishNutriScoreDetail(dish);
     $("#dish-details-ingredients").innerHTML = dish.components.map((component) => `
       <li>
-        <span>
-          <strong>${escapeHtml(component.name)}</strong>
-          ${component.source_quantity ? `<small>${escapeHtml(component.source_quantity)}</small>` : ""}
-        </span>
-        <span>${formatNumber(component.quantity)} ${escapeHtml(component.quantity_unit)} · ${escapeHtml(t(state.language, "per_serving"))}</span>
+        <button class="dish-details-ingredient" type="button" data-dish-ingredient-details="${escapeHtml(encodeURIComponent(component.key))}">
+          <span>
+            <strong>${escapeHtml(component.name)}</strong>
+            ${component.source_quantity ? `<small>${escapeHtml(component.source_quantity)}</small>` : ""}
+          </span>
+          <span>${formatNumber(component.quantity)} ${escapeHtml(component.quantity_unit)} · ${escapeHtml(t(state.language, "per_serving"))}</span>
+        </button>
       </li>
     `).join("");
   }
@@ -1528,8 +1639,9 @@ function dishMenuEditorSignature() {
 function updateDishMenuSaveState() {
   const button = $("#dish-details-save");
   if (button.hidden) return;
-  button.disabled = !state.dishDetailsOriginal
-    || dishMenuEditorSignature() === state.dishDetailsOriginal;
+  button.disabled = state.dishDetailsScheduling
+    ? false
+    : !state.dishDetailsOriginal || dishMenuEditorSignature() === state.dishDetailsOriginal;
 }
 
 function updateDishMenuUnitValue() {
@@ -1549,9 +1661,54 @@ function closeDishDetails() {
   state.dishDetailsMenuIndex = null;
   state.dishDetailsDishKey = null;
   state.dishDetailsOriginal = null;
+  state.dishDetailsScheduling = false;
   const dialog = $("#dish-details-dialog");
   if (typeof dialog.close === "function") dialog.close();
   else dialog.removeAttribute("open");
+}
+
+function openDishScheduleEditor() {
+  const dish = state.snapshot.dishes
+    .find((candidate) => candidate.key === state.dishDetailsDishKey);
+  if (!dish) return;
+  state.dishDetailsScheduling = true;
+  $("#dish-menu-editor").hidden = false;
+  $("#dish-menu-editor-title").textContent = t(state.language, "schedule_dish");
+  $("#dish-menu-editor-intro").textContent = t(state.language, "schedule_dish_intro");
+  $("#dish-menu-day").innerHTML = state.snapshot.days
+    .map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
+    .join("");
+  $("#dish-menu-meal").innerHTML = state.snapshot.meals
+    .map((meal) => `<option value="${escapeHtml(meal)}">${escapeHtml(meal)}</option>`)
+    .join("");
+  $("#dish-menu-quantity").value = "1";
+  $("#dish-menu-unit").value = "portion";
+  $("#dish-menu-people").innerHTML = state.snapshot.people.map((person, index) => {
+    const selected = person.key === state.snapshot.profile
+      || (!state.snapshot.profile && index === 0);
+    return `
+      <label class="dialog-person">
+        <input type="checkbox" value="${escapeHtml(person.key)}" ${selected ? "checked" : ""}>
+        <span>${escapeHtml(person.name)}</span>
+      </label>`;
+  }).join("");
+  $("#dish-menu-people-error").hidden = true;
+  $("#dish-details-schedule").hidden = true;
+  $("#dish-details-schedule-cancel").hidden = false;
+  $("#dish-details-save").hidden = false;
+  $("#dish-details-save").disabled = false;
+  $("#dish-details-save").textContent = t(state.language, "add_to_menu");
+  updateDishMenuUnitValue();
+  $("#dish-menu-editor").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  $("#dish-menu-day").focus();
+}
+
+function closeDishScheduleEditor() {
+  state.dishDetailsScheduling = false;
+  $("#dish-menu-editor").hidden = true;
+  $("#dish-details-save").hidden = true;
+  $("#dish-details-schedule-cancel").hidden = true;
+  $("#dish-details-schedule").hidden = false;
 }
 
 function setMenuItemUnit() {
@@ -1606,16 +1763,135 @@ function groceryItemUsage(item) {
     .map(({ row, index }) => ({
       index,
       name: itemNames.get(row.item_key) || row.item_key,
-      context: `${row.day} · ${row.meal}`,
+      context: menuUsageContext(row, state.snapshot.people),
       direct: directIngredientKeys.has(row.item_key),
     }));
 }
 
-function openGroceryDetails(itemId) {
-  const item = state.snapshot.grocery_plan.items.find((candidate) => candidate.id === itemId);
-  if (!item) return;
-  const usages = groceryItemUsage(item);
-  $("#grocery-details-title").textContent = item.name;
+function detailValue(value, suffix = "") {
+  if (value == null || value === "") return t(state.language, "not_available");
+  return `${formatNumber(value, 2)}${suffix}`;
+}
+
+function detailFields(rows) {
+  return `<dl class="item-detail-fields">${rows.map(([label, value, raw = false]) => `
+    <div>
+      <dt>${escapeHtml(label)}</dt>
+      <dd>${raw ? value : escapeHtml(value == null || value === "" ? t(state.language, "not_available") : value)}</dd>
+    </div>
+  `).join("")}</dl>`;
+}
+
+function priceHistoryMarkup(items) {
+  const history = combinedPriceHistory(items);
+  const chart = priceChartGeometry(history);
+  if (!history.length) {
+    return `<p class="grocery-usage-empty">${escapeHtml(t(state.language, "no_price_history"))}</p>`;
+  }
+  const dateLabel = (value) => value || t(state.language, "unknown");
+  return `
+    <div class="price-history-chart">
+      <svg viewBox="0 0 640 220" role="img" aria-label="${escapeHtml(t(state.language, "price_history_chart"))}">
+        <line x1="42" y1="18" x2="42" y2="186"></line>
+        <line x1="42" y1="186" x2="622" y2="186"></line>
+        <text x="4" y="23">${escapeHtml(formatMoney(chart.maxPrice))}</text>
+        <text x="4" y="188">${escapeHtml(formatMoney(chart.minPrice))}</text>
+        ${chart.path ? `<path d="${chart.path}"></path>` : ""}
+        ${chart.points.map((point) => `
+          <circle cx="${point.x}" cy="${point.y}" r="5">
+            <title>${escapeHtml(`${dateLabel(point.date)} · ${formatMoney(point.price)} · ${point.description}`)}</title>
+          </circle>
+        `).join("")}
+        <text class="price-chart-date" x="42" y="211">${escapeHtml(dateLabel(history[0].date))}</text>
+        <text class="price-chart-date end" x="622" y="211">${escapeHtml(dateLabel(history.at(-1).date))}</text>
+      </svg>
+    </div>
+    <ol class="price-history-list">
+      ${[...history].reverse().map((row) => `
+        <li>
+          <strong>${escapeHtml(formatMoney(row.price))}</strong>
+          <span>${escapeHtml(dateLabel(row.date))}</span>
+          <small>${escapeHtml(row.description || t(state.language, "not_available"))}</small>
+        </li>
+      `).join("")}
+    </ol>`;
+}
+
+function itemInformationMarkup(items, groceryItem) {
+  const item = items[0];
+  if (!item) {
+    return `<p class="grocery-usage-empty">${escapeHtml(t(state.language, "item_details_unavailable"))}</p>`;
+  }
+  const food = Object.hasOwn(item, "kcal");
+  const sourceUrl = externalHttpUrl(item.url);
+  const groceryFields = groceryItem ? detailFields([
+    [t(state.language, "total_need"), groceryItem.needed_quantity_text],
+    [t(state.language, "in_stock"), groceryItem.stock_quantity_text || formatNumber(0)],
+    [t(state.language, "buy"), groceryItem.purchase_quantity_text || t(state.language, "stock_enough")],
+    [t(state.language, "estimated_total"), formatMoney(groceryItem.estimated_purchase_price)],
+  ]) : "";
+  const identity = detailFields([
+    [t(state.language, "item_identifier"), item.key],
+    [t(state.language, "item_type"), t(state.language, food ? "food_item" : "general_item")],
+    [t(state.language, "category"), displayCategory(item.category)],
+    [t(state.language, "measure_unit_name"), item.measure_unit],
+    [t(state.language, "description_status"), food
+      ? t(state.language, item.incomplete ? "ingredient_incomplete" : "ingredient_complete")
+      : t(state.language, "ingredient_complete")],
+  ]);
+  const nutrition = food ? detailFields([
+    [t(state.language, "nutrition_reference_grams"), detailValue(item.grams, " g")],
+    [t(state.language, "kcal_for_reference"), detailValue(item.kcal)],
+    [t(state.language, "protein_grams"), detailValue(item.protein_g, " g")],
+    [t(state.language, "carbs_grams"), detailValue(item.carbs_g, " g")],
+    [t(state.language, "fat_grams"), detailValue(item.fat_g, " g")],
+    [t(state.language, "fiber_grams"), detailValue(item.fiber_g, " g")],
+    [t(state.language, "sugars_grams"), detailValue(item.sugars_g, " g")],
+    [t(state.language, "saturated_fat_grams"), detailValue(item.saturated_fat_g, " g")],
+    [t(state.language, "salt_grams"), detailValue(item.salt_g, " g")],
+    [t(state.language, "fruit_vegetable_legume_percent"), detailValue(item.fruit_vegetable_legume_percent, " %")],
+  ]) : "";
+  const source = food ? detailFields([
+    [t(state.language, "source"), item.source],
+    [t(state.language, "source_url"), sourceUrl
+      ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a>`
+      : escapeHtml(item.url || t(state.language, "not_available")), true],
+  ]) : "";
+  const purchase = food ? detailFields([
+    [t(state.language, "grams_per_unit"), detailValue(item.grams_per_measure_unit, " g")],
+    [t(state.language, "purchase_unit"), item.purchase_unit],
+    [t(state.language, "purchase_quantity_grams"), detailValue(item.purchase_quantity_grams, " g")],
+    [t(state.language, "price_per_kg"), formatMoney(item.price_per_kg)],
+    [t(state.language, "estimated_purchase_price"), formatMoney(item.price_per_kg * item.purchase_quantity_grams / 1000)],
+    [t(state.language, "price_checked_at"), item.price_checked_at],
+    [t(state.language, "price_source"), item.price_source],
+  ]) : detailFields([
+    [t(state.language, "purchase_unit"), item.purchase_unit],
+    [t(state.language, "purchase_quantity"), detailValue(item.purchase_quantity)],
+    [t(state.language, "unit_price"), formatMoney(item.estimated_price)],
+    [t(state.language, "last_bought_at"), item.last_bought_at],
+    [t(state.language, "lasting_days"), detailValue(item.lasting_days)],
+    [t(state.language, "notes"), item.notes],
+  ]);
+  return `
+    ${groceryItem ? `<section><h3>${escapeHtml(t(state.language, "grocery_list"))}</h3>${groceryFields}</section>` : ""}
+    <section><h3>${escapeHtml(t(state.language, "item_identity_title"))}</h3>${identity}</section>
+    ${food ? `<section><h3>${escapeHtml(t(state.language, "ingredient_nutrition_title"))}</h3>${nutrition}</section>` : ""}
+    ${food ? `<section><h3>${escapeHtml(t(state.language, "ingredient_sources_title"))}</h3>${source}</section>` : ""}
+    <section><h3>${escapeHtml(t(state.language, "ingredient_purchase_title"))}</h3>${purchase}</section>
+    <section class="price-history-section">
+      <h3>${escapeHtml(t(state.language, "price_history"))}</h3>
+      ${priceHistoryMarkup(items)}
+    </section>`;
+}
+
+function openItemDetails(items, groceryItem = null) {
+  const item = items[0];
+  if (!item && !groceryItem) return;
+  const usageItem = groceryItem || item;
+  const usages = groceryItemUsage(usageItem);
+  $("#grocery-details-title").textContent = item?.name || groceryItem.name;
+  $("#grocery-details-information").innerHTML = itemInformationMarkup(items, groceryItem);
   $("#grocery-details-list").innerHTML = usages.map((usage) => `
       <article class="grocery-usage ${usage.direct ? "direct" : ""}">
         <strong>${escapeHtml(usage.name)}</strong>
@@ -1626,10 +1902,25 @@ function openGroceryDetails(itemId) {
         </div>
       </article>
     `).join("") || `<p class="grocery-usage-empty">${escapeHtml(t(state.language, "no_linked_dishes"))}</p>`;
+  $("#grocery-details-usages").hidden = !usages.length;
   const dialog = $("#grocery-details-dialog");
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
   $("#grocery-details-close").focus();
+}
+
+function openGroceryDetails(itemId) {
+  const groceryItem = state.snapshot.grocery_plan.items
+    .find((candidate) => candidate.id === itemId);
+  if (!groceryItem) return;
+  openItemDetails(catalogItemsForGrocery(state.snapshot, groceryItem), groceryItem);
+}
+
+function openCatalogueItemDetails(key, kind) {
+  const items = kind === "food"
+    ? (state.snapshot.ingredients || []).filter((item) => item.key === key)
+    : (state.snapshot.household_items || []).filter((item) => item.key === key);
+  openItemDetails(items);
 }
 
 function closeGroceryDetails() {
@@ -1673,15 +1964,14 @@ function renderGrocery() {
               : partial
                 ? `<span class="stock-status partial">${escapeHtml(t(state.language, "stock_partial"))}: ${escapeHtml(item.stock_quantity_text)}</span>`
                 : "";
-            return `<div class="grocery-item ${checked ? "checked stock-covered" : ""} ${partial ? "stock-partial" : ""}">
-              <label class="grocery-item-check">
-                <input type="checkbox" data-id="${escapeHtml(item.id)}" ${checked ? "checked" : ""}>
+            return `<div class="grocery-item ${checked ? "checked stock-covered" : ""} ${partial ? "stock-partial" : ""}" tabindex="0" data-grocery-details="${escapeHtml(encodeURIComponent(item.id))}" aria-label="${escapeHtml(`${t(state.language, "details")}: ${item.name}`)}">
+              <span class="grocery-item-check">
+                <input type="checkbox" data-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(`${t(state.language, checked ? "remove_stock" : "add_stock")}: ${item.name}`)}" ${checked ? "checked" : ""}>
                 <span><strong>${escapeHtml(item.name)}</strong><small>${t(state.language, "total_need")}: ${escapeHtml(item.needed_quantity_text)} · ${purchase}</small></span>
-              </label>
+              </span>
               <span class="grocery-item-end">
                 ${stockStatus}
                 ${checked ? "" : `<span class="price">${formatMoney(item.estimated_purchase_price)}</span>`}
-                <button class="grocery-details-button" type="button" data-grocery-details="${escapeHtml(encodeURIComponent(item.id))}">${escapeHtml(t(state.language, "details"))}</button>
               </span>
             </div>`;
           }).join("")}
@@ -1708,6 +1998,7 @@ function customGroceryPayload() {
 
 function renderCustomGrocery() {
   setCountBadge("#needs-tab-count", state.customDraft.length);
+  $("#empty-extra-needs").disabled = state.customDraft.length === 0;
   const activeKeys = new Set(state.customDraft.map((item) => item.key));
   $("#custom-add-existing").innerHTML = (state.snapshot.household_options || [])
     .filter((item) => !activeKeys.has(item.key))
@@ -1866,6 +2157,9 @@ function renderDishes() {
   const maximumCost = Number($("#dish-cost-max").value);
   const minimumKcal = Number($("#dish-kcal-min").value);
   const maximumKcal = Number($("#dish-kcal-max").value);
+  const selectedNutriScores = new Set(
+    $$("[data-dish-nutri-score]:checked").map((input) => input.value),
+  );
   $("#dish-cost-output").textContent =
     `${formatMoney(minimumCost)} – ${formatMoney(maximumCost)}`;
   $("#dish-kcal-output").textContent =
@@ -1876,6 +2170,7 @@ function renderDishes() {
     const matchesSearch = !search
       || `${dish.name} ${dish.key}`.toLowerCase().includes(search);
     return matchesSearch
+      && matchesSelectedNutriScores(dish, selectedNutriScores)
       && dish.per_serving.cost >= minimumCost
       && dish.per_serving.cost <= maximumCost
       && dish.per_serving.kcal >= minimumKcal
@@ -2031,6 +2326,7 @@ function renderStorageStatus(status = getStorageStatus()) {
   const source = $("#source-status");
   if (!source) return;
   renderHeaderStatus();
+  $(".account-current-status").className = `account-current-status sync-${displayed.state}`;
   $("#account-status-label").textContent = label;
   $("#account-status-detail").textContent = displayed.message === "confirmation_required"
     ? t(state.language, "confirmation_required")
@@ -2250,8 +2546,23 @@ $("#dish-clear-filters").addEventListener("click", () => {
   $("#dish-cost-max").value = $("#dish-cost-max").max;
   $("#dish-kcal-min").value = "0";
   $("#dish-kcal-max").value = $("#dish-kcal-max").max;
+  $$("[data-dish-nutri-score]").forEach((input) => {
+    input.checked = false;
+  });
   updateDishRange($("#dish-cost-min"));
   updateDualRangeTrack("kcal");
+});
+$("#item-filter-panel").addEventListener("input", (event) => {
+  if (event.target.matches("#item-search")) renderItemsCatalogue();
+});
+$("#item-filter-panel").addEventListener("change", (event) => {
+  if (event.target.matches("#item-category-filter")) renderItemsCatalogue();
+});
+$("#item-clear-filters").addEventListener("click", () => {
+  $("#item-search").value = "";
+  $("#item-category-filter").value = "";
+  renderItemsCatalogue();
+  $("#item-search").focus();
 });
 $("#color-my-life").addEventListener("click", randomizeColorTheme);
 $("#add-dish").addEventListener("click", openNewDishDialog);
@@ -2360,7 +2671,15 @@ $("#dish-grid").addEventListener("click", (event) => {
   const button = event.target.closest("[data-dish-key]");
   if (button) openDishDetails(decodeURIComponent(button.dataset.dishKey), Number.NaN);
 });
+$("#add-catalogue-item").addEventListener("click", openNewCatalogueItem);
 $("#item-catalogue").addEventListener("click", (event) => {
+  const tab = event.target.closest("[data-item-catalogue-tab]");
+  if (tab) {
+    state.itemCatalogueTab = tab.dataset.itemCatalogueTab;
+    localStorage.setItem("homealacarte-item-catalogue-tab", state.itemCatalogueTab);
+    renderItemsCatalogue();
+    return;
+  }
   const edit = event.target.closest("[data-item-edit]");
   if (edit) {
     openItemEditor(decodeURIComponent(edit.dataset.itemEdit), edit.dataset.itemKind);
@@ -2372,7 +2691,25 @@ $("#item-catalogue").addEventListener("click", (event) => {
       decodeURIComponent(remove.dataset.itemDelete),
       remove.dataset.itemName,
     );
+    return;
   }
+  const details = event.target.closest("[data-item-details]");
+  if (details) {
+    openCatalogueItemDetails(
+      decodeURIComponent(details.dataset.itemDetails),
+      details.dataset.itemKind,
+    );
+  }
+});
+$("#item-catalogue").addEventListener("keydown", (event) => {
+  if (!["Enter", " "].includes(event.key) || event.target.closest("button")) return;
+  const details = event.target.closest("[data-item-details]");
+  if (!details) return;
+  event.preventDefault();
+  openCatalogueItemDetails(
+    decodeURIComponent(details.dataset.itemDetails),
+    details.dataset.itemKind,
+  );
 });
 $$(".item-editor-back").forEach((button) => button.addEventListener("click", closeItemEditor));
 $("#ingredient-form").addEventListener("input", updateIngredientSaveState);
@@ -2384,7 +2721,11 @@ $("#ingredient-form").addEventListener("submit", (event) => {
     $("#ingredient-form-message").textContent = t(state.language, "ingredient_invalid");
     return;
   }
-  send("replace-ingredient", { ingredient });
+  const creating = state.itemEditorCreating;
+  if (creating) {
+    state.ingredientSelectedKey = ingredient.key;
+  }
+  send(creating ? "add-ingredient" : "replace-ingredient", { ingredient });
 });
 $("#ingredient-delete").addEventListener("click", () => {
   const ingredient = state.snapshot.ingredients
@@ -2400,7 +2741,11 @@ $("#household-item-form").addEventListener("submit", (event) => {
     $("#household-item-form-message").textContent = t(state.language, "item_invalid");
     return;
   }
-  send("replace-household-item", { item });
+  const creating = state.itemEditorCreating;
+  if (creating) {
+    state.ingredientSelectedKey = item.key;
+  }
+  send(creating ? "add-household-item" : "replace-household-item", { item });
 });
 $("#household-item-delete").addEventListener("click", () => {
   const item = (state.snapshot.household_items || [])
@@ -2530,10 +2875,18 @@ $("#weekly-menu").addEventListener("drop", (event) => {
 });
 $("#dish-details-close").addEventListener("click", closeDishDetails);
 $("#dish-details-done").addEventListener("click", closeDishDetails);
+$("#dish-details-ingredients").addEventListener("click", (event) => {
+  const ingredient = event.target.closest("[data-dish-ingredient-details]");
+  if (!ingredient) return;
+  const key = decodeURIComponent(ingredient.dataset.dishIngredientDetails);
+  closeDishDetails();
+  openCatalogueItemDetails(key, "food");
+});
 $("#dish-details-dialog").addEventListener("close", () => {
   state.dishDetailsMenuIndex = null;
   state.dishDetailsDishKey = null;
   state.dishDetailsOriginal = null;
+  state.dishDetailsScheduling = false;
 });
 $("#dish-menu-editor").addEventListener("input", updateDishMenuSaveState);
 $("#dish-menu-editor").addEventListener("change", () => {
@@ -2547,9 +2900,9 @@ $("#dish-details-edit").addEventListener("click", () => {
   closeDishDetails();
   openDishForm(dishCopy);
 });
+$("#dish-details-schedule").addEventListener("click", openDishScheduleEditor);
+$("#dish-details-schedule-cancel").addEventListener("click", closeDishScheduleEditor);
 $("#dish-details-save").addEventListener("click", () => {
-  const row = state.draft[state.dishDetailsMenuIndex];
-  if (!row) return;
   const people = [...$("#dish-menu-people").querySelectorAll("input:checked")]
     .map((input) => input.value);
   const quantity = Number($("#dish-menu-quantity").value);
@@ -2562,6 +2915,23 @@ $("#dish-details-save").addEventListener("click", () => {
     $("#dish-menu-quantity").focus();
     return;
   }
+  if (state.dishDetailsScheduling) {
+    const scheduledRow = buildScheduledDishRow({
+      dishKey: state.dishDetailsDishKey,
+      day: $("#dish-menu-day").value,
+      meal: $("#dish-menu-meal").value,
+      people,
+      quantity,
+      quantityUnit: $("#dish-menu-unit").value,
+    });
+    state.draft.push(scheduledRow);
+    closeDishDetails();
+    renderMenu();
+    scheduleMenuUpdate();
+    return;
+  }
+  const row = state.draft[state.dishDetailsMenuIndex];
+  if (!row) return;
   row.people = people;
   row.day = $("#dish-menu-day").value;
   row.meal = $("#dish-menu-meal").value;
@@ -2816,10 +3186,9 @@ async function deleteAllPrivateData() {
     state.language,
     result.accountDeleted ? "delete_data_success_online" : "delete_data_success_local",
   );
-  send("load-files", {
-    files: [{ path: "homealacarte_blank_state.json", content: BLANK_PRIVATE_DATA }],
+  send("load-bundled", {
+    manifestUrl: "./demo-data-manifest.json",
     language: state.language,
-    source: "deleted",
   });
 }
 
@@ -2901,6 +3270,20 @@ $("#empty-stock").addEventListener("click", () => {
       state.stockDraft = [];
       renderStock();
       scheduleStockUpdate();
+    },
+  });
+});
+
+$("#empty-extra-needs").addEventListener("click", () => {
+  if (!state.customDraft.length) return;
+  openConfirmation({
+    title: t(state.language, "empty_extra_needs_confirm_title"),
+    message: t(state.language, "empty_extra_needs_confirm_message"),
+    confirmLabel: t(state.language, "empty_extra_needs"),
+    action: () => {
+      state.customDraft = [];
+      renderCustomGrocery();
+      scheduleCustomGroceryUpdate();
     },
   });
 });
@@ -3058,8 +3441,16 @@ $("#grocery-grid").addEventListener("change", (event) => {
   });
 });
 $("#grocery-grid").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-grocery-details]");
-  if (button) openGroceryDetails(decodeURIComponent(button.dataset.groceryDetails));
+  if (event.target.closest("input[data-id]")) return;
+  const item = event.target.closest("[data-grocery-details]");
+  if (item) openGroceryDetails(decodeURIComponent(item.dataset.groceryDetails));
+});
+$("#grocery-grid").addEventListener("keydown", (event) => {
+  if (!["Enter", " "].includes(event.key) || event.target.closest("input[data-id]")) return;
+  const item = event.target.closest("[data-grocery-details]");
+  if (!item) return;
+  event.preventDefault();
+  openGroceryDetails(decodeURIComponent(item.dataset.groceryDetails));
 });
 $("#grocery-details-list").addEventListener("click", (event) => {
   const deleteButton = event.target.closest("[data-grocery-meal-delete]");

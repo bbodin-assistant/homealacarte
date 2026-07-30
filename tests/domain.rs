@@ -153,6 +153,39 @@ fn unsupported_data_shapes_are_rejected() {
 }
 
 #[test]
+fn a_household_only_dataset_is_valid() {
+    let source = SourceFile {
+        path: "household-only.json".to_string(),
+        content: r#"{
+          "items": [{
+            "key": "soap_test",
+            "name": "Test soap",
+            "category": "Household::Hygiene",
+            "estimated_price": 2.5,
+            "purchase_unit": "bottle",
+            "purchase_quantity": 1,
+            "measure_unit": "bottles"
+          }]
+        }"#.to_string(),
+    };
+    let mut engine = Engine::default();
+
+    let snapshot = engine
+        .load(
+            vec![source],
+            AppConfig {
+                language: "en".to_string(),
+            },
+        )
+        .unwrap();
+
+    assert!(snapshot.ingredients.is_empty());
+    assert!(snapshot.dishes.is_empty());
+    assert_eq!(snapshot.household_items.len(), 1);
+    assert_eq!(snapshot.household_items[0].key, "soap_test");
+}
+
+#[test]
 fn synthetic_data_supports_groceries_stock_export_and_pdf() {
     let mut engine = Engine::default();
     let snapshot = engine
@@ -455,6 +488,7 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
         price_per_kg: 0.0,
         price_source: String::new(),
         price_checked_at: String::new(),
+        price_history: vec![],
         measure_unit: "leaves".to_string(),
         grams_per_measure_unit: 1.0,
         purchase_unit: "leaves".to_string(),
@@ -516,6 +550,7 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
             price_per_kg: 8.0,
             price_source: "Test shop receipt, 1.20 EUR".to_string(),
             price_checked_at: "2026-07-26".to_string(),
+            price_history: vec![],
             measure_unit: "leaves".to_string(),
             grams_per_measure_unit: 12.0,
             purchase_unit: "bag".to_string(),
@@ -559,7 +594,12 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
             && ingredient.salt_g == Some(0.02)
             && ingredient.fruit_vegetable_legume_percent == Some(100.0)
             && ingredient.price_source == "Test shop receipt, 1.20 EUR"
-            && ingredient.price_checked_at == "2026-07-26"));
+            && ingredient.price_checked_at == "2026-07-26"
+            && ingredient.price_history.iter().any(|price| {
+                price.date == "2026-07-26"
+                    && price.price == 8.0
+                    && price.description == "Test shop receipt, 1.20 EUR"
+            })));
 }
 
 #[test]
@@ -575,6 +615,78 @@ fn the_item_catalogue_edits_general_items_and_deletes_safely() {
         .unwrap();
     assert_eq!(snapshot.household_items.len(), 2);
 
+    let with_food = engine
+        .add_ingredient(Ingredient {
+            key: "new_herb_test".to_string(),
+            name: "New herb".to_string(),
+            custom: true,
+            incomplete: true,
+            grams: 100.0,
+            kcal: 0.0,
+            protein_g: 0.0,
+            carbs_g: 0.0,
+            fat_g: 0.0,
+            fiber_g: 0.0,
+            sugars_g: None,
+            saturated_fat_g: None,
+            salt_g: None,
+            fruit_vegetable_legume_percent: None,
+            category: String::new(),
+            source: String::new(),
+            url: String::new(),
+            price_per_kg: 0.0,
+            price_source: String::new(),
+            price_checked_at: String::new(),
+            price_history: vec![],
+            measure_unit: "g".to_string(),
+            grams_per_measure_unit: 1.0,
+            purchase_unit: "bag".to_string(),
+            purchase_quantity_grams: 100.0,
+        })
+        .unwrap();
+    assert!(with_food
+        .ingredients
+        .iter()
+        .any(|item| item.key == "new_herb_test" && item.custom));
+
+    let with_general = engine
+        .add_household_item(HouseholdItem {
+            key: "new_sponge_test".to_string(),
+            name: "New sponge".to_string(),
+            category: "Household::Cleaning".to_string(),
+            purchase_unit: "pack".to_string(),
+            purchase_quantity: 2.0,
+            estimated_price: 1.5,
+            price_history: vec![],
+            measure_unit: "sponges".to_string(),
+            last_bought_at: String::new(),
+            lasting_days: None,
+            notes: String::new(),
+            custom: true,
+        })
+        .unwrap();
+    assert!(with_general
+        .household_items
+        .iter()
+        .any(|item| item.key == "new_sponge_test" && item.custom));
+    let duplicate = engine
+        .add_household_item(HouseholdItem {
+            key: "new_herb_test".to_string(),
+            name: "Duplicate".to_string(),
+            category: "Household::Cleaning".to_string(),
+            purchase_unit: "unit".to_string(),
+            purchase_quantity: 1.0,
+            estimated_price: 1.0,
+            price_history: vec![],
+            measure_unit: "units".to_string(),
+            last_bought_at: String::new(),
+            lasting_days: None,
+            notes: String::new(),
+            custom: true,
+        })
+        .unwrap_err();
+    assert!(duplicate.contains("already exists"));
+
     let updated = engine
         .replace_household_item(HouseholdItem {
             key: "cleaner_test".to_string(),
@@ -583,6 +695,7 @@ fn the_item_catalogue_edits_general_items_and_deletes_safely() {
             purchase_unit: "bottle".to_string(),
             purchase_quantity: 1.0,
             estimated_price: 3.5,
+            price_history: vec![],
             measure_unit: "bottles".to_string(),
             last_bought_at: "2026-07-26".to_string(),
             lasting_days: Some(30.0),
@@ -595,7 +708,12 @@ fn the_item_catalogue_edits_general_items_and_deletes_safely() {
         .iter()
         .any(|item| item.key == "cleaner_test"
             && item.name == "Updated cleaner"
-            && item.last_bought_at == "2026-07-26"));
+            && item.last_bought_at == "2026-07-26"
+            && item.price_history.iter().any(|price| {
+                price.date == "2026-07-26"
+                    && price.price == 3.5
+                    && price.description == "Keep away from children."
+            })));
 
     let protected = engine.delete_item("tomato_test".to_string()).unwrap_err();
     assert!(protected.contains("Synthetic salad"));

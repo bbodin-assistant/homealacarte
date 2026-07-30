@@ -1,5 +1,6 @@
 use crate::model::{
-    Dataset, Dish, DishComponent, HouseholdItem, Ingredient, MenuRow, Person, SourceFile,
+    Dataset, Dish, DishComponent, HouseholdItem, Ingredient, MenuRow, Person, PriceObservation,
+    SourceFile,
 };
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
@@ -76,6 +77,8 @@ struct IngredientInput {
     price_source: String,
     #[serde(default)]
     price_checked_at: String,
+    #[serde(default)]
+    price_history: Vec<PriceObservation>,
     #[serde(default = "default_grams")]
     measure_unit: String,
     #[serde(default = "one")]
@@ -167,6 +170,8 @@ struct StockInput {
     #[serde(default)]
     quantity: f64,
     quantity_unit: Option<String>,
+    #[serde(default)]
+    notes: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -176,6 +181,8 @@ struct HouseholdItemInput {
     category: String,
     #[serde(default)]
     estimated_price: f64,
+    #[serde(default)]
+    price_history: Vec<PriceObservation>,
     purchase_unit: Option<String>,
     purchase_quantity: Option<f64>,
     measure_unit: Option<String>,
@@ -191,6 +198,8 @@ struct HouseholdQuantityInput {
     item_key: String,
     quantity: f64,
     quantity_unit: Option<String>,
+    #[serde(default)]
+    notes: String,
 }
 
 fn deserialize<T: for<'de> Deserialize<'de>>(path: &str, section: &str, value: Value) -> Result<T, String> {
@@ -244,7 +253,16 @@ pub fn localize_day(value: &str, language: &str) -> Result<String, String> {
 }
 
 pub fn localize_meal(value: &str, language: &str) -> Result<String, String> {
-    localized_value(value.trim(), &MEALS_FR, &MEALS_EN, language)
+    let value = match value.trim() {
+        "Petit déjeuner" => "Petit dejeuner",
+        "Déjeuner" => "Dejeuner",
+        "Encas après-midi 1" => "Encas apres-midi 1",
+        "Encas après-midi 2" => "Encas apres-midi 2",
+        "Dîner" => "Diner",
+        "À tout moment" => "A tout moment",
+        value => value,
+    };
+    localized_value(value, &MEALS_FR, &MEALS_EN, language)
 }
 
 pub fn normalize_menu(
@@ -371,9 +389,6 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         })
         .cloned()
         .collect::<Vec<_>>();
-    if ingredient_values.is_empty() {
-        return Err("dataset contains no food items".to_string());
-    }
     let mut ingredients = Vec::new();
     let mut item_keys = HashSet::new();
     for (path, value) in ingredient_values {
@@ -414,6 +429,12 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             price_per_kg: input.price_per_kg,
             price_source: input.price_source.trim().to_string(),
             price_checked_at: input.price_checked_at.trim().to_string(),
+            price_history: normalize_price_history(
+                input.price_history,
+                &input.price_checked_at,
+                input.price_per_kg,
+                &input.price_source,
+            )?,
             measure_unit: measure_unit.clone(),
             grams_per_measure_unit: input.grams_per_measure_unit,
             purchase_unit: input
@@ -513,6 +534,12 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             purchase_unit: input.purchase_unit.unwrap_or_else(|| "unité".to_string()),
             purchase_quantity,
             estimated_price: input.estimated_price,
+            price_history: normalize_price_history(
+                input.price_history,
+                input.last_bought_at.as_deref().unwrap_or(""),
+                input.estimated_price,
+                input.notes.as_deref().unwrap_or(""),
+            )?,
             measure_unit: input.measure_unit.unwrap_or_else(|| "unit".to_string()),
             last_bought_at: input.last_bought_at.unwrap_or_default(),
             lasting_days: input.lasting_days,
@@ -524,10 +551,12 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         .union(&household_keys)
         .cloned()
         .collect::<HashSet<_>>();
-    let household_needs = household_quantities(&documents, "extra_needs", &all_item_keys)?;
+    let (household_needs, household_need_notes) =
+        household_quantities(&documents, "extra_needs", &all_item_keys)?;
 
     let mut stock = BTreeMap::new();
     let mut stock_units = BTreeMap::new();
+    let mut stock_notes = BTreeMap::new();
     let mut household_stock = BTreeMap::new();
     let stock_values = section_values(&documents, "stock")?;
     for (path, value) in stock_values {
@@ -544,15 +573,16 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
                 unit => return Err(format!("{path}: invalid stock unit: {unit}")),
             };
             stock_units.insert(key.clone(), quantity_unit);
-            *stock.entry(key).or_insert(0.0) += grams;
+            *stock.entry(key.clone()).or_insert(0.0) += grams;
         } else if household_keys.contains(&key) {
             if input.quantity_unit.as_deref().unwrap_or("unit").to_lowercase() != "unit" {
                 return Err(format!("{path}: non-food stock item {key} must use unit"));
             }
-            *household_stock.entry(key).or_insert(0.0) += input.quantity;
+            *household_stock.entry(key.clone()).or_insert(0.0) += input.quantity;
         } else {
             return Err(format!("{path}: stock references unknown item: {key}"));
         }
+        append_note(&mut stock_notes, &key, &input.notes);
     }
     Ok(Dataset {
         ingredients,
@@ -561,8 +591,10 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         menu,
         stock,
         stock_units,
+        stock_notes,
         household_items,
         household_needs,
+        household_need_notes,
         household_stock,
         source_hash,
     })
@@ -580,8 +612,9 @@ fn household_quantities(
     documents: &[Document],
     section: &str,
     valid_keys: &HashSet<String>,
-) -> Result<BTreeMap<String, f64>, String> {
+) -> Result<(BTreeMap<String, f64>, BTreeMap<String, String>), String> {
     let mut totals = BTreeMap::new();
+    let mut notes = BTreeMap::new();
     for (path, value) in section_values(documents, section)? {
         let input: HouseholdQuantityInput = deserialize(&path, section, value)?;
         if !valid_keys.contains(&input.item_key) {
@@ -596,9 +629,67 @@ fn household_quantities(
         if input.quantity_unit.as_deref().unwrap_or("unit").to_lowercase() != "unit" {
             return Err(format!("{path}: {section} quantity_unit must be unit"));
         }
-        *totals.entry(input.item_key).or_insert(0.0) += input.quantity;
+        *totals.entry(input.item_key.clone()).or_insert(0.0) += input.quantity;
+        append_note(&mut notes, &input.item_key, &input.notes);
     }
-    Ok(totals)
+    Ok((totals, notes))
+}
+
+fn append_note(notes: &mut BTreeMap<String, String>, key: &str, note: &str) {
+    let note = note.trim();
+    if note.is_empty() {
+        return;
+    }
+    let current = notes.entry(key.to_string()).or_default();
+    if current.is_empty() {
+        current.push_str(note);
+    } else if !current.lines().any(|line| line == note) {
+        current.push('\n');
+        current.push_str(note);
+    }
+}
+
+fn normalize_price_history(
+    mut history: Vec<PriceObservation>,
+    current_date: &str,
+    current_price: f64,
+    current_description: &str,
+) -> Result<Vec<PriceObservation>, String> {
+    if !current_price.is_finite() || current_price < 0.0 {
+        return Err("price history contains an invalid current price".to_string());
+    }
+    let current_description = if current_description.trim().is_empty() {
+        "Imported current price"
+    } else {
+        current_description.trim()
+    };
+    if !history.iter().any(|entry| {
+            entry.date.trim() == current_date.trim()
+                && entry.price == current_price
+                && entry.description.trim() == current_description
+        })
+    {
+        history.push(PriceObservation {
+            date: current_date.trim().to_string(),
+            price: current_price,
+            description: current_description.to_string(),
+        });
+    }
+    for entry in &mut history {
+        if !entry.price.is_finite() || entry.price < 0.0 {
+            return Err("price history contains a negative or non-finite price".to_string());
+        }
+        entry.date = entry.date.trim().to_string();
+        entry.description = entry.description.trim().to_string();
+    }
+    history.sort_by(|left, right| {
+        left.date
+            .cmp(&right.date)
+            .then_with(|| left.price.total_cmp(&right.price))
+            .then(left.description.cmp(&right.description))
+    });
+    history.dedup();
+    Ok(history)
 }
 
 fn flatten_dishes(

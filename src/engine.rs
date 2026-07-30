@@ -8,6 +8,54 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 
 const EPSILON: f64 = 1e-6;
 
+fn quantity_row(key: &str, quantity: f64, quantity_unit: &str, note: Option<&String>) -> Value {
+    let mut row = json!({
+        "item_key": key,
+        "quantity": quantity,
+        "quantity_unit": quantity_unit,
+    });
+    if let Some(note) = note.filter(|value| !value.trim().is_empty()) {
+        row["notes"] = Value::String(note.clone());
+    }
+    row
+}
+
+fn preserve_price_history(
+    history: &mut Vec<PriceObservation>,
+    previous: &[PriceObservation],
+    date: &str,
+    price: f64,
+    description: &str,
+) {
+    if history.is_empty() {
+        history.extend_from_slice(previous);
+    }
+    let description = if description.trim().is_empty() {
+        "Updated current price"
+    } else {
+        description.trim()
+    };
+    if !history.iter().any(|entry| {
+            entry.date.trim() == date.trim()
+                && entry.price == price
+                && entry.description.trim() == description
+        })
+    {
+        history.push(PriceObservation {
+            date: date.trim().to_string(),
+            price,
+            description: description.to_string(),
+        });
+    }
+    history.sort_by(|left, right| {
+        left.date
+            .cmp(&right.date)
+            .then_with(|| left.price.total_cmp(&right.price))
+            .then(left.description.cmp(&right.description))
+    });
+    history.dedup();
+}
+
 pub struct Engine {
     pub dataset: Option<Dataset>,
     pub language: String,
@@ -132,6 +180,8 @@ impl Engine {
         let mut stock = BTreeMap::new();
         let mut stock_units = BTreeMap::new();
         let mut household_stock = BTreeMap::new();
+        let previous_notes = dataset.stock_notes.clone();
+        let mut stock_notes = BTreeMap::new();
         for (index, input) in inputs.into_iter().enumerate() {
             let key = input.item_key.trim();
             if input.household {
@@ -156,6 +206,9 @@ impl Engine {
                 }
                 if input.quantity > EPSILON {
                     *household_stock.entry(key.to_string()).or_insert(0.0) += input.quantity;
+                    if let Some(note) = previous_notes.get(key) {
+                        stock_notes.insert(key.to_string(), note.clone());
+                    }
                 }
                 continue;
             }
@@ -174,10 +227,14 @@ impl Engine {
             if grams > EPSILON {
                 stock_units.insert(key.to_string(), quantity_unit);
                 *stock.entry(key.to_string()).or_insert(0.0) += grams;
+                if let Some(note) = previous_notes.get(key) {
+                    stock_notes.insert(key.to_string(), note.clone());
+                }
             }
         }
         dataset.stock = stock;
         dataset.stock_units = stock_units;
+        dataset.stock_notes = stock_notes;
         dataset.household_stock = household_stock;
         self.snapshot()
     }
@@ -207,6 +264,7 @@ impl Engine {
                     *quantity = quantity.max(needed);
                 } else {
                     dataset.household_stock.remove(key);
+                    dataset.stock_notes.remove(key);
                 }
                 continue;
             }
@@ -231,6 +289,7 @@ impl Engine {
                 } else {
                     dataset.stock.remove(&key);
                     dataset.stock_units.remove(&key);
+                    dataset.stock_notes.remove(&key);
                 }
             }
         }
@@ -244,6 +303,8 @@ impl Engine {
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
         let mut keys = HashSet::new();
         let mut needs = BTreeMap::new();
+        let previous_notes = dataset.household_need_notes.clone();
+        let mut need_notes = BTreeMap::new();
         let existing = dataset
             .household_items
             .iter()
@@ -279,6 +340,9 @@ impl Engine {
             }
 
             if item_keys.contains(key.as_str()) {
+                if let Some(note) = previous_notes.get(&key) {
+                    need_notes.insert(key.clone(), note.clone());
+                }
                 needs.insert(key, input.quantity);
                 continue;
             }
@@ -286,27 +350,41 @@ impl Engine {
             let previous = existing
                 .get(&key)
                 .and_then(|item_index| dataset.household_items.get(*item_index));
-            let item = HouseholdItem {
+            let mut item = HouseholdItem {
                 key: key.clone(),
                 name: input.name.trim().to_string(),
                 category: input.category.trim().to_string(),
                 purchase_unit: input.purchase_unit.trim().to_string(),
                 purchase_quantity: input.purchase_quantity,
                 estimated_price: input.estimated_price,
+                price_history: previous
+                    .map(|item| item.price_history.clone())
+                    .unwrap_or_default(),
                 measure_unit: input.measure_unit.trim().to_string(),
                 last_bought_at: previous.map(|item| item.last_bought_at.clone()).unwrap_or_default(),
                 lasting_days: previous.and_then(|item| item.lasting_days),
                 notes: previous.map(|item| item.notes.clone()).unwrap_or_default(),
                 custom: input.custom || previous.is_some_and(|item| item.custom),
             };
+            preserve_price_history(
+                &mut item.price_history,
+                &[],
+                &item.last_bought_at,
+                item.estimated_price,
+                &item.notes,
+            );
             if let Some(item_index) = existing.get(&key) {
                 dataset.household_items[*item_index] = item;
             } else {
                 dataset.household_items.push(item);
             }
+            if let Some(note) = previous_notes.get(&key) {
+                need_notes.insert(key.clone(), note.clone());
+            }
             needs.insert(key, input.quantity);
         }
         dataset.household_needs = needs;
+        dataset.household_need_notes = need_notes;
         self.snapshot()
     }
 
@@ -337,7 +415,14 @@ impl Engine {
         replacing: bool,
     ) -> Result<AppSnapshot, String> {
         let mut next = self.dataset.as_ref().ok_or("no dataset loaded")?.clone();
-        for ingredient in custom_ingredients {
+        for mut ingredient in custom_ingredients {
+            preserve_price_history(
+                &mut ingredient.price_history,
+                &[],
+                &ingredient.price_checked_at,
+                ingredient.price_per_kg,
+                &ingredient.price_source,
+            );
             validate_ingredient(&ingredient)?;
             if next
                 .ingredients
@@ -372,6 +457,13 @@ impl Engine {
             .iter()
             .position(|ingredient| ingredient.key == input.key)
             .ok_or_else(|| format!("unknown ingredient: {}", input.key))?;
+        preserve_price_history(
+            &mut input.price_history,
+            &dataset.ingredients[index].price_history,
+            &input.price_checked_at,
+            input.price_per_kg,
+            &input.price_source,
+        );
         input.custom = input.custom || dataset.ingredients[index].custom;
         for dish in &mut dataset.dishes {
             for component in &mut dish.components {
@@ -386,6 +478,26 @@ impl Engine {
         self.snapshot()
     }
 
+    pub fn add_ingredient(&mut self, mut input: Ingredient) -> Result<AppSnapshot, String> {
+        preserve_price_history(
+            &mut input.price_history,
+            &[],
+            &input.price_checked_at,
+            input.price_per_kg,
+            &input.price_source,
+        );
+        validate_ingredient(&input)?;
+        let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
+        if dataset.ingredients.iter().any(|item| item.key == input.key)
+            || dataset.household_items.iter().any(|item| item.key == input.key)
+            || dataset.dishes.iter().any(|item| item.key == input.key)
+        {
+            return Err(format!("item key already exists: {}", input.key));
+        }
+        dataset.ingredients.push(input);
+        self.snapshot()
+    }
+
     pub fn replace_household_item(
         &mut self,
         mut input: HouseholdItem,
@@ -397,8 +509,38 @@ impl Engine {
             .iter()
             .position(|item| item.key == input.key)
             .ok_or_else(|| format!("unknown general item: {}", input.key))?;
+        preserve_price_history(
+            &mut input.price_history,
+            &dataset.household_items[index].price_history,
+            &input.last_bought_at,
+            input.estimated_price,
+            &input.notes,
+        );
         input.custom = input.custom || dataset.household_items[index].custom;
         dataset.household_items[index] = input;
+        self.snapshot()
+    }
+
+    pub fn add_household_item(
+        &mut self,
+        mut input: HouseholdItem,
+    ) -> Result<AppSnapshot, String> {
+        preserve_price_history(
+            &mut input.price_history,
+            &[],
+            &input.last_bought_at,
+            input.estimated_price,
+            &input.notes,
+        );
+        validate_household_item(&input)?;
+        let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
+        if dataset.ingredients.iter().any(|item| item.key == input.key)
+            || dataset.household_items.iter().any(|item| item.key == input.key)
+            || dataset.dishes.iter().any(|item| item.key == input.key)
+        {
+            return Err(format!("item key already exists: {}", input.key));
+        }
+        dataset.household_items.push(input);
         self.snapshot()
     }
 
@@ -426,7 +568,9 @@ impl Engine {
             dataset.menu.retain(|row| row.item_key != key);
             dataset.stock.remove(&key);
             dataset.stock_units.remove(&key);
+            dataset.stock_notes.remove(&key);
             dataset.household_needs.remove(&key);
+            dataset.household_need_notes.remove(&key);
             return self.snapshot();
         }
         if let Some(item_index) = dataset
@@ -436,7 +580,9 @@ impl Engine {
         {
             dataset.household_items.remove(item_index);
             dataset.household_needs.remove(&key);
+            dataset.household_need_notes.remove(&key);
             dataset.household_stock.remove(&key);
+            dataset.stock_notes.remove(&key);
             return self.snapshot();
         }
         Err(format!("unknown item: {key}"))
@@ -491,17 +637,27 @@ impl Engine {
                     } else {
                         *quantity
                     };
-                    json!({"item_key": key, "quantity": display_quantity, "quantity_unit": if uses_unit { "unit" } else { "g" }})
+                    quantity_row(
+                        key,
+                        display_quantity,
+                        if uses_unit { "unit" } else { "g" },
+                        dataset.stock_notes.get(key),
+                    )
                 })
                 .collect();
             stock.extend(dataset.household_stock.iter().map(|(key, quantity)| {
-                json!({"item_key": key, "quantity": quantity, "quantity_unit": "unit"})
+                quantity_row(key, *quantity, "unit", dataset.stock_notes.get(key))
             }));
             let extra_needs: Vec<Value> = dataset
                 .household_needs
                 .iter()
                 .map(|(key, quantity)| {
-                    json!({"item_key": key, "quantity": quantity, "quantity_unit": "unit"})
+                    quantity_row(
+                        key,
+                        *quantity,
+                        "unit",
+                        dataset.household_need_notes.get(key),
+                    )
                 })
                 .collect();
             let mut items = dataset
@@ -544,17 +700,27 @@ impl Engine {
                 } else {
                     *quantity
                 };
-                json!({"item_key": key, "quantity": display_quantity, "quantity_unit": if uses_unit { "unit" } else { "g" }})
+                quantity_row(
+                    key,
+                    display_quantity,
+                    if uses_unit { "unit" } else { "g" },
+                    dataset.stock_notes.get(key),
+                )
             })
             .collect::<Vec<_>>();
         stock.extend(dataset.household_stock.iter().map(|(key, quantity)| {
-            json!({"item_key": key, "quantity": quantity, "quantity_unit": "unit"})
+            quantity_row(key, *quantity, "unit", dataset.stock_notes.get(key))
         }));
         let extra_needs = dataset
             .household_needs
             .iter()
             .map(|(key, quantity)| {
-                json!({"item_key": key, "quantity": quantity, "quantity_unit": "unit"})
+                quantity_row(
+                    key,
+                    *quantity,
+                    "unit",
+                    dataset.household_need_notes.get(key),
+                )
             })
             .collect::<Vec<_>>();
         let mut items = dataset
@@ -739,6 +905,13 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
     {
         return Err("the fruit, vegetable and legume percentage cannot exceed 100".to_string());
     }
+    if ingredient
+        .price_history
+        .iter()
+        .any(|entry| !entry.price.is_finite() || entry.price < 0.0)
+    {
+        return Err("the ingredient price history contains an invalid price".to_string());
+    }
     Ok(())
 }
 
@@ -756,6 +929,13 @@ fn validate_household_item(item: &HouseholdItem) -> Result<(), String> {
     }
     if !item.estimated_price.is_finite() || item.estimated_price < 0.0 {
         return Err("the item price cannot be negative".to_string());
+    }
+    if item
+        .price_history
+        .iter()
+        .any(|entry| !entry.price.is_finite() || entry.price < 0.0)
+    {
+        return Err("the item price history contains an invalid price".to_string());
     }
     if item
         .lasting_days

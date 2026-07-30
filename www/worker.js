@@ -1,11 +1,11 @@
-import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-30";
+import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-51";
 
 let engine;
 let readyPromise;
 
 async function ensureEngine() {
   if (!readyPromise) {
-    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-30", self.location.href);
+    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-51", self.location.href);
     readyPromise = init({ module_or_path: wasmUrl }).then(() => {
       engine = new HomeALaCarteEngine();
     });
@@ -95,8 +95,14 @@ self.onmessage = async ({ data }) => {
     } else if (type === "replace-ingredient") {
       snapshot = engine.replace_ingredient(data.ingredient);
       respond(requestId, "result", currentState(snapshot));
+    } else if (type === "add-ingredient") {
+      snapshot = engine.add_ingredient(data.ingredient);
+      respond(requestId, "result", currentState(snapshot));
     } else if (type === "replace-household-item") {
       snapshot = engine.replace_household_item(data.item);
+      respond(requestId, "result", currentState(snapshot));
+    } else if (type === "add-household-item") {
+      snapshot = engine.add_household_item(data.item);
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "delete-item") {
       snapshot = engine.delete_item(data.key);

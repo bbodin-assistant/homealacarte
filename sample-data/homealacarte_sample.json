@@ -2,21 +2,21 @@
   "items": [
     {
       "key": "sample_tomato",
-      "name": "Tomato",
+      "name": "Tomato, raw (generic)",
       "grams": 100,
-      "kcal": 18,
-      "protein_g": 0.9,
-      "carbs_g": 3.9,
-      "fat_g": 0.2,
-      "fiber_g": 1.2,
-      "sugars_g": "MISSINGVALUE",
-      "saturated_fat_g": "MISSINGVALUE",
-      "salt_g": "MISSINGVALUE",
-      "fruit_vegetable_legume_percent": "MISSINGVALUE",
+      "kcal": 19.2,
+      "protein_g": 0.6,
+      "carbs_g": 3.69,
+      "fat_g": 0.5,
+      "fiber_g": 1.02,
+      "sugars_g": 3.22,
+      "saturated_fat_g": 0.01,
+      "salt_g": 0.01,
+      "fruit_vegetable_legume_percent": 100,
       "category": "Produce::Vegetables",
-      "source": "Synthetic sample data",
-      "url": "",
-      "price_per_kg": 2.5,
+      "source": "Anses Ciqual 2025, food code 20385; price estimate from Carrefour France checked 2026-07-30",
+      "url": "https://ciqual.anses.fr/#/aliments/20385/tomate-sans-precision-crue-(aliment-moyen)",
+      "price_per_kg": 1.99,
       "measure_unit": "piece",
       "grams_per_measure_unit": 120,
       "purchase_unit": "500 g pack",
@@ -24,21 +24,21 @@
     },
     {
       "key": "sample_bread",
-      "name": "Wholemeal bread",
+      "name": "Wholemeal bread (T150 flour)",
       "grams": 100,
-      "kcal": 247,
-      "protein_g": 13,
-      "carbs_g": 41,
-      "fat_g": 3.4,
-      "fiber_g": 7,
-      "sugars_g": "MISSINGVALUE",
-      "saturated_fat_g": "MISSINGVALUE",
-      "salt_g": "MISSINGVALUE",
-      "fruit_vegetable_legume_percent": "MISSINGVALUE",
+      "kcal": 234,
+      "protein_g": 8.66,
+      "carbs_g": 41.2,
+      "fat_g": 1.7,
+      "fiber_g": 7.3,
+      "sugars_g": 2.41,
+      "saturated_fat_g": 0.56,
+      "salt_g": 1.17,
+      "fruit_vegetable_legume_percent": 0,
       "category": "Bakery::Bread",
-      "source": "Synthetic sample data",
-      "url": "",
-      "price_per_kg": 4,
+      "source": "Anses Ciqual 2025, food code 7110; price estimate from Carrefour France checked 2026-07-30",
+      "url": "https://ciqual.anses.fr/#/aliments/7110/pain-complet-ou-integral-(a-la-farine-t150)",
+      "price_per_kg": 2.98,
       "measure_unit": "slice",
       "grams_per_measure_unit": 30,
       "purchase_unit": "500 g loaf",
@@ -46,21 +46,21 @@
     },
     {
       "key": "sample_cheese",
-      "name": "Grated cheese",
+      "name": "Grated Emmental",
       "grams": 100,
-      "kcal": 380,
-      "protein_g": 28,
-      "carbs_g": 1,
-      "fat_g": 30,
-      "fiber_g": 0,
-      "sugars_g": "MISSINGVALUE",
-      "saturated_fat_g": "MISSINGVALUE",
-      "salt_g": "MISSINGVALUE",
-      "fruit_vegetable_legume_percent": "MISSINGVALUE",
+      "kcal": 368,
+      "protein_g": 27.6,
+      "carbs_g": 0.58,
+      "fat_g": 28.2,
+      "fiber_g": 0.04,
+      "sugars_g": 0,
+      "saturated_fat_g": 18.1,
+      "salt_g": 0.68,
+      "fruit_vegetable_legume_percent": 0,
       "category": "Dairy::Cheese",
-      "source": "Synthetic sample data",
-      "url": "",
-      "price_per_kg": 12,
+      "source": "Anses Ciqual 2025, food code 12118; price estimate from Carrefour France checked 2026-07-30",
+      "url": "https://ciqual.anses.fr/#/aliments/12118/emmental-ou-emmenthal-rape",
+      "price_per_kg": 7.75,
       "measure_unit": "g",
       "grams_per_measure_unit": 1,
       "purchase_unit": "200 g bag",
@@ -70,22 +70,25 @@
       "key": "sample_hand_soap",
       "name": "Liquid hand soap",
       "category": "Household::Hygiene",
-      "estimated_price": 2.5,
+      "estimated_price": 1.05,
       "purchase_unit": "300 ml bottle",
       "purchase_quantity": 1,
       "measure_unit": "bottle",
-      "notes": "Synthetic sample item"
+      "notes": "Current French retail estimate based on a Carrefour own-brand 300 ml liquid hand soap, checked 2026-07-30; price varies by store and fulfilment method."
     }
   ],
   "dishes": [
     {
       "key": "sample_tomato_toast",
-      "name": "Tomato and cheese toast",
+      "name": "Tomato and Emmental toast",
       "servings": 2,
-      "recipe_url": "https://example.com/sample-recipe",
-      "source": "Synthetic sample recipe",
+      "recipe_url": "",
+      "source": "Internal sample recipe; nutrition calculated from Anses Ciqual 2025 ingredient values",
       "source_notes": [
-        "Toast the bread, add sliced tomato and cheese, then grill briefly."
+        "Toast the bread, add sliced tomato and grated Emmental, then grill briefly.",
+        "Calculated recipe weight: 440 g total, or approximately 220 g per serving.",
+        "Approximate nutrition per serving: 311 kcal, 17.0 g protein, 29.4 g carbohydrates, 12.9 g fat, 5.6 g fibre, 5.3 g sugars, 7.6 g saturated fat and 0.99 g salt.",
+        "Nutri-Score B calculated with the updated solid-food algorithm in force in France since 16 March 2025."
       ],
       "nutri_score": "B",
       "components": [
@@ -93,18 +96,18 @@
           "item_key": "sample_bread",
           "quantity": 4,
           "quantity_unit": "slice",
-          "source_quantity": "4 slices"
+          "source_quantity": "4 slices (120 g)"
         },
         {
           "item_key": "sample_tomato",
           "quantity": 2,
           "quantity_unit": "piece",
-          "source_quantity": "2 tomatoes"
+          "source_quantity": "2 medium tomatoes (240 g)"
         },
         {
           "item_key": "sample_cheese",
           "grams": 80,
-          "source_quantity": "80 g grated cheese"
+          "source_quantity": "80 g grated Emmental"
         }
       ]
     }
@@ -115,20 +118,20 @@
       "name": "Alex",
       "kind": "adult",
       "kcal_target": 2100,
-      "description": "Synthetic adult profile for the public demo."
+      "description": "Illustrative adult profile for the public demo; the energy target is not individualized."
     },
     {
       "key": "sample_sam",
       "name": "Sam",
       "kind": "child",
       "kcal_target": 1700,
-      "description": "Synthetic child profile for the public demo."
+      "description": "Illustrative child profile for the public demo; an accurate energy target requires age, sex, body size and activity level."
     }
   ],
   "menu": [
     {
       "day": "Lundi",
-      "meal": "Dejeuner",
+      "meal": "Déjeuner",
       "item_key": "sample_tomato_toast",
       "people": [
         "sample_alex",
