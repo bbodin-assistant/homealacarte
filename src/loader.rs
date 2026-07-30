@@ -1,7 +1,7 @@
 use crate::model::{
     Dataset, Dish, DishComponent, HouseholdItem, Ingredient, MenuRow, Person, SourceFile,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -60,6 +60,14 @@ struct IngredientInput {
     carbs_g: f64,
     fat_g: f64,
     fiber_g: f64,
+    #[serde(default, deserialize_with = "missing_value")]
+    sugars_g: Option<f64>,
+    #[serde(default, deserialize_with = "missing_value")]
+    saturated_fat_g: Option<f64>,
+    #[serde(default, deserialize_with = "missing_value")]
+    salt_g: Option<f64>,
+    #[serde(default, deserialize_with = "missing_value")]
+    fruit_vegetable_legume_percent: Option<f64>,
     category: String,
     source: String,
     url: String,
@@ -74,6 +82,23 @@ struct IngredientInput {
     grams_per_measure_unit: f64,
     purchase_unit: Option<String>,
     purchase_quantity_grams: Option<f64>,
+}
+
+fn missing_value<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match Value::deserialize(deserializer)? {
+        Value::Null => Ok(None),
+        Value::Number(value) => value
+            .as_f64()
+            .map(Some)
+            .ok_or_else(|| serde::de::Error::custom("invalid numeric value")),
+        Value::String(value) if value == "MISSINGVALUE" => Ok(None),
+        _ => Err(serde::de::Error::custom(
+            "expected a number, null, or \"MISSINGVALUE\"",
+        )),
+    }
 }
 
 fn default_grams() -> String {
@@ -379,6 +404,10 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             carbs_g: input.carbs_g,
             fat_g: input.fat_g,
             fiber_g: input.fiber_g,
+            sugars_g: input.sugars_g,
+            saturated_fat_g: input.saturated_fat_g,
+            salt_g: input.salt_g,
+            fruit_vegetable_legume_percent: input.fruit_vegetable_legume_percent,
             category: input.category.trim().to_string(),
             source: input.source.trim().to_string(),
             url: input.url.trim().to_string(),

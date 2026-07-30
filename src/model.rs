@@ -31,6 +31,14 @@ pub struct Ingredient {
     pub carbs_g: f64,
     pub fat_g: f64,
     pub fiber_g: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sugars_g: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub saturated_fat_g: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub salt_g: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fruit_vegetable_legume_percent: Option<f64>,
     pub category: String,
     pub source: String,
     pub url: String,
@@ -255,6 +263,11 @@ pub struct DishView {
     pub source: String,
     pub source_notes: Vec<String>,
     pub nutri_score: String,
+    pub nutri_score_manual: String,
+    pub nutri_score_computed: bool,
+    pub nutri_score_value: Option<i32>,
+    pub nutri_score_missing_values: usize,
+    pub nutri_score_missing_ingredients: usize,
     pub per_serving: Nutrients,
     pub components: Vec<DishComponentView>,
 }

@@ -43,6 +43,10 @@ fn public_sample_data_uses_the_current_schema() {
         .find(|ingredient| ingredient.key == "sample_tomato")
         .expect("synthetic sample ingredient");
     assert_eq!(sample_item.source, "Synthetic sample data");
+    assert_eq!(sample_item.sugars_g, None);
+    assert_eq!(sample_item.saturated_fat_g, None);
+    assert_eq!(sample_item.salt_g, None);
+    assert_eq!(sample_item.fruit_vegetable_legume_percent, None);
     assert!(dataset.people.iter().all(|person| person.key.starts_with("sample_")));
 }
 

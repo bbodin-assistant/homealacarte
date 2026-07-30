@@ -445,6 +445,10 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
         carbs_g: 0.0,
         fat_g: 0.0,
         fiber_g: 0.0,
+        sugars_g: None,
+        saturated_fat_g: None,
+        salt_g: None,
+        fruit_vegetable_legume_percent: None,
         category: String::new(),
         source: String::new(),
         url: String::new(),
@@ -481,6 +485,14 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
         .ingredients
         .iter()
         .any(|ingredient| ingredient.key == "item_test_leaf" && ingredient.incomplete));
+    let incomplete_dish = snapshot
+        .dishes
+        .iter()
+        .find(|dish| dish.key == "dish_test_leaf")
+        .unwrap();
+    assert!(!incomplete_dish.nutri_score_computed);
+    assert_eq!(incomplete_dish.nutri_score_missing_values, 4);
+    assert_eq!(incomplete_dish.nutri_score_missing_ingredients, 1);
 
     let completed = engine
         .replace_ingredient(Ingredient {
@@ -494,6 +506,10 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
             carbs_g: 3.0,
             fat_g: 0.5,
             fiber_g: 2.0,
+            sugars_g: Some(0.5),
+            saturated_fat_g: Some(0.1),
+            salt_g: Some(0.02),
+            fruit_vegetable_legume_percent: Some(100.0),
             category: "Produce::Leaves".to_string(),
             source: "Test source".to_string(),
             url: "https://example.com/leaf".to_string(),
@@ -512,6 +528,10 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
         .find(|dish| dish.key == "dish_test_leaf")
         .unwrap();
     assert!((dish.components[0].grams - 24.0).abs() < 0.005);
+    assert_eq!(dish.nutri_score, "A");
+    assert!(dish.nutri_score_computed);
+    assert_eq!(dish.nutri_score_value, Some(-5));
+    assert_eq!(dish.nutri_score_missing_values, 0);
     assert!(!completed
         .ingredients
         .iter()
@@ -534,6 +554,10 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
         .any(|ingredient| ingredient.key == "item_test_leaf"
             && ingredient.custom
             && !ingredient.incomplete
+            && ingredient.sugars_g == Some(0.5)
+            && ingredient.saturated_fat_g == Some(0.1)
+            && ingredient.salt_g == Some(0.02)
+            && ingredient.fruit_vegetable_legume_percent == Some(100.0)
             && ingredient.price_source == "Test shop receipt, 1.20 EUR"
             && ingredient.price_checked_at == "2026-07-26"));
 }

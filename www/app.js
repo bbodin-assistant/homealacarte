@@ -13,8 +13,8 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-29";
-import { t, translations } from "./translations.js?v=homealacarte-29";
+} from "./storage.js?v=homealacarte-30";
+import { t, translations } from "./translations.js?v=homealacarte-30";
 
 const STORAGE_PREFIX = "homealacarte-";
 const DATA_SCHEMA_VERSION = 6;
@@ -51,7 +51,7 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-29", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-30", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -136,6 +136,33 @@ const translatedTemplate = (key, values = {}) => Object.entries(values).reduce(
   (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
   t(state.language, key),
 );
+const optionalInputNumber = (selector) => {
+  const value = $(selector).value;
+  return value === "" ? null : Number(value);
+};
+const NUTRI_SCORE_FIELDS = [
+  "sugars_g",
+  "saturated_fat_g",
+  "salt_g",
+  "fruit_vegetable_legume_percent",
+];
+const ingredientNutriScoreMissing = (ingredient) =>
+  NUTRI_SCORE_FIELDS.filter((field) => ingredient[field] == null).length;
+
+function dishNutriScoreDetail(dish) {
+  if (dish.nutri_score_computed) {
+    return translatedTemplate("nutri_score_computed_detail", {
+      value: dish.nutri_score_value,
+    });
+  }
+  return translatedTemplate(
+    dish.nutri_score ? "nutri_score_manual_detail" : "nutri_score_unavailable_detail",
+    {
+      values: dish.nutri_score_missing_values,
+      ingredients: dish.nutri_score_missing_ingredients,
+    },
+  );
+}
 
 const COLOR_THEMES = [
   {
@@ -616,6 +643,10 @@ function ingredientFormPayload() {
     carbs_g: Number($("#ingredient-carbs").value),
     fat_g: Number($("#ingredient-fat").value),
     fiber_g: Number($("#ingredient-fiber").value),
+    sugars_g: optionalInputNumber("#ingredient-sugars"),
+    saturated_fat_g: optionalInputNumber("#ingredient-saturated-fat"),
+    salt_g: optionalInputNumber("#ingredient-salt"),
+    fruit_vegetable_legume_percent: optionalInputNumber("#ingredient-fvl-percent"),
     category: normalizedCategory($("#ingredient-category").value.trim()),
     source: $("#ingredient-source").value.trim(),
     url: $("#ingredient-url").value.trim(),
@@ -651,7 +682,16 @@ function ingredientFormIsValid(ingredient) {
       ingredient.fat_g,
       ingredient.fiber_g,
       ingredient.price_per_kg,
-    ].every((value) => Number.isFinite(value) && value >= 0);
+    ].every((value) => Number.isFinite(value) && value >= 0)
+    && [
+      ingredient.sugars_g,
+      ingredient.saturated_fat_g,
+      ingredient.salt_g,
+    ].every((value) => value == null || (Number.isFinite(value) && value >= 0))
+    && (ingredient.fruit_vegetable_legume_percent == null
+      || (Number.isFinite(ingredient.fruit_vegetable_legume_percent)
+        && ingredient.fruit_vegetable_legume_percent >= 0
+        && ingredient.fruit_vegetable_legume_percent <= 100));
 }
 
 function updateIngredientSaveState() {
@@ -685,6 +725,12 @@ function populateIngredientForm(key) {
   $("#ingredient-carbs").value = formatInputNumber(ingredient.carbs_g);
   $("#ingredient-fat").value = formatInputNumber(ingredient.fat_g);
   $("#ingredient-fiber").value = formatInputNumber(ingredient.fiber_g);
+  $("#ingredient-sugars").value = ingredient.sugars_g == null ? "" : formatInputNumber(ingredient.sugars_g);
+  $("#ingredient-saturated-fat").value = ingredient.saturated_fat_g == null ? "" : formatInputNumber(ingredient.saturated_fat_g);
+  $("#ingredient-salt").value = ingredient.salt_g == null ? "" : formatInputNumber(ingredient.salt_g);
+  $("#ingredient-fvl-percent").value = ingredient.fruit_vegetable_legume_percent == null
+    ? ""
+    : formatInputNumber(ingredient.fruit_vegetable_legume_percent);
   $("#ingredient-price").value = formatInputNumber(ingredient.price_per_kg);
   $("#ingredient-price-source").value = ingredient.price_source || "";
   $("#ingredient-price-checked-at").value = ingredient.price_checked_at || "";
@@ -807,7 +853,12 @@ function renderItemsCatalogue() {
     </div>
     ${rows.map((item) => `
       <div class="item-catalogue-row">
-        <strong>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</strong>
+        <strong class="item-catalogue-name">
+          <span>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>
+          ${item.item_kind === "food" && ingredientNutriScoreMissing(item)
+            ? `<small>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: ingredientNutriScoreMissing(item) }))}</small>`
+            : ""}
+        </strong>
         <span class="item-type-badge">${escapeHtml(t(state.language, item.item_kind === "food" ? "food_item" : "general_item"))}</span>
         <span>${escapeHtml(displayCategory(item.category))}</span>
         <span class="item-catalogue-actions">
@@ -1158,7 +1209,10 @@ function openDishForm(dish = null) {
   $("#new-dish-servings").value = formatInputNumber(dish?.servings || 4);
   $("#new-dish-url").value = dish?.recipe_url || "";
   $("#new-dish-source").value = dish?.source || "";
-  $("#new-dish-nutri-score").value = dish?.nutri_score || "";
+  $("#new-dish-nutri-score").value = dish?.nutri_score_manual || "";
+  $("#new-dish-nutri-status").textContent = dish
+    ? dishNutriScoreDetail(dish)
+    : t(state.language, "nutri_score_field_help");
   $("#new-dish-notes").value = (dish?.source_notes || []).join("\n");
   $("#new-dish-error").textContent = "";
   $("#new-dish-component-list").innerHTML = "";
@@ -1414,6 +1468,7 @@ function openDishDetails(dishKey, menuIndex) {
     $("#dish-details-metrics").innerHTML = metrics.map(([value, label]) => `
       <div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>
     `).join("");
+    $("#dish-details-nutri-status").textContent = dishNutriScoreDetail(dish);
     $("#dish-details-ingredients").innerHTML = dish.components.map((component) => `
       <li>
         <span>
@@ -1424,6 +1479,7 @@ function openDishDetails(dishKey, menuIndex) {
       </li>
     `).join("");
   }
+  $("#dish-details-nutri-status").hidden = !dish;
 
   const sourceSection = $("#dish-details-source-section");
   const sourceNotes = dish?.source_notes || [];
@@ -1783,7 +1839,28 @@ function updateGroceryProgress() {
   $("#grocery-count").hidden = total === checked;
 }
 
+function renderNutriScoreAudit() {
+  const ingredients = state.snapshot.ingredients || [];
+  const dishes = state.snapshot.dishes || [];
+  const readyIngredients = ingredients
+    .filter((ingredient) => ingredientNutriScoreMissing(ingredient) === 0).length;
+  const readyDishes = dishes.filter((dish) => dish.nutri_score_computed).length;
+  const missingValues = ingredients
+    .reduce((total, ingredient) => total + ingredientNutriScoreMissing(ingredient), 0);
+  $("#nutri-score-audit").innerHTML = `
+    <strong>${escapeHtml(t(state.language, "nutri_score_audit_title"))}</strong>
+    <span>${escapeHtml(translatedTemplate("nutri_score_audit_summary", {
+      readyIngredients,
+      totalIngredients: ingredients.length,
+      readyDishes,
+      totalDishes: dishes.length,
+      missingValues,
+    }))}</span>
+  `;
+}
+
 function renderDishes() {
+  renderNutriScoreAudit();
   const search = $("#dish-search").value.toLowerCase().trim();
   const minimumCost = Number($("#dish-cost-min").value);
   const maximumCost = Number($("#dish-cost-max").value);
@@ -1810,7 +1887,9 @@ function renderDishes() {
         <div class="dish-title"><h2>${escapeHtml(dish.name)}</h2></div>
         <div class="dish-metrics">
           <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
-          ${dish.nutri_score ? `<div class="nutri-score metric-${escapeHtml(dish.nutri_score.toLowerCase())}"><strong>${escapeHtml(dish.nutri_score)}</strong><span>Nutri-Score</span></div>` : ""}
+          ${dish.nutri_score
+            ? `<div class="nutri-score metric-${escapeHtml(dish.nutri_score.toLowerCase())}" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>${escapeHtml(dish.nutri_score)}</strong><span>Nutri-Score${dish.nutri_score_computed ? " · auto" : ""}</span></div>`
+            : `<div class="nutri-score-missing" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>—</strong><span>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: dish.nutri_score_missing_values }))}</span></div>`}
           <div><strong>${formatMoney(dish.per_serving.cost)}</strong><span>${escapeHtml(t(state.language, "cost"))} · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
         </div>
       </button>
@@ -2228,6 +2307,10 @@ $("#new-dish-form").addEventListener("submit", (event) => {
         carbs_g: 0,
         fat_g: 0,
         fiber_g: 0,
+        sugars_g: null,
+        saturated_fat_g: null,
+        salt_g: null,
+        fruit_vegetable_legume_percent: null,
         category: "",
         source: "",
         url: "",

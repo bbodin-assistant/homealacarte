@@ -6,7 +6,7 @@
     <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
     <title>Home à la Carte</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./style.css?v=homealacarte-29">
+    <link rel="stylesheet" href="./style.css?v=homealacarte-30">
   </head>
   <body>
     <header class="topbar">
@@ -270,6 +270,7 @@
             </fieldset>
             <button id="dish-clear-filters" class="button ghost" type="button" data-i18n="clear_filters">Effacer</button>
           </div>
+          <div id="nutri-score-audit" class="nutri-score-audit panel"></div>
           <div id="dish-grid" class="dish-grid"></div>
         </section>
 
@@ -343,7 +344,24 @@
                   <span data-i18n="fiber_grams">Fibres (g)</span>
                   <input id="ingredient-fiber" type="number" min="0" step="0.01" required>
                 </label>
+                <label class="dialog-field">
+                  <span data-i18n="sugars_grams">Sucres (g)</span>
+                  <input id="ingredient-sugars" type="number" min="0" step="0.01">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="saturated_fat_grams">Acides gras saturés (g)</span>
+                  <input id="ingredient-saturated-fat" type="number" min="0" step="0.01">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="salt_grams">Sel (g)</span>
+                  <input id="ingredient-salt" type="number" min="0" step="0.01">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="fruit_vegetable_legume_percent">Fruits, légumes et légumineuses (%)</span>
+                  <input id="ingredient-fvl-percent" type="number" min="0" max="100" step="0.01">
+                </label>
               </div>
+              <p class="nutri-score-field-help" data-i18n="nutri_score_field_help">Ces quatre valeurs sont nécessaires au calcul automatique du Nutri-Score 2023 pour les aliments généraux.</p>
             </section>
             <section class="ingredient-editor-section">
               <div class="ingredient-editor-section-heading">
@@ -719,6 +737,7 @@
         <div class="dish-details-content">
           <p id="dish-details-menu-note" class="dish-details-menu-note" hidden></p>
           <div id="dish-details-metrics" class="dish-details-metrics"></div>
+          <p id="dish-details-nutri-status" class="nutri-score-detail"></p>
           <section id="dish-details-ingredients-section">
             <h3 data-i18n="recipe_ingredients">Ingrédients de la recette</h3>
             <ul id="dish-details-ingredients" class="dish-details-ingredients"></ul>
@@ -802,7 +821,7 @@
               <input id="new-dish-source">
             </label>
             <label class="dialog-field">
-              <span data-i18n="nutri_score">Nutri-Score</span>
+              <span data-i18n="manual_nutri_score">Nutri-Score manuel (secours)</span>
               <select id="new-dish-nutri-score">
                 <option value="" data-i18n="not_available">Non renseigné</option>
                 <option value="A">A</option>
@@ -811,6 +830,7 @@
                 <option value="D">D</option>
                 <option value="E">E</option>
               </select>
+              <small id="new-dish-nutri-status" class="field-hint"></small>
             </label>
             <label class="dialog-field dialog-field-wide">
               <span data-i18n="recipe_notes">Source et notes de la recette</span>
@@ -949,6 +969,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=homealacarte-29"></script>
+    <script type="module" src="./app.js?v=homealacarte-30"></script>
   </body>
 </html>

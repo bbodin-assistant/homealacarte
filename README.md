@@ -67,6 +67,15 @@ The current consolidated schema has these top-level collections:
 Food items include nutrition and gram-conversion fields. General items may omit
 nutrition. Imports are strict and reject obsolete or unknown structures.
 
+Automatic Nutri-Score uses the updated 2023 general-food algorithm. A dish is
+calculated when every ingredient provides `sugars_g`, `saturated_fat_g`,
+`salt_g`, and `fruit_vegetable_legume_percent`, in addition to the existing
+energy, protein, and fibre values. Missing fields remain absent rather than
+being treated as zero, and the interface reports both ingredient-level and
+dish-level completeness. A manually supplied dish `nutri_score` is retained as
+a fallback until automatic calculation becomes possible. The special
+algorithms for beverages and for fats, oils, nuts, and seeds are not applied.
+
 Dish components can use grams:
 
 ```json
