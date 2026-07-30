@@ -449,7 +449,15 @@ impl Engine {
         self.snapshot()
     }
 
-    pub fn replace_ingredient(&mut self, mut input: Ingredient) -> Result<AppSnapshot, String> {
+    pub fn replace_ingredient(&mut self, input: Ingredient) -> Result<AppSnapshot, String> {
+        self.replace_ingredient_with_history(input, false)
+    }
+
+    pub fn replace_ingredient_with_history(
+        &mut self,
+        mut input: Ingredient,
+        price_history_provided: bool,
+    ) -> Result<AppSnapshot, String> {
         validate_ingredient(&input)?;
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
         let index = dataset
@@ -459,7 +467,11 @@ impl Engine {
             .ok_or_else(|| format!("unknown ingredient: {}", input.key))?;
         preserve_price_history(
             &mut input.price_history,
-            &dataset.ingredients[index].price_history,
+            if price_history_provided {
+                &[]
+            } else {
+                &dataset.ingredients[index].price_history
+            },
             &input.price_checked_at,
             input.price_per_kg,
             &input.price_source,
@@ -498,9 +510,14 @@ impl Engine {
         self.snapshot()
     }
 
-    pub fn replace_household_item(
+    pub fn replace_household_item(&mut self, input: HouseholdItem) -> Result<AppSnapshot, String> {
+        self.replace_household_item_with_history(input, false)
+    }
+
+    pub fn replace_household_item_with_history(
         &mut self,
         mut input: HouseholdItem,
+        price_history_provided: bool,
     ) -> Result<AppSnapshot, String> {
         validate_household_item(&input)?;
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
@@ -511,7 +528,11 @@ impl Engine {
             .ok_or_else(|| format!("unknown general item: {}", input.key))?;
         preserve_price_history(
             &mut input.price_history,
-            &dataset.household_items[index].price_history,
+            if price_history_provided {
+                &[]
+            } else {
+                &dataset.household_items[index].price_history
+            },
             &input.last_bought_at,
             input.estimated_price,
             &input.notes,

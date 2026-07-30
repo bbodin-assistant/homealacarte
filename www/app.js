@@ -622,6 +622,65 @@ function renderGroceryModeCounts() {
   setCountBadge("#needs-tab-count", state.customDraft.length);
 }
 
+function priceHistoryFormPayload(selector) {
+  return [...$(selector).querySelectorAll(".item-price-history-row")].map((row) => {
+    const priceInput = row.querySelector("[data-price-observation-price]");
+    return {
+      date: row.querySelector("[data-price-observation-date]").value,
+      price: priceInput.value === "" ? Number.NaN : Number(priceInput.value),
+      description: row.querySelector("[data-price-observation-description]").value.trim(),
+    };
+  });
+}
+
+function priceHistoryFormIsValid(history) {
+  return history.every((observation) =>
+    Number.isFinite(observation.price) && observation.price >= 0);
+}
+
+function priceHistoryRowMarkup(observation = {}) {
+  return `
+    <div class="item-price-history-row">
+      <label class="item-price-history-date">
+        <span class="sr-only">${escapeHtml(t(state.language, "observation_date"))}</span>
+        <input type="date" value="${escapeHtml(observation.date || "")}" data-price-observation-date>
+      </label>
+      <label class="item-price-history-price">
+        <span class="sr-only">${escapeHtml(t(state.language, "observed_price"))}</span>
+        <input type="number" min="0" step="0.0001" value="${escapeHtml(observation.price ?? "")}" data-price-observation-price required>
+      </label>
+      <label class="item-price-history-description">
+        <span class="sr-only">${escapeHtml(t(state.language, "observation_description"))}</span>
+        <input value="${escapeHtml(observation.description || "")}" data-price-observation-description>
+      </label>
+      <button class="icon-button remove-price-observation" type="button" aria-label="${escapeHtml(t(state.language, "remove_price_observation"))}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+      </button>
+    </div>`;
+}
+
+function updatePriceHistoryEmptyState(selector) {
+  const list = $(selector);
+  const empty = list.querySelector(".item-price-history-empty");
+  if (list.querySelector(".item-price-history-row")) {
+    empty?.remove();
+  } else if (!empty) {
+    list.innerHTML = `<p class="item-price-history-empty">${escapeHtml(t(state.language, "no_price_observations"))}</p>`;
+  }
+}
+
+function renderPriceHistoryForm(selector, history = []) {
+  $(selector).innerHTML = history.map(priceHistoryRowMarkup).join("");
+  updatePriceHistoryEmptyState(selector);
+}
+
+function addPriceHistoryFormRow(selector) {
+  const list = $(selector);
+  list.querySelector(".item-price-history-empty")?.remove();
+  list.insertAdjacentHTML("beforeend", priceHistoryRowMarkup());
+  list.querySelector(".item-price-history-row:last-child [data-price-observation-date]").focus();
+}
+
 function ingredientFormPayload() {
   const existing = state.snapshot.ingredients
     .find((ingredient) => ingredient.key === state.ingredientSelectedKey);
@@ -652,6 +711,7 @@ function ingredientFormPayload() {
     grams_per_measure_unit: Number($("#ingredient-grams-per-unit").value),
     purchase_unit: $("#ingredient-purchase-unit").value.trim(),
     purchase_quantity_grams: Number($("#ingredient-purchase-grams").value),
+    price_history: priceHistoryFormPayload("#ingredient-price-history-list"),
   };
 }
 
@@ -683,6 +743,7 @@ function ingredientFormIsValid(ingredient) {
       ingredient.saturated_fat_g,
       ingredient.salt_g,
     ].every((value) => value == null || (Number.isFinite(value) && value >= 0))
+    && priceHistoryFormIsValid(ingredient.price_history)
     && (ingredient.fruit_vegetable_legume_percent == null
       || (Number.isFinite(ingredient.fruit_vegetable_legume_percent)
         && ingredient.fruit_vegetable_legume_percent >= 0
@@ -737,6 +798,7 @@ function populateIngredientForm(key) {
   $("#ingredient-source").value = ingredient.source;
   $("#ingredient-url").value = ingredient.url;
   $("#ingredient-incomplete").checked = Boolean(ingredient.incomplete);
+  renderPriceHistoryForm("#ingredient-price-history-list", ingredient.price_history);
   updateIngredientPurchasePrice();
   const status = $("#ingredient-completeness");
   status.className = `ingredient-completeness ${ingredient.incomplete ? "incomplete" : "complete"}`;
@@ -767,6 +829,7 @@ function householdItemFormPayload() {
     lasting_days: lastingDays === "" ? null : Number(lastingDays),
     notes: $("#household-item-notes").value.trim(),
     custom: existing ? Boolean(existing.custom) : true,
+    price_history: priceHistoryFormPayload("#household-item-price-history-list"),
   };
 }
 
@@ -784,6 +847,7 @@ function householdItemFormIsValid(item) {
     && item.purchase_quantity > 0
     && Number.isFinite(item.estimated_price)
     && item.estimated_price >= 0
+    && priceHistoryFormIsValid(item.price_history)
     && (item.lasting_days == null
       || (Number.isFinite(item.lasting_days) && item.lasting_days > 0)));
 }
@@ -811,6 +875,7 @@ function populateHouseholdItemForm(key) {
   $("#household-item-last-bought").value = item.last_bought_at || "";
   $("#household-item-lasting-days").value = item.lasting_days ?? "";
   $("#household-item-notes").value = item.notes || "";
+  renderPriceHistoryForm("#household-item-price-history-list", item.price_history);
   $("#household-item-form-message").textContent = "";
   state.householdItemOriginal = householdItemFormSignature();
   updateHouseholdItemSaveState();
@@ -876,6 +941,7 @@ function openNewCatalogueItem() {
     $("#ingredient-source").value = "";
     $("#ingredient-url").value = "";
     $("#ingredient-incomplete").checked = true;
+    renderPriceHistoryForm("#ingredient-price-history-list");
     $("#ingredient-completeness").className = "ingredient-completeness incomplete";
     $("#ingredient-completeness").textContent = t(state.language, "ingredient_incomplete");
     $("#ingredient-form-message").textContent = "";
@@ -896,6 +962,7 @@ function openNewCatalogueItem() {
   $("#household-item-last-bought").value = "";
   $("#household-item-lasting-days").value = "";
   $("#household-item-notes").value = "";
+  renderPriceHistoryForm("#household-item-price-history-list");
   $("#household-item-form-message").textContent = "";
   state.householdItemOriginal = "";
   updateHouseholdItemSaveState();
@@ -2722,6 +2789,17 @@ $("#item-catalogue").addEventListener("keydown", (event) => {
 $$(".item-editor-back").forEach((button) => button.addEventListener("click", closeItemEditor));
 $("#ingredient-form").addEventListener("input", updateIngredientSaveState);
 $("#ingredient-form").addEventListener("change", updateIngredientSaveState);
+$("#ingredient-price-history-add").addEventListener("click", () => {
+  addPriceHistoryFormRow("#ingredient-price-history-list");
+  updateIngredientSaveState();
+});
+$("#ingredient-price-history-list").addEventListener("click", (event) => {
+  const remove = event.target.closest(".remove-price-observation");
+  if (!remove) return;
+  remove.closest(".item-price-history-row").remove();
+  updatePriceHistoryEmptyState("#ingredient-price-history-list");
+  updateIngredientSaveState();
+});
 $("#ingredient-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const ingredient = ingredientFormPayload();
@@ -2742,6 +2820,17 @@ $("#ingredient-delete").addEventListener("click", () => {
 });
 $("#household-item-form").addEventListener("input", updateHouseholdItemSaveState);
 $("#household-item-form").addEventListener("change", updateHouseholdItemSaveState);
+$("#household-item-price-history-add").addEventListener("click", () => {
+  addPriceHistoryFormRow("#household-item-price-history-list");
+  updateHouseholdItemSaveState();
+});
+$("#household-item-price-history-list").addEventListener("click", (event) => {
+  const remove = event.target.closest(".remove-price-observation");
+  if (!remove) return;
+  remove.closest(".item-price-history-row").remove();
+  updatePriceHistoryEmptyState("#household-item-price-history-list");
+  updateHouseholdItemSaveState();
+});
 $("#household-item-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const item = householdItemFormPayload();

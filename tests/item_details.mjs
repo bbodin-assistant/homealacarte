@@ -65,7 +65,11 @@ assert.match(app, /data-item-details=/);
 assert.match(app, /openCatalogueItemDetails/);
 assert.match(app, /priceHistoryMarkup/);
 assert.match(app, /grocery-details-edit/);
+assert.match(app, /price_history: priceHistoryFormPayload\("#ingredient-price-history-list"\)/);
+assert.match(app, /price_history: priceHistoryFormPayload\("#household-item-price-history-list"\)/);
 assert.match(index, /id="grocery-details-information"/);
 assert.match(index, /id="grocery-details-edit"/);
+assert.match(index, /id="ingredient-price-history-list"/);
+assert.match(index, /id="household-item-price-history-list"/);
 
 console.log("Catalog and grocery item details share matching data and price-chart geometry.");

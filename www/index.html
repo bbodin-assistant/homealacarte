@@ -438,6 +438,25 @@
                   <textarea id="ingredient-price-source" rows="3"></textarea>
                 </label>
               </div>
+              <div class="item-price-history-editor">
+                <div class="item-price-history-heading">
+                  <div>
+                    <h3 data-i18n="price_history">Historique des prix</h3>
+                    <p data-i18n="price_history_edit_intro">Modifiez les observations enregistrées. Le prix courant, sa date et son détail seront ajoutés à l’historique s’ils forment une nouvelle observation.</p>
+                  </div>
+                  <button id="ingredient-price-history-add" class="button ghost compact" type="button">
+                    <span aria-hidden="true">+</span>
+                    <span data-i18n="add_price_observation">Ajouter un prix</span>
+                  </button>
+                </div>
+                <div class="item-price-history-head" aria-hidden="true">
+                  <span data-i18n="observation_date">Date</span>
+                  <span data-i18n="price_per_kg">Prix au kg</span>
+                  <span data-i18n="observation_description">Description / source</span>
+                  <span></span>
+                </div>
+                <div id="ingredient-price-history-list" class="item-price-history-list"></div>
+              </div>
             </section>
             <label class="ingredient-incomplete-control">
               <input id="ingredient-incomplete" type="checkbox">
@@ -477,6 +496,25 @@
                 <label class="dialog-field"><span data-i18n="last_bought_at">Dernier achat</span><input id="household-item-last-bought" type="date"></label>
                 <label class="dialog-field"><span data-i18n="lasting_days">Durée estimée (jours)</span><input id="household-item-lasting-days" type="number" min="0.01" step="0.01"></label>
                 <label class="dialog-field dialog-field-wide"><span data-i18n="notes">Notes</span><textarea id="household-item-notes" rows="3"></textarea></label>
+              </div>
+              <div class="item-price-history-editor">
+                <div class="item-price-history-heading">
+                  <div>
+                    <h3 data-i18n="price_history">Historique des prix</h3>
+                    <p data-i18n="price_history_edit_intro">Modifiez les observations enregistrées. Le prix courant, sa date et son détail seront ajoutés à l’historique s’ils forment une nouvelle observation.</p>
+                  </div>
+                  <button id="household-item-price-history-add" class="button ghost compact" type="button">
+                    <span aria-hidden="true">+</span>
+                    <span data-i18n="add_price_observation">Ajouter un prix</span>
+                  </button>
+                </div>
+                <div class="item-price-history-head" aria-hidden="true">
+                  <span data-i18n="observation_date">Date</span>
+                  <span data-i18n="unit_price">Prix unitaire</span>
+                  <span data-i18n="observation_description">Description / source</span>
+                  <span></span>
+                </div>
+                <div id="household-item-price-history-list" class="item-price-history-list"></div>
               </div>
             </section>
             <div class="ingredient-editor-actions">

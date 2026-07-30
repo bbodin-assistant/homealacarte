@@ -715,6 +715,34 @@ fn the_item_catalogue_edits_general_items_and_deletes_safely() {
                     && price.description == "Keep away from children."
             })));
 
+    let history_replaced = engine
+        .replace_household_item_with_history(
+            HouseholdItem {
+                key: "cleaner_test".to_string(),
+                name: "Updated cleaner".to_string(),
+                category: "Household::Cleaning".to_string(),
+                purchase_unit: "bottle".to_string(),
+                purchase_quantity: 1.0,
+                estimated_price: 3.5,
+                price_history: vec![],
+                measure_unit: "bottles".to_string(),
+                last_bought_at: "2026-07-26".to_string(),
+                lasting_days: Some(30.0),
+                notes: "Keep away from children.".to_string(),
+                custom: false,
+            },
+            true,
+        )
+        .unwrap();
+    let cleaner_history = &history_replaced
+        .household_items
+        .iter()
+        .find(|item| item.key == "cleaner_test")
+        .unwrap()
+        .price_history;
+    assert_eq!(cleaner_history.len(), 1);
+    assert_eq!(cleaner_history[0].date, "2026-07-26");
+
     let protected = engine.delete_item("tomato_test".to_string()).unwrap_err();
     assert!(protected.contains("Synthetic salad"));
 

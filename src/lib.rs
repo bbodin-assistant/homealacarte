@@ -16,6 +16,17 @@ pub use pdf::generate_grocery_pdf;
 use loader::MenuInput;
 use wasm_bindgen::prelude::*;
 
+#[derive(serde::Deserialize)]
+struct PriceHistoryPresence {
+    price_history: Option<Vec<PriceObservation>>,
+}
+
+fn price_history_is_provided(value: &JsValue) -> Result<bool, JsValue> {
+    let presence: PriceHistoryPresence =
+        serde_wasm_bindgen::from_value(value.clone()).map_err(js_error)?;
+    Ok(presence.price_history.is_some())
+}
+
 fn js_error(error: impl ToString) -> JsValue {
     JsValue::from_str(&error.to_string())
 }
@@ -111,9 +122,15 @@ impl HomeALaCarteEngine {
     }
 
     pub fn replace_ingredient(&mut self, ingredient: JsValue) -> Result<JsValue, JsValue> {
+        let price_history_provided = price_history_is_provided(&ingredient)?;
         let ingredient: Ingredient =
             serde_wasm_bindgen::from_value(ingredient).map_err(js_error)?;
-        to_js(&self.inner.replace_ingredient(ingredient).map_err(js_error)?)
+        to_js(
+            &self
+                .inner
+                .replace_ingredient_with_history(ingredient, price_history_provided)
+                .map_err(js_error)?,
+        )
     }
 
     pub fn add_ingredient(&mut self, ingredient: JsValue) -> Result<JsValue, JsValue> {
@@ -123,9 +140,15 @@ impl HomeALaCarteEngine {
     }
 
     pub fn replace_household_item(&mut self, item: JsValue) -> Result<JsValue, JsValue> {
+        let price_history_provided = price_history_is_provided(&item)?;
         let item: HouseholdItem =
             serde_wasm_bindgen::from_value(item).map_err(js_error)?;
-        to_js(&self.inner.replace_household_item(item).map_err(js_error)?)
+        to_js(
+            &self
+                .inner
+                .replace_household_item_with_history(item, price_history_provided)
+                .map_err(js_error)?,
+        )
     }
 
     pub fn add_household_item(&mut self, item: JsValue) -> Result<JsValue, JsValue> {
