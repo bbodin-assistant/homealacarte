@@ -14,7 +14,7 @@ import {
   submitPrivacyRequest,
   synchronizePrivateState,
 } from "./storage.js?v=homealacarte-51";
-import { t, translations } from "./translations.js?v=homealacarte-51";
+import { t, translations } from "./translations.js?v=homealacarte-52";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
@@ -1550,6 +1550,7 @@ function renderMenu() {
     .map((person) => `<option value="${escapeHtml(person.key)}" ${person.key === state.snapshot.profile ? "selected" : ""}>${escapeHtml(person.name)}</option>`)
     .join("");
   $("#show-selected-only").checked = state.menuSelectedOnly;
+  $("#empty-menu").disabled = state.draft.length === 0;
   const cells = new Map();
   state.draft.forEach((row, index) => {
     if (
@@ -2968,6 +2969,19 @@ $("#show-selected-only").addEventListener("change", (event) => {
   state.menuSelectedOnly = event.target.checked;
   localStorage.setItem("homealacarte-menu-selected-only", String(state.menuSelectedOnly));
   renderMenu();
+});
+$("#empty-menu").addEventListener("click", () => {
+  if (!state.draft.length) return;
+  openConfirmation({
+    title: t(state.language, "empty_menu_confirm_title"),
+    message: t(state.language, "empty_menu_confirm_message"),
+    confirmLabel: t(state.language, "empty_menu"),
+    action: () => {
+      state.draft = [];
+      renderMenu();
+      scheduleMenuUpdate();
+    },
+  });
 });
 $("#weekly-menu").addEventListener("click", (event) => {
   const deleteButton = event.target.closest(".menu-entry-delete");
