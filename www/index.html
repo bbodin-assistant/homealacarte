@@ -6,7 +6,7 @@
     <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
     <title>Home à la Carte</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./style.css?v=homealacarte-59">
+    <link rel="stylesheet" href="./style.css?v=homealacarte-60">
   </head>
   <body>
     <header class="topbar">
@@ -738,10 +738,15 @@
               <strong data-i18n="download_data">Télécharger le fichier JSON</strong>
               <span data-i18n="download_data_hint">Conserver une copie complète sur votre appareil</span>
             </button>
+            <button id="empty-data" class="data-management-card danger-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+              <strong data-i18n="empty_data">Vider les données du foyer</strong>
+              <span data-i18n="empty_data_hint">Effacer les données locales et en ligne sans supprimer le compte</span>
+            </button>
             <button id="reset-data" class="data-management-card danger-card">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-              <strong data-i18n="reset_data">Supprimer mes données</strong>
-              <span data-i18n="reset_data_hint">Effacer immédiatement les copies locale et en ligne ainsi que le compte</span>
+              <strong data-i18n="reset_data">Supprimer mon compte et mes données</strong>
+              <span data-i18n="reset_data_hint">Effacer définitivement le compte, les demandes privées et toutes les données</span>
             </button>
             <button id="about-data" class="data-management-card">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
@@ -1114,7 +1119,7 @@
             <div class="privacy-actions">
               <button id="about-download-data" class="button ghost" type="button" data-i18n="privacy_download">Accéder et télécharger mes données</button>
               <button id="about-edit-data" class="button ghost" type="button" data-i18n="privacy_correct">Rectifier les données du foyer</button>
-              <button id="about-request-erasure" class="button danger" type="button" data-i18n="reset_data">Supprimer mes données</button>
+              <button id="about-request-erasure" class="button danger" type="button" data-i18n="reset_data">Supprimer mon compte et mes données</button>
             </div>
             <div class="about-links">
               <a href="https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre3" target="_blank" rel="noopener noreferrer" data-i18n="about_link_rights">Droits d’accès, rectification, effacement et portabilité</a>
@@ -1131,6 +1136,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=homealacarte-59"></script>
+    <script type="module" src="./app.js?v=homealacarte-60"></script>
   </body>
 </html>

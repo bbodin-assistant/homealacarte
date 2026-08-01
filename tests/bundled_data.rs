@@ -86,3 +86,25 @@ fn post_deletion_starter_state_is_valid_and_person_free() {
     assert!(dataset.menu.is_empty());
     assert_eq!(dataset.ingredients.len(), 1);
 }
+
+#[test]
+fn empty_household_state_is_valid() {
+    let source = SourceFile {
+        path: "homealacarte_empty_state.json".to_string(),
+        content: r#"{
+          "items": [],
+          "dishes": [],
+          "people": [],
+          "menu": [],
+          "stock": [],
+          "extra_needs": []
+        }"#.to_string(),
+    };
+
+    let dataset = load_dataset(vec![source], "fr").expect("load empty household state");
+    assert!(dataset.ingredients.is_empty());
+    assert!(dataset.dishes.is_empty());
+    assert!(dataset.people.is_empty());
+    assert!(dataset.menu.is_empty());
+    assert!(dataset.stock.is_empty());
+}

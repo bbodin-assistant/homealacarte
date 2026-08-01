@@ -13,25 +13,33 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-59";
-import { t, translations } from "./translations.js?v=homealacarte-59";
+} from "./storage.js?v=homealacarte-60";
+import { t, translations } from "./translations.js?v=homealacarte-60";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-59";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-59";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-59";
+} from "./item-details.js?v=homealacarte-60";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-60";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-60";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-59";
+} from "./catalogue-filters.js?v=homealacarte-60";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
 const DATA_SCHEMA_VERSION = 6;
+const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
+  items: [],
+  dishes: [],
+  people: [],
+  menu: [],
+  stock: [],
+  extra_needs: [],
+}, null, 2)}\n`;
 function storedJson(key, fallback = null) {
   try {
     return JSON.parse(localStorage.getItem(key) || "null") ?? fallback;
@@ -40,7 +48,7 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-59", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-60", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -106,6 +114,7 @@ const state = {
   engineBusy: false,
   engineMessage: "",
   lastError: null,
+  pendingDataAction: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -349,6 +358,7 @@ worker.onmessage = async ({ data }) => {
     return;
   }
   if (data.type === "error") {
+    if (state.pendingDataAction?.requestId === data.requestId) state.pendingDataAction = null;
     showError(data.message, data.code);
     return;
   }
@@ -458,6 +468,12 @@ worker.onmessage = async ({ data }) => {
     persistDraft();
     render();
     setBusy(false);
+    if (state.pendingDataAction?.requestId === data.requestId) {
+      const message = $("#data-action-message");
+      message.classList.remove("warning");
+      message.textContent = t(state.language, state.pendingDataAction.messageKey);
+      state.pendingDataAction = null;
+    }
   }
 };
 
@@ -3610,6 +3626,46 @@ function clearClientPreferences() {
   applyTranslations();
 }
 
+function emptyAllHouseholdData() {
+  clearTimeout(state.editTimer);
+  clearTimeout(state.stockTimer);
+  clearTimeout(state.customTimer);
+  const files = [{
+    path: "homealacarte_empty_state.json",
+    content: EMPTY_DATABASE_CONTENT,
+  }];
+  state.source = "empty";
+  state.importedSources = files;
+  state.serializedData = EMPTY_DATABASE_CONTENT;
+  state.restorePeople = null;
+  state.restoreMenu = null;
+  state.restoreStock = null;
+  state.restoreCustom = null;
+  state.autoMenuProposal = null;
+  localStorage.removeItem("homealacarte-menu");
+  switchTab("data");
+  const requestId = send("load-files", {
+    files,
+    language: state.language,
+    source: "empty",
+  });
+  state.pendingDataAction = { requestId, messageKey: "empty_data_success" };
+}
+
+function confirmHouseholdDataReset() {
+  const onlineAccount = Boolean(state.storageStatus?.email)
+    && state.storageStatus.state !== "signed-out";
+  openConfirmation({
+    title: t(state.language, "empty_data_confirm_title"),
+    message: t(
+      state.language,
+      onlineAccount ? "empty_data_confirm_online" : "empty_data_confirm_local",
+    ),
+    confirmLabel: t(state.language, "empty_data"),
+    action: emptyAllHouseholdData,
+  });
+}
+
 async function deleteAllPrivateData() {
   const result = await deletePrivateData();
   clearClientPreferences();
@@ -3693,6 +3749,7 @@ $("#json-input").addEventListener("change", async (event) => {
   event.target.value = "";
 });
 $("#reset-data").addEventListener("click", confirmPrivateDataDeletion);
+$("#empty-data").addEventListener("click", confirmHouseholdDataReset);
 
 $("#empty-stock").addEventListener("click", () => {
   if (!state.stockDraft.length) return;
