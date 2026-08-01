@@ -153,6 +153,44 @@ fn unsupported_data_shapes_are_rejected() {
 }
 
 #[test]
+fn person_food_rules_are_loaded_and_validated() {
+    let mut source = synthetic_dataset();
+    source.content = source.content.replacen(
+        r#""description": "Likes a small breakfast.""#,
+        r#""description": "Likes a small breakfast.",
+            "food_rules": [{
+              "kind": "routine",
+              "meal": "breakfast",
+              "item_keys": ["bread_test", "test_salad"],
+              "days": ["monday", "wednesday", "friday"],
+              "quantity": 1,
+              "quantity_unit": "portion"
+            }, {
+              "kind": "never",
+              "meal": "any",
+              "item_keys": ["tomato_test"]
+            }]"#,
+        1,
+    );
+    let dataset = homealacarte_web::load_dataset(vec![source.clone()], "en").unwrap();
+    assert_eq!(dataset.people[0].food_rules.len(), 2);
+    assert_eq!(dataset.people[0].food_rules[0].item_keys.len(), 2);
+    assert_eq!(
+        dataset.people[0].food_rules[0].days,
+        vec!["monday", "wednesday", "friday"]
+    );
+
+    let mut invalid_day = source.clone();
+    invalid_day.content = invalid_day.content.replace("wednesday", "funday");
+    let error = homealacarte_web::load_dataset(vec![invalid_day], "en").unwrap_err();
+    assert!(error.contains("invalid day: funday"));
+
+    source.content = source.content.replace("bread_test\", \"test_salad", "missing_food");
+    let error = homealacarte_web::load_dataset(vec![source], "en").unwrap_err();
+    assert!(error.contains("unknown item: missing_food"));
+}
+
+#[test]
 fn a_household_only_dataset_is_valid() {
     let source = SourceFile {
         path: "household-only.json".to_string(),
@@ -411,6 +449,7 @@ fn a_new_dish_is_calculated_and_exported() {
         .add_dish(DishCreateInput {
             key: "dish_test_toast".to_string(),
             name: "Test toast".to_string(),
+            auto_menu_main: true,
             servings: 2.0,
             recipe_url: "https://example.com/toast".to_string(),
             source: "Test kitchen".to_string(),
@@ -439,6 +478,7 @@ fn a_new_dish_is_calculated_and_exported() {
         .replace_dish(DishCreateInput {
             key: "dish_test_toast".to_string(),
             name: "Updated test toast".to_string(),
+            auto_menu_main: false,
             servings: 2.0,
             recipe_url: String::new(),
             source: "Test kitchen".to_string(),
@@ -459,6 +499,7 @@ fn a_new_dish_is_calculated_and_exported() {
         .unwrap();
     assert_eq!(dish.name, "Updated test toast");
     assert_eq!(dish.nutri_score, "A");
+    assert!(!dish.auto_menu_main);
 }
 
 #[test]
@@ -504,6 +545,7 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
             DishCreateInput {
                 key: "dish_test_leaf".to_string(),
                 name: "Leaf dish".to_string(),
+                auto_menu_main: true,
                 servings: 2.0,
                 recipe_url: String::new(),
                 source: String::new(),
@@ -826,6 +868,7 @@ fn family_members_can_be_added_removed_and_exported() {
                 kcal_target: Some(1600.0),
                 kind: "child".to_string(),
                 description: "Likes fruit at lunch.".to_string(),
+                food_rules: Vec::new(),
             },
             Person {
                 key: "test_adult".to_string(),
@@ -833,6 +876,7 @@ fn family_members_can_be_added_removed_and_exported() {
                 kcal_target: Some(2200.0),
                 kind: "adult".to_string(),
                 description: "Drinks sparkling water.".to_string(),
+                food_rules: Vec::new(),
             },
         ])
         .unwrap();
@@ -847,6 +891,7 @@ fn family_members_can_be_added_removed_and_exported() {
             kcal_target: Some(2200.0),
             kind: "adult".to_string(),
             description: "Drinks sparkling water.".to_string(),
+            food_rules: Vec::new(),
         }])
         .unwrap();
     assert_eq!(removed.people.len(), 1);

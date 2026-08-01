@@ -6,7 +6,7 @@
     <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
     <title>Home à la Carte</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./style.css?v=homealacarte-60">
+    <link rel="stylesheet" href="./style.css?v=homealacarte-68">
   </head>
   <body>
     <header class="topbar">
@@ -133,7 +133,7 @@
               <div>
                 <p class="eyebrow" data-i18n="automatic_menu_eyebrow">Optimisation</p>
                 <h1 data-i18n="automatic_menu_title">Générer le menu</h1>
-                <p data-i18n="automatic_menu_intro">Le solveur complète les déjeuners et dîners vides en respectant les calories, le stock et la variété.</p>
+                <p data-i18n="automatic_menu_intro">Le générateur ajoute les routines du petit-déjeuner, des encas et du quotidien, puis complète les déjeuners et dîners vides.</p>
               </div>
             </div>
             <form id="auto-menu-form" class="auto-menu-layout">
@@ -145,10 +145,14 @@
                   </div>
                 </div>
                 <div class="auto-menu-parameters">
-                  <label><span data-i18n="kcal_threshold">Tolérance kcal</span><input id="auto-kcal-threshold" type="number" min="0" max="1000" step="5" value="50" required></label>
+                  <label><span data-i18n="kcal_threshold">Tolérance kcal</span><input id="auto-kcal-threshold" type="number" min="0" max="1000" step="5" value="150" required></label>
                   <label><span data-i18n="minimum_portions">Portions minimum</span><input id="auto-min-portions" type="number" min="0.05" max="5" step="0.05" value="0.5" required></label>
                   <label><span data-i18n="maximum_portions">Portions maximum</span><input id="auto-max-portions" type="number" min="0.05" max="5" step="0.05" value="2" required></label>
-                  <label><span data-i18n="portion_step">Pas des portions</span><input id="auto-portion-step" type="number" min="0.01" max="1" step="0.01" value="0.05" required></label>
+                  <label><span data-i18n="portion_step">Pas des portions</span><input id="auto-portion-step" type="number" min="0.01" max="1" step="0.01" value="0.25" required></label>
+                  <label class="auto-menu-toggle">
+                    <input id="auto-same-portions" type="checkbox">
+                    <span><strong data-i18n="same_portion_for_everyone">Même portion pour tout le monde</strong><small data-i18n="same_portion_for_everyone_intro">Une seule ligne par plat ; les calories sont équilibrées sur le besoin moyen du foyer.</small></span>
+                  </label>
                 </div>
               </section>
 
@@ -161,7 +165,7 @@
 
               <section class="panel auto-menu-section">
                 <div class="auto-menu-section-heading">
-                  <div><h2 data-i18n="slots_to_fill">Repas à compléter</h2><p data-i18n="slots_to_fill_intro">Seuls les déjeuners et dîners entièrement vides peuvent être générés.</p></div>
+                  <div><h2 data-i18n="slots_to_fill">Jours et repas à générer</h2><p data-i18n="slots_to_fill_intro">Chaque jour coché reçoit aussi les routines structurées du petit-déjeuner, des encas et du quotidien.</p></div>
                 </div>
                 <div id="auto-menu-slots" class="auto-menu-slots"></div>
               </section>
@@ -808,6 +812,16 @@
               placeholder="Préférences, boissons, habitudes et jours de présence (facultatif)"
             ></textarea>
           </label>
+          <section class="family-food-rules dialog-field-wide" aria-labelledby="family-food-rules-title">
+            <div class="family-food-rules-heading">
+              <div>
+                <strong id="family-food-rules-title" data-i18n="optimizer_food_rules">Règles pour le générateur</strong>
+                <p data-i18n="optimizer_food_rules_intro">Ajoutez les routines quotidiennes et les aliments à ne jamais proposer.</p>
+              </div>
+              <button id="family-food-rule-add" class="button ghost compact" type="button" data-i18n="add_food_rule">Ajouter une règle</button>
+            </div>
+            <div id="family-food-rules-list" class="family-food-rules-list"></div>
+          </section>
         </div>
         <div class="menu-dialog-actions">
           <button id="family-dialog-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
@@ -983,6 +997,10 @@
               </select>
               <small id="new-dish-nutri-status" class="field-hint"></small>
             </label>
+            <label class="dialog-field dialog-field-wide show-only-control">
+              <input id="new-dish-auto-menu-main" type="checkbox" checked>
+              <span data-i18n="auto_menu_main_dish">Peut être proposé comme déjeuner ou dîner</span>
+            </label>
             <div class="dialog-field dialog-field-wide dish-source-notes-field">
               <div class="dish-source-notes-heading">
                 <span data-i18n="recipe_notes">Source et notes de la recette</span>
@@ -1136,6 +1154,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=homealacarte-60"></script>
+    <script type="module" src="./app.js?v=homealacarte-68"></script>
   </body>
 </html>

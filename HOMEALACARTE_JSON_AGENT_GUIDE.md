@@ -77,6 +77,7 @@ Notes:
 {
   "key": "plat_dish_key",
   "name": "Dish name",
+  "auto_menu_main": true,
   "servings": 4.0,
   "components": [
     {
@@ -96,6 +97,7 @@ Notes:
 Rules:
 
 - `components[*].item_key` must reference an item.
+- `auto_menu_main` defaults to `true`. Set it to `false` for breakfasts, snacks, desserts, and drinks so automatic generation does not use them as lunch or dinner.
 - `servings` and component quantities must be positive.
 - Common component units: `g`, `L`, `pieces`.
 
@@ -129,9 +131,31 @@ Rules:
   "name": "Display name",
   "kind": "adult",
   "kcal_target": 2000.0,
-  "description": ""
+  "description": "",
+  "food_rules": [
+    {
+      "kind": "routine",
+      "meal": "breakfast",
+      "item_keys": ["porridge", "toast", "yoghurt"],
+      "days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "quantity": 1.0,
+      "quantity_unit": "portion"
+    },
+    {
+      "kind": "never",
+      "meal": "any",
+      "item_keys": ["peanut"]
+    }
+  ]
 }
 ```
+
+Food rules:
+
+- `routine`: on each selected and available day, schedule one of `item_keys` at `meal`; one key expresses a fixed habit.
+- `days` is optional for a routine. An omitted or empty list means every available day. Otherwise use any of `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`.
+- `never`: exclude the listed dishes and any dish containing the listed ingredients. Use `meal: "any"` for every meal.
+- Meal codes are `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, and `anytime`.
 
 ## 7. Stock entry
 

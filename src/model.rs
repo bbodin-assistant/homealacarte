@@ -78,6 +78,8 @@ pub struct DishComponent {
 pub struct Dish {
     pub key: String,
     pub name: String,
+    #[serde(default = "default_true")]
+    pub auto_menu_main: bool,
     pub servings: f64,
     pub recipe_url: String,
     pub source: String,
@@ -100,6 +102,8 @@ pub struct DishCreateComponentInput {
 pub struct DishCreateInput {
     pub key: String,
     pub name: String,
+    #[serde(default = "default_true")]
+    pub auto_menu_main: bool,
     pub servings: f64,
     #[serde(default)]
     pub recipe_url: String,
@@ -113,6 +117,33 @@ pub struct DishCreateInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FoodRule {
+    pub kind: String,
+    #[serde(default)]
+    pub meal: String,
+    #[serde(default)]
+    pub item_keys: Vec<String>,
+    #[serde(default)]
+    pub days: Vec<String>,
+    #[serde(default = "default_rule_quantity")]
+    pub quantity: f64,
+    #[serde(default = "default_rule_quantity_unit")]
+    pub quantity_unit: String,
+}
+
+fn default_rule_quantity() -> f64 {
+    1.0
+}
+
+fn default_rule_quantity_unit() -> String {
+    "portion".to_string()
+}
+
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Person {
     pub key: String,
     pub name: String,
@@ -120,6 +151,8 @@ pub struct Person {
     pub kind: String,
     #[serde(default)]
     pub description: String,
+    #[serde(default)]
+    pub food_rules: Vec<FoodRule>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -151,6 +184,8 @@ pub struct AutoMenuRequest {
     pub min_portions: f64,
     pub max_portions: f64,
     pub portion_step: f64,
+    #[serde(default)]
+    pub same_portion_for_everyone: bool,
     pub availability: Vec<AutoMenuAvailability>,
     pub slots: Vec<AutoMenuSlot>,
     pub candidate_dish_keys: Vec<String>,
@@ -323,6 +358,7 @@ pub struct DailyNutritionView {
 pub struct DishView {
     pub key: String,
     pub name: String,
+    pub auto_menu_main: bool,
     pub servings: f64,
     pub recipe_url: String,
     pub source: String,

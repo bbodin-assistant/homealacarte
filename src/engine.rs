@@ -1,6 +1,6 @@
 use crate::loader::{
     MenuInput, load_dataset, localize_day, localize_meal, localized_days, localized_meals,
-    normalize_menu,
+    normalize_food_rules, normalize_menu,
 };
 use crate::model::*;
 use serde_json::{Value, json};
@@ -129,11 +129,22 @@ impl Engine {
 
     pub fn replace_people(&mut self, mut people: Vec<Person>) -> Result<AppSnapshot, String> {
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
+        let valid_items = dataset
+            .ingredients
+            .iter()
+            .map(|item| item.key.clone())
+            .chain(dataset.dishes.iter().map(|dish| dish.key.clone()))
+            .collect::<HashSet<_>>();
         let mut keys = HashSet::new();
         for (index, person) in people.iter_mut().enumerate() {
             person.key = person.key.trim().to_string();
             person.name = person.name.trim().to_string();
             person.description = person.description.trim().to_string();
+            person.food_rules = normalize_food_rules(
+                std::mem::take(&mut person.food_rules),
+                &valid_items,
+                &format!("family member {}", index + 1),
+            )?;
             person.kind = match person.kind.trim().to_lowercase().as_str() {
                 "" | "adult" => "adult".to_string(),
                 "child" | "kid" | "enfant" => "child".to_string(),
@@ -606,6 +617,23 @@ impl Engine {
             .iter()
             .position(|ingredient| ingredient.key == key)
         {
+            let used_by_rules = dataset
+                .people
+                .iter()
+                .filter(|person| {
+                    person
+                        .food_rules
+                        .iter()
+                        .any(|rule| rule.item_keys.contains(&key))
+                })
+                .map(|person| person.name.clone())
+                .collect::<Vec<_>>();
+            if !used_by_rules.is_empty() {
+                return Err(format!(
+                    "item is still used by food rules for: {}",
+                    used_by_rules.join(", ")
+                ));
+            }
             let used_by = dataset
                 .dishes
                 .iter()
@@ -899,6 +927,7 @@ fn dish_from_input(
     Ok(Dish {
         key,
         name,
+        auto_menu_main: input.auto_menu_main,
         servings: input.servings,
         recipe_url: input.recipe_url.trim().to_string(),
         source: input.source.trim().to_string(),
@@ -1292,6 +1321,7 @@ pub fn build_snapshot(
         dish_views.push(DishView {
             key: dish.key.clone(),
             name: dish.name.clone(),
+            auto_menu_main: dish.auto_menu_main,
             servings: dish.servings,
             recipe_url: dish.recipe_url.clone(),
             source: dish.source.clone(),

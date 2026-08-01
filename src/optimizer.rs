@@ -1,7 +1,10 @@
 use crate::engine::build_grocery;
-use crate::loader::{localized_days, localized_meals};
+use crate::loader::{
+    food_rule_meal_name, localized_days, localized_meals, merge_menu_rows, FOOD_RULE_DAYS,
+};
 use crate::model::{
-    AutoMenuDailyResult, AutoMenuProposal, AutoMenuRequest, Dataset, Dish, Ingredient, MenuRow,
+    AutoMenuAvailability, AutoMenuDailyResult, AutoMenuProposal, AutoMenuRequest, Dataset, Dish,
+    Ingredient, MenuRow, Person,
 };
 use microlp::{
     ComparisonOp, LinearExpr, OptimizationDirection, Problem, SolveOutcome, SolutionStatus,
@@ -12,8 +15,10 @@ use std::time::Duration;
 
 const EPSILON: f64 = 1e-6;
 const DEVIATION_WEIGHT: f64 = 0.0001;
-const SOLVE_TIME_LIMIT_SECONDS: f64 = 30.0;
-const MAX_DAILY_CANDIDATES: usize = 8;
+const SOLVE_TIME_LIMIT_SECONDS: f64 = 5.0;
+const MAX_DAILY_CANDIDATES: usize = 10;
+const MAX_WEEKLY_DISH_USES: usize = 2;
+const VARIETY_WEIGHT: f64 = 5.0;
 
 #[derive(Clone)]
 struct DishDecision {
@@ -133,6 +138,7 @@ fn shortlist_daily_candidates(
     dataset: &Dataset,
     ingredients: &HashMap<&str, &Ingredient>,
     kcal_values: &[f64],
+    weekly_uses: &HashMap<String, usize>,
 ) -> Vec<usize> {
     let limit = MAX_DAILY_CANDIDATES.max(minimum_count);
     if candidates.len() <= limit {
@@ -140,8 +146,14 @@ fn shortlist_daily_candidates(
     }
     let mut by_cost = candidates.to_vec();
     by_cost.sort_by(|left, right| {
-        dish_retail_cost(&dataset.dishes[*left], ingredients)
-            .total_cmp(&dish_retail_cost(&dataset.dishes[*right], ingredients))
+        let left_cost = dish_retail_cost(&dataset.dishes[*left], ingredients)
+            + weekly_uses.get(&dataset.dishes[*left].key).copied().unwrap_or(0) as f64
+                * VARIETY_WEIGHT;
+        let right_cost = dish_retail_cost(&dataset.dishes[*right], ingredients)
+            + weekly_uses.get(&dataset.dishes[*right].key).copied().unwrap_or(0) as f64
+                * VARIETY_WEIGHT;
+        left_cost
+            .total_cmp(&right_cost)
             .then_with(|| dataset.dishes[*left].key.cmp(&dataset.dishes[*right].key))
     });
     let mut by_kcal = candidates.to_vec();
@@ -171,8 +183,112 @@ fn shortlist_daily_candidates(
     selected.into_iter().collect()
 }
 
-fn generate_menu_once(
+fn rule_matches_meal(rule_meal: &str, meal: &str, language: &str) -> bool {
+    rule_meal == "any"
+        || food_rule_meal_name(rule_meal, language).is_some_and(|value| value == meal)
+}
+
+fn person_forbids_item(
+    person: &Person,
+    item_key: &str,
+    meal: &str,
+    language: &str,
+    dishes: &HashMap<&str, &Dish>,
+) -> bool {
+    person.food_rules.iter().any(|rule| {
+        if rule.kind != "never" || !rule_matches_meal(&rule.meal, meal, language) {
+            return false;
+        }
+        rule.item_keys.iter().any(|forbidden| {
+            forbidden == item_key
+                || dishes.get(item_key).is_some_and(|dish| {
+                    dish.components
+                        .iter()
+                        .any(|component| &component.item_key == forbidden)
+                })
+        })
+    })
+}
+
+fn routine_rows(
     dataset: &Dataset,
+    language: &str,
+    availability: &[AutoMenuAvailability],
+    selected_days: &HashSet<String>,
+) -> Result<Vec<MenuRow>, String> {
+    let people = dataset
+        .people
+        .iter()
+        .map(|person| (person.key.as_str(), person))
+        .collect::<HashMap<_, _>>();
+    let dishes = dataset
+        .dishes
+        .iter()
+        .map(|dish| (dish.key.as_str(), dish))
+        .collect::<HashMap<_, _>>();
+    let days = localized_days(language);
+    let mut seen = BTreeSet::new();
+    let mut rows = Vec::new();
+
+    for entry in availability {
+        if !selected_days.contains(&entry.day)
+            || !seen.insert((entry.person_key.clone(), entry.day.clone()))
+        {
+            continue;
+        }
+        let Some(person) = people.get(entry.person_key.as_str()) else {
+            continue;
+        };
+        let day_index = days.iter().position(|day| day == &entry.day).unwrap_or(0);
+        let day_code = FOOD_RULE_DAYS[day_index];
+        for rule in &person.food_rules {
+            if rule.kind != "routine" {
+                continue;
+            }
+            if !rule.days.is_empty() && !rule.days.iter().any(|day| day == day_code) {
+                continue;
+            }
+            let meal = food_rule_meal_name(&rule.meal, language)
+                .ok_or_else(|| "auto_menu_invalid_food_rule".to_string())?;
+            let already_satisfied = dataset.menu.iter().any(|row| {
+                row.day == entry.day
+                    && row.meal == meal
+                    && row.people.iter().any(|key| key == &person.key)
+                    && rule.item_keys.contains(&row.item_key)
+            });
+            if already_satisfied {
+                continue;
+            }
+            let allowed = rule
+                .item_keys
+                .iter()
+                .filter(|key| !person_forbids_item(person, key, &meal, language, &dishes))
+                .collect::<Vec<_>>();
+            if allowed.is_empty() {
+                return Err("auto_menu_routine_no_allowed_choice".to_string());
+            }
+            let choice_index = day_index % allowed.len();
+            rows.push(MenuRow {
+                day: entry.day.clone(),
+                meal,
+                item_key: allowed[choice_index].to_string(),
+                people: vec![person.key.clone()],
+                quantity: rule.quantity,
+                quantity_unit: rule.quantity_unit.clone(),
+                notes: if language == "fr" {
+                    "Routine quotidienne".to_string()
+                } else {
+                    "Daily routine".to_string()
+                },
+            });
+        }
+    }
+    Ok(merge_menu_rows(rows))
+}
+
+fn solve_menu_once(
+    dataset: &Dataset,
+    slot_dataset: &Dataset,
     language: &str,
     request: AutoMenuRequest,
 ) -> Result<AutoMenuProposal, String> {
@@ -217,10 +333,10 @@ fn generate_menu_once(
 
     let mut availability = BTreeSet::new();
     for entry in request.availability {
-        let Some((person_index, person)) = people_by_key.get(entry.person_key.as_str()) else {
+        let Some((person_index, _)) = people_by_key.get(entry.person_key.as_str()) else {
             return Err("auto_menu_invalid_availability".to_string());
         };
-        if person.kcal_target.is_none() || !valid_days.contains(&entry.day) {
+        if !valid_days.contains(&entry.day) {
             return Err("auto_menu_invalid_availability".to_string());
         }
         availability.insert((*person_index, entry.day));
@@ -235,7 +351,7 @@ fn generate_menu_once(
         if !valid_days.contains(&slot.day)
             || !valid_meals.contains(&slot.meal)
             || !unique_slots.insert((slot.day.clone(), slot.meal.clone()))
-            || dataset
+            || slot_dataset
                 .menu
                 .iter()
                 .any(|row| row.day == slot.day && row.meal == slot.meal)
@@ -251,9 +367,27 @@ fn generate_menu_once(
         return Err("auto_menu_no_slots".to_string());
     }
 
+    let slot_days = slots
+        .iter()
+        .map(|slot| slot.day.as_str())
+        .collect::<HashSet<_>>();
+    let mut dish_use_days = HashMap::<String, HashSet<String>>::new();
+    for row in &dataset.menu {
+        if dishes_by_key.contains_key(row.item_key.as_str()) {
+            dish_use_days
+                .entry(row.item_key.clone())
+                .or_default()
+                .insert(row.day.clone());
+        }
+    }
+    let weekly_uses = dish_use_days
+        .into_iter()
+        .map(|(key, days)| (key, days.len()))
+        .collect::<HashMap<_, _>>();
     let used_dishes = dataset
         .menu
         .iter()
+        .filter(|row| slot_days.contains(row.day.as_str()))
         .filter_map(|row| dishes_by_key.get(row.item_key.as_str()).map(|dish| dish.key.as_str()))
         .collect::<HashSet<_>>();
     let requested_candidates = request
@@ -265,7 +399,10 @@ fn generate_menu_once(
         .iter()
         .enumerate()
         .filter(|(_, dish)| {
-            requested_candidates.contains(&dish.key) && !used_dishes.contains(dish.key.as_str())
+            dish.auto_menu_main
+                && requested_candidates.contains(&dish.key)
+                && !used_dishes.contains(dish.key.as_str())
+                && weekly_uses.get(&dish.key).copied().unwrap_or(0) < MAX_WEEKLY_DISH_USES
         })
         .map(|(index, _)| index)
         .collect::<Vec<_>>();
@@ -278,14 +415,24 @@ fn generate_menu_once(
         .iter()
         .map(|dish| dish_kcal(dish, &ingredients_by_key))
         .collect::<Result<Vec<_>, _>>()?;
-    let candidates_were_shortlisted = candidates.len() > MAX_DAILY_CANDIDATES.max(slots.len());
-    candidates = shortlist_daily_candidates(
-        &candidates,
-        slots.len(),
-        dataset,
-        &ingredients_by_key,
-        &dish_kcal_values,
-    );
+    let has_never_rules = availability.iter().any(|(person_index, _)| {
+        dataset.people[*person_index]
+            .food_rules
+            .iter()
+            .any(|rule| rule.kind == "never")
+    });
+    let candidates_were_shortlisted = !has_never_rules
+        && candidates.len() > MAX_DAILY_CANDIDATES.max(slots.len());
+    if !has_never_rules {
+        candidates = shortlist_daily_candidates(
+            &candidates,
+            slots.len(),
+            dataset,
+            &ingredients_by_key,
+            &dish_kcal_values,
+            &weekly_uses,
+        );
+    }
     let minimum_candidate_kcal = candidates
         .iter()
         .map(|index| dish_kcal_values[*index])
@@ -297,6 +444,9 @@ fn generate_menu_once(
     let mut existing_kcal = BTreeMap::new();
     for (person_index, day) in &availability {
         let person = &dataset.people[*person_index];
+        let Some(target) = person.kcal_target else {
+            continue;
+        };
         let value = existing_daily_kcal(
             dataset,
             &ingredients_by_key,
@@ -304,22 +454,47 @@ fn generate_menu_once(
             &person.key,
             day,
         )?;
-        if value > person.kcal_target.unwrap_or(0.0) + request.kcal_threshold + EPSILON {
-            return Err("auto_menu_existing_over_target".to_string());
-        }
-        let slot_count = slots.iter().filter(|slot| slot.day == *day).count() as f64;
-        let target = person.kcal_target.unwrap_or(0.0);
-        if value + slot_count * maximum_candidate_kcal * request.max_portions
-            < target - request.kcal_threshold - EPSILON
-        {
-            return Err("auto_menu_not_enough_kcal".to_string());
-        }
-        if value + slot_count * minimum_candidate_kcal * request.min_portions
-            > target + request.kcal_threshold + EPSILON
-        {
-            return Err("auto_menu_too_many_kcal".to_string());
+        if !request.same_portion_for_everyone {
+            if value > target + request.kcal_threshold + EPSILON {
+                return Err("auto_menu_existing_over_target".to_string());
+            }
+            let slot_count = slots.iter().filter(|slot| slot.day == *day).count() as f64;
+            if value + slot_count * maximum_candidate_kcal * request.max_portions
+                < target - request.kcal_threshold - EPSILON
+            {
+                return Err("auto_menu_not_enough_kcal".to_string());
+            }
+            if value + slot_count * minimum_candidate_kcal * request.min_portions
+                > target + request.kcal_threshold + EPSILON
+            {
+                return Err("auto_menu_too_many_kcal".to_string());
+            }
         }
         existing_kcal.insert((*person_index, day.clone()), value);
+    }
+
+    let mut shared_remaining_kcal = BTreeMap::<String, (f64, usize)>::new();
+    if request.same_portion_for_everyone {
+        for ((person_index, day), value) in &existing_kcal {
+            let target = dataset.people[*person_index].kcal_target.unwrap_or(0.0);
+            let entry = shared_remaining_kcal.entry(day.clone()).or_default();
+            entry.0 += target - value;
+            entry.1 += 1;
+        }
+        for (day, (total_remaining, people_count)) in &shared_remaining_kcal {
+            let remaining = total_remaining / *people_count as f64;
+            let slot_count = slots.iter().filter(|slot| &slot.day == day).count() as f64;
+            if slot_count * maximum_candidate_kcal * request.max_portions
+                < remaining - request.kcal_threshold - EPSILON
+            {
+                return Err("auto_menu_not_enough_kcal".to_string());
+            }
+            if slot_count * minimum_candidate_kcal * request.min_portions
+                > remaining + request.kcal_threshold + EPSILON
+            {
+                return Err("auto_menu_too_many_kcal".to_string());
+            }
+        }
     }
 
     let mut problem = Problem::new(OptimizationDirection::Minimize);
@@ -331,17 +506,58 @@ fn generate_menu_once(
             .map(|(person_index, _)| *person_index)
             .collect::<Vec<_>>();
         let mut slot_decisions = Vec::new();
-        for dish_index in &candidates {
-            let chosen = problem.add_binary_var(0.0);
+        for dish_index in candidates.iter().filter(|dish_index| {
+            slot_people.iter().all(|person_index| {
+                !person_forbids_item(
+                    &dataset.people[*person_index],
+                    &dataset.dishes[**dish_index].key,
+                    &slot.meal,
+                    language,
+                    &dishes_by_key,
+                )
+            })
+        }) {
+            let chosen = problem.add_binary_var(
+                weekly_uses
+                    .get(&dataset.dishes[*dish_index].key)
+                    .copied()
+                    .unwrap_or(0) as f64
+                    * VARIETY_WEIGHT,
+            );
+            let mut portion_groups = HashMap::new();
             let portions = slot_people
                 .iter()
-                .map(|person_index| (*person_index, problem.add_integer_var(0.0, (0, max_steps))))
+                .map(|person_index| {
+                    let person = &dataset.people[*person_index];
+                    let target = person.kcal_target.unwrap_or_else(|| {
+                        if person.kind == "child" { 1500.0 } else { 2000.0 }
+                    });
+                    let group = if request.same_portion_for_everyone {
+                        ("everyone".to_string(), 0)
+                    } else {
+                        (person.kind.clone(), (target / 500.0).round() as i32)
+                    };
+                    let portion = problem.add_integer_var(0.0, (0, max_steps));
+                    if let Some(group_portion) = portion_groups.get(&group) {
+                        problem.add_constraint(
+                            [(portion, 1.0), (*group_portion, -1.0)],
+                            ComparisonOp::Eq,
+                            0.0,
+                        );
+                    } else {
+                        portion_groups.insert(group, portion);
+                    }
+                    (*person_index, portion)
+                })
                 .collect();
             slot_decisions.push(DishDecision {
                 dish_index: *dish_index,
                 chosen,
                 portions,
             });
+        }
+        if slot_decisions.is_empty() {
+            return Err("auto_menu_no_allowed_dish".to_string());
         }
         decisions.push(slot_decisions);
     }
@@ -387,10 +603,12 @@ fn generate_menu_once(
 
     let mut deviation_variables = BTreeMap::new();
     for key in &availability {
-        deviation_variables.insert(
-            key.clone(),
-            problem.add_var(DEVIATION_WEIGHT, (0.0, request.kcal_threshold)),
-        );
+        if dataset.people[key.0].kcal_target.is_some() {
+            deviation_variables.insert(
+                key.clone(),
+                problem.add_var(DEVIATION_WEIGHT, (0.0, request.kcal_threshold)),
+            );
+        }
     }
 
     for slot_decisions in &decisions {
@@ -432,6 +650,14 @@ fn generate_menu_once(
             .get(&(*person_index, day.clone()))
             .copied()
             .unwrap_or(0.0);
+        let desired_generated = if request.same_portion_for_everyone {
+            shared_remaining_kcal
+                .get(day)
+                .map(|(total, count)| total / *count as f64)
+                .unwrap_or(target - existing)
+        } else {
+            target - existing
+        };
         let mut generated = LinearExpr::empty();
         let mut generated_negative = LinearExpr::empty();
         for (slot_index, _) in slots.iter().enumerate().filter(|(_, slot)| &slot.day == day) {
@@ -451,26 +677,26 @@ fn generate_menu_once(
         problem.add_constraint(
             generated.clone(),
             ComparisonOp::Le,
-            target + request.kcal_threshold - existing,
+            desired_generated + request.kcal_threshold,
         );
         problem.add_constraint(
             generated.clone(),
             ComparisonOp::Ge,
-            target - request.kcal_threshold - existing,
+            desired_generated - request.kcal_threshold,
         );
         let mut positive_deviation = generated.clone();
         positive_deviation.add(*deviation, -1.0);
         problem.add_constraint(
             positive_deviation,
             ComparisonOp::Le,
-            target - existing,
+            desired_generated,
         );
         let mut negative_deviation = generated_negative;
         negative_deviation.add(*deviation, -1.0);
         problem.add_constraint(
             negative_deviation,
             ComparisonOp::Le,
-            existing - target,
+            -desired_generated,
         );
     }
 
@@ -556,6 +782,9 @@ fn generate_menu_once(
 
     let mut daily_results = Vec::new();
     for (person_index, day) in &availability {
+        let Some(target_kcal) = dataset.people[*person_index].kcal_target else {
+            continue;
+        };
         let existing = existing_kcal
             .get(&(*person_index, day.clone()))
             .copied()
@@ -585,7 +814,7 @@ fn generate_menu_once(
         daily_results.push(AutoMenuDailyResult {
             person_key: dataset.people[*person_index].key.clone(),
             day: day.clone(),
-            target_kcal: dataset.people[*person_index].kcal_target.unwrap_or(0.0),
+            target_kcal,
             existing_kcal: existing,
             generated_kcal: generated,
             total_kcal: existing + generated,
@@ -606,6 +835,33 @@ fn generate_menu_once(
         optimal: optimal && !candidates_were_shortlisted,
         decomposed: false,
     })
+}
+
+fn generate_menu_once(
+    dataset: &Dataset,
+    language: &str,
+    request: AutoMenuRequest,
+) -> Result<AutoMenuProposal, String> {
+    let selected_days = request
+        .slots
+        .iter()
+        .map(|slot| slot.day.clone())
+        .collect::<HashSet<_>>();
+    let routines = routine_rows(dataset, language, &request.availability, &selected_days)?;
+    let mut working_dataset = dataset.clone();
+    working_dataset.menu.extend(routines.iter().cloned());
+    let mut proposal = solve_menu_once(&working_dataset, dataset, language, request)?;
+    let mut rows = routines;
+    rows.extend(proposal.rows);
+    proposal.rows = merge_menu_rows(rows);
+
+    let original_total = build_grocery(dataset)?.estimated_purchase_total;
+    let mut generated_dataset = dataset.clone();
+    generated_dataset.menu.extend(proposal.rows.iter().cloned());
+    proposal.estimated_grocery_total = build_grocery(&generated_dataset)?.estimated_purchase_total;
+    proposal.estimated_additional_cost =
+        (proposal.estimated_grocery_total - original_total).max(0.0);
+    Ok(proposal)
 }
 
 pub fn generate_menu(
@@ -639,6 +895,7 @@ pub fn generate_menu(
             min_portions: request.min_portions,
             max_portions: request.max_portions,
             portion_step: request.portion_step,
+            same_portion_for_everyone: request.same_portion_for_everyone,
             availability: request
                 .availability
                 .iter()
@@ -677,7 +934,7 @@ pub fn generate_menu(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{DishComponent, Person};
+    use crate::model::{DishComponent, FoodRule, Person};
 
     fn ingredient(key: &str, price: f64) -> Ingredient {
         Ingredient {
@@ -713,6 +970,7 @@ mod tests {
         Dish {
             key: key.to_string(),
             name: key.to_string(),
+            auto_menu_main: true,
             servings: 1.0,
             recipe_url: String::new(),
             source: String::new(),
@@ -729,18 +987,42 @@ mod tests {
     }
 
     #[test]
-    fn generator_prefers_the_stocked_dish_and_keeps_the_target() {
+    fn generator_applies_daily_choices_and_never_rules() {
         let mut stock = BTreeMap::new();
-        stock.insert("stocked".to_string(), 100.0);
+        stock.insert("stocked".to_string(), 200.0);
         let dataset = Dataset {
             ingredients: vec![ingredient("stocked", 10.0), ingredient("bought", 10.0)],
             dishes: vec![dish("stocked_dish", "stocked"), dish("bought_dish", "bought")],
             people: vec![Person {
                 key: "person".to_string(),
                 name: "Person".to_string(),
-                kcal_target: Some(100.0),
+                kcal_target: Some(200.0),
                 kind: "adult".to_string(),
                 description: String::new(),
+                food_rules: vec![
+                    FoodRule {
+                        kind: "routine".to_string(),
+                        meal: "breakfast".to_string(),
+                        item_keys: vec!["stocked".to_string(), "bought".to_string()],
+                        days: vec![
+                            "monday".to_string(),
+                            "tuesday".to_string(),
+                            "wednesday".to_string(),
+                            "thursday".to_string(),
+                            "friday".to_string(),
+                        ],
+                        quantity: 100.0,
+                        quantity_unit: "g".to_string(),
+                    },
+                    FoodRule {
+                        kind: "never".to_string(),
+                        meal: "any".to_string(),
+                        item_keys: vec!["bought".to_string()],
+                        days: vec![],
+                        quantity: 1.0,
+                        quantity_unit: "portion".to_string(),
+                    },
+                ],
             }],
             menu: vec![],
             stock,
@@ -760,6 +1042,7 @@ mod tests {
                 min_portions: 1.0,
                 max_portions: 1.0,
                 portion_step: 0.05,
+                same_portion_for_everyone: false,
                 availability: vec![crate::model::AutoMenuAvailability {
                     person_key: "person".to_string(),
                     day: "Monday".to_string(),
@@ -773,7 +1056,202 @@ mod tests {
         )
         .unwrap();
         assert_eq!(proposal.selected_dish_keys, vec!["stocked_dish"]);
-        assert_eq!(proposal.rows[0].quantity, 1.0);
+        assert_eq!(proposal.rows.len(), 2);
+        assert_eq!(proposal.rows[0].meal, "Breakfast");
+        assert_eq!(proposal.rows[0].item_key, "stocked");
+        assert_eq!(proposal.rows[1].item_key, "stocked_dish");
         assert_eq!(proposal.estimated_additional_cost, 0.0);
+
+        let mut targetless = dataset.clone();
+        targetless.people[0].kcal_target = None;
+        let targetless_proposal = generate_menu(
+            &targetless,
+            "en",
+            AutoMenuRequest {
+                kcal_threshold: 50.0,
+                min_portions: 1.0,
+                max_portions: 1.0,
+                portion_step: 0.05,
+                same_portion_for_everyone: false,
+                availability: vec![crate::model::AutoMenuAvailability {
+                    person_key: "person".to_string(),
+                    day: "Monday".to_string(),
+                }],
+                slots: vec![crate::model::AutoMenuSlot {
+                    day: "Monday".to_string(),
+                    meal: "Lunch".to_string(),
+                }],
+                candidate_dish_keys: vec![
+                    "stocked_dish".to_string(),
+                    "bought_dish".to_string(),
+                ],
+            },
+        )
+        .unwrap();
+        assert_eq!(targetless_proposal.rows.len(), 2);
+        assert!(targetless_proposal.daily_results.is_empty());
+
+        let weekend_proposal = generate_menu(
+            &targetless,
+            "en",
+            AutoMenuRequest {
+                kcal_threshold: 50.0,
+                min_portions: 1.0,
+                max_portions: 1.0,
+                portion_step: 0.05,
+                same_portion_for_everyone: false,
+                availability: vec![crate::model::AutoMenuAvailability {
+                    person_key: "person".to_string(),
+                    day: "Saturday".to_string(),
+                }],
+                slots: vec![crate::model::AutoMenuSlot {
+                    day: "Saturday".to_string(),
+                    meal: "Lunch".to_string(),
+                }],
+                candidate_dish_keys: vec![
+                    "stocked_dish".to_string(),
+                    "bought_dish".to_string(),
+                ],
+            },
+        )
+        .unwrap();
+        assert_eq!(weekend_proposal.rows.len(), 1);
+        assert_eq!(weekend_proposal.rows[0].meal, "Lunch");
+
+        let mut dessert_only = targetless.clone();
+        dessert_only.dishes[0].auto_menu_main = false;
+        let dessert_error = generate_menu(
+            &dessert_only,
+            "en",
+            AutoMenuRequest {
+                kcal_threshold: 50.0,
+                min_portions: 1.0,
+                max_portions: 1.0,
+                portion_step: 0.05,
+                same_portion_for_everyone: false,
+                availability: vec![crate::model::AutoMenuAvailability {
+                    person_key: "person".to_string(),
+                    day: "Saturday".to_string(),
+                }],
+                slots: vec![crate::model::AutoMenuSlot {
+                    day: "Saturday".to_string(),
+                    meal: "Lunch".to_string(),
+                }],
+                candidate_dish_keys: vec!["stocked_dish".to_string()],
+            },
+        )
+        .unwrap_err();
+        assert_eq!(dessert_error, "auto_menu_not_enough_dishes");
+
+        let repeated_across_days = generate_menu(
+            &targetless,
+            "en",
+            AutoMenuRequest {
+                kcal_threshold: 50.0,
+                min_portions: 1.0,
+                max_portions: 1.0,
+                portion_step: 0.05,
+                same_portion_for_everyone: false,
+                availability: vec![
+                    crate::model::AutoMenuAvailability {
+                        person_key: "person".to_string(),
+                        day: "Monday".to_string(),
+                    },
+                    crate::model::AutoMenuAvailability {
+                        person_key: "person".to_string(),
+                        day: "Tuesday".to_string(),
+                    },
+                ],
+                slots: vec![
+                    crate::model::AutoMenuSlot {
+                        day: "Monday".to_string(),
+                        meal: "Lunch".to_string(),
+                    },
+                    crate::model::AutoMenuSlot {
+                        day: "Tuesday".to_string(),
+                        meal: "Lunch".to_string(),
+                    },
+                ],
+                candidate_dish_keys: vec!["stocked_dish".to_string()],
+            },
+        )
+        .unwrap();
+        assert_eq!(repeated_across_days.selected_dish_keys.len(), 2);
+        assert!(repeated_across_days
+            .selected_dish_keys
+            .iter()
+            .all(|key| key == "stocked_dish"));
+    }
+
+    #[test]
+    fn generator_can_force_one_shared_portion_for_everyone() {
+        let dataset = Dataset {
+            ingredients: vec![ingredient("food", 0.0)],
+            dishes: vec![dish("shared_dish", "food")],
+            people: vec![
+                Person {
+                    key: "adult".to_string(),
+                    name: "Adult".to_string(),
+                    kcal_target: Some(100.0),
+                    kind: "adult".to_string(),
+                    description: String::new(),
+                    food_rules: vec![],
+                },
+                Person {
+                    key: "child".to_string(),
+                    name: "Child".to_string(),
+                    kcal_target: Some(200.0),
+                    kind: "child".to_string(),
+                    description: String::new(),
+                    food_rules: vec![],
+                },
+            ],
+            menu: vec![],
+            stock: BTreeMap::new(),
+            stock_units: BTreeMap::new(),
+            stock_notes: BTreeMap::new(),
+            household_items: vec![],
+            household_needs: BTreeMap::new(),
+            household_need_notes: BTreeMap::new(),
+            household_stock: BTreeMap::new(),
+            source_hash: String::new(),
+        };
+        let base_request = AutoMenuRequest {
+            kcal_threshold: 100.0,
+            min_portions: 1.0,
+            max_portions: 2.0,
+            portion_step: 1.0,
+            same_portion_for_everyone: false,
+            availability: vec![
+                crate::model::AutoMenuAvailability {
+                    person_key: "adult".to_string(),
+                    day: "Monday".to_string(),
+                },
+                crate::model::AutoMenuAvailability {
+                    person_key: "child".to_string(),
+                    day: "Monday".to_string(),
+                },
+            ],
+            slots: vec![crate::model::AutoMenuSlot {
+                day: "Monday".to_string(),
+                meal: "Lunch".to_string(),
+            }],
+            candidate_dish_keys: vec!["shared_dish".to_string()],
+        };
+
+        let individualized = generate_menu(&dataset, "en", base_request.clone()).unwrap();
+        assert_eq!(individualized.rows.len(), 2);
+
+        let shared = generate_menu(
+            &dataset,
+            "en",
+            AutoMenuRequest {
+                same_portion_for_everyone: true,
+                ..base_request
+            },
+        )
+        .unwrap();
+        assert_eq!(shared.rows.len(), 1);
+        assert_eq!(shared.rows[0].people.len(), 2);
     }
 }

@@ -30,6 +30,6 @@ if grep -Eiq 'INFO:CONSOLE.*(Uncaught|SyntaxError|ReferenceError|TypeError)' "${
 fi
 
 grep -Eq '<html[^>]*data-app-module-loaded="true"' "${rendered_dom}"
-grep -Eq 'GET /app\.js\?v=homealacarte-60 HTTP/1\.1" 200' "${server_log}"
+grep -Eq 'GET /app\.js\?v=homealacarte-68 HTTP/1\.1" 200' "${server_log}"
 
 echo "The application module starts in Chromium without an uncaught frontend exception."

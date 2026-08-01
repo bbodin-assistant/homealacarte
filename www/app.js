@@ -13,25 +13,32 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-60";
-import { t, translations } from "./translations.js?v=homealacarte-60";
+} from "./storage.js?v=homealacarte-68";
+import { t, translations } from "./translations.js?v=homealacarte-68";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-60";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-60";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-60";
+} from "./item-details.js?v=homealacarte-68";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-68";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-68";
+import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-68";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-60";
+} from "./catalogue-filters.js?v=homealacarte-68";
+import {
+  loadBundledDefaults,
+  mergeBundledDishClassifications,
+  mergeBundledFoodRules,
+} from "./profile-rules.js?v=homealacarte-68";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
-const DATA_SCHEMA_VERSION = 6;
+const DATA_SCHEMA_VERSION = 8;
+const FOOD_RULE_MIGRATION_VERSIONS = [6, 7];
 const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   items: [],
   dishes: [],
@@ -48,7 +55,13 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-60", { type: "module" });
+const storedAutoMenuOptions = storedJson("homealacarte-auto-menu-options", {});
+function storedAutoMenuNumber(key, fallback) {
+  const value = Number(storedAutoMenuOptions[key]);
+  return Number.isFinite(value) ? value : fallback;
+}
+
+const worker = new Worker("./worker.js?v=homealacarte-68", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -105,10 +118,11 @@ const state = {
   autoMenuSlots: {},
   autoMenuCandidates: {},
   autoMenuOptions: {
-    kcalThreshold: 50,
-    minPortions: 0.5,
-    maxPortions: 2,
-    portionStep: 0.05,
+    kcalThreshold: storedAutoMenuNumber("kcalThreshold", 150),
+    minPortions: storedAutoMenuNumber("minPortions", 0.5),
+    maxPortions: storedAutoMenuNumber("maxPortions", 2),
+    portionStep: storedAutoMenuNumber("portionStep", 0.25),
+    samePortionForEveryone: storedAutoMenuOptions.samePortionForEveryone === true,
   },
   autoMenuProposal: null,
   engineBusy: false,
@@ -653,7 +667,7 @@ const autoMenuSettingKey = (...parts) => JSON.stringify(parts);
 const autoMenuMeals = () => [state.snapshot.meals[2], state.snapshot.meals[5]].filter(Boolean);
 
 function initializeAutoMenuSettings() {
-  const people = state.snapshot.people.filter((person) => person.kcal_target != null);
+  const people = state.snapshot.people;
   const signature = JSON.stringify([
     state.language,
     state.snapshot.days,
@@ -686,17 +700,18 @@ function initializeAutoMenuSettings() {
 
 function renderAutoMenu() {
   initializeAutoMenuSettings();
-  const people = state.snapshot.people.filter((person) => person.kcal_target != null);
+  const people = state.snapshot.people;
   $("#auto-kcal-threshold").value = formatInputNumber(state.autoMenuOptions.kcalThreshold);
   $("#auto-min-portions").value = formatInputNumber(state.autoMenuOptions.minPortions);
   $("#auto-max-portions").value = formatInputNumber(state.autoMenuOptions.maxPortions);
   $("#auto-portion-step").value = formatInputNumber(state.autoMenuOptions.portionStep);
+  $("#auto-same-portions").checked = state.autoMenuOptions.samePortionForEveryone;
 
   $("#auto-menu-availability").innerHTML = `
     <table class="auto-menu-availability">
       <thead><tr><th>${escapeHtml(t(state.language, "people"))}</th>${state.snapshot.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("")}</tr></thead>
       <tbody>${people.map((person) => `<tr>
-        <td><strong>${escapeHtml(person.name)}</strong><span>${formatNumber(person.kcal_target, 0)} kcal</span></td>
+        <td><strong>${escapeHtml(person.name)}</strong><span>${person.kcal_target == null ? escapeHtml(t(state.language, "no_calorie_target")) : `${formatNumber(person.kcal_target, 0)} kcal`}</span></td>
         ${state.snapshot.days.map((day) => {
           const key = autoMenuSettingKey(person.key, day);
           return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" ${state.autoMenuAvailability[key] ? "checked" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
@@ -720,10 +735,12 @@ function renderAutoMenu() {
   const usedDishes = new Set(state.draft.map((row) => row.item_key));
   $("#auto-menu-dishes").innerHTML = state.snapshot.dishes.map((dish) => {
     const used = usedDishes.has(dish.key);
-    return `<label class="auto-menu-dish ${used ? "used" : ""}">
-      <input type="checkbox" data-auto-dish-key="${escapeHtml(encodeURIComponent(dish.key))}" ${!used && state.autoMenuCandidates[dish.key] !== false ? "checked" : ""} ${used ? "disabled" : ""}>
+    const mainMeal = dish.auto_menu_main !== false;
+    const disabled = used || !mainMeal;
+    return `<label class="auto-menu-dish ${disabled ? "used" : ""}">
+      <input type="checkbox" data-auto-dish-key="${escapeHtml(encodeURIComponent(dish.key))}" ${!disabled && state.autoMenuCandidates[dish.key] !== false ? "checked" : ""} ${disabled ? "disabled" : ""}>
       <strong title="${escapeHtml(dish.name)}">${escapeHtml(dish.name)}</strong>
-      <small>${formatNumber(dish.per_serving.kcal, 0)} kcal · ${formatMoney(dish.per_serving.cost)}</small>
+      <small>${mainMeal ? `${formatNumber(dish.per_serving.kcal, 0)} kcal · ${formatMoney(dish.per_serving.cost)}` : escapeHtml(t(state.language, "not_main_meal"))}</small>
     </label>`;
   }).join("") || `<p>${escapeHtml(t(state.language, "no_eligible_dishes"))}</p>`;
   renderAutoMenuResult();
@@ -738,7 +755,7 @@ function renderAutoMenuResult() {
     return;
   }
   const people = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
-  const dishes = new Map(state.snapshot.dishes.map((dish) => [dish.key, dish.name]));
+  const items = new Map(state.snapshot.item_options.map((item) => [item.key, item.name]));
   container.hidden = false;
   container.innerHTML = `
     <div class="auto-menu-result-summary">
@@ -751,7 +768,7 @@ function renderAutoMenuResult() {
       <div class="auto-menu-preview-grid">${proposal.rows.map((row) => `
         <div class="auto-menu-preview-card">
           <strong>${escapeHtml(`${row.day} · ${row.meal}`)}</strong>
-          <span>${escapeHtml(dishes.get(row.item_key) || row.item_key)} · ${formatNumber(row.quantity, 2)} ${escapeHtml(t(state.language, "portions"))}</span>
+          <span>${escapeHtml(items.get(row.item_key) || row.item_key)} · ${formatNumber(row.quantity, 2)} ${escapeHtml(row.quantity_unit)}</span>
           <span>${escapeHtml(row.people.map((key) => people.get(key) || key).join(", "))}</span>
         </div>`).join("")}</div>
     </section>
@@ -1362,6 +1379,7 @@ function renderFamily() {
       <span class="family-kind">${escapeHtml(t(state.language, kind))}</span>
       <h2>${escapeHtml(person.name)}</h2>
       ${person.description ? `<p class="family-description">${escapeHtml(person.description)}</p>` : ""}
+      ${(person.food_rules || []).length ? `<p class="family-rules-summary">${escapeHtml(translatedTemplate("structured_rules_count", { count: person.food_rules.length }))}</p>` : ""}
       <p class="family-target"><strong>${escapeHtml(target)}</strong><span>${escapeHtml(t(state.language, "daily_target"))}</span></p>
     </article>`;
   }).join("");
@@ -1541,6 +1559,7 @@ function dishFormSignature() {
     recipe_url: $("#new-dish-url").value.trim(),
     source: $("#new-dish-source").value.trim(),
     nutri_score: $("#new-dish-nutri-score").value,
+    auto_menu_main: $("#new-dish-auto-menu-main").checked,
     source_notes: dishSourceNotesPayload(),
     components: $$("#new-dish-component-list .new-dish-component-row").map((row) => ({
       mode: row.dataset.componentMode,
@@ -1596,6 +1615,7 @@ function openDishForm(dish = null) {
   $("#new-dish-url").value = dish?.recipe_url || "";
   $("#new-dish-source").value = dish?.source || "";
   $("#new-dish-nutri-score").value = dish?.nutri_score_manual || "";
+  $("#new-dish-auto-menu-main").checked = dish?.auto_menu_main !== false;
   $("#new-dish-nutri-status").textContent = dish
     ? dishNutriScoreDetail(dish)
     : t(state.language, "nutri_score_field_help");
@@ -1624,6 +1644,144 @@ function closeNewDishDialog() {
   $("#new-dish-dialog").close();
 }
 
+const FOOD_RULE_MEAL_CODES = [
+  "breakfast",
+  "morning_snack",
+  "lunch",
+  "afternoon_snack_1",
+  "afternoon_snack_2",
+  "dinner",
+  "anytime",
+];
+
+const FOOD_RULE_DAY_CODES = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
+
+function foodRuleMealOptions(selectedMeal, includeAny = true) {
+  const any = includeAny
+    ? `<option value="any" ${selectedMeal === "any" ? "selected" : ""}>${escapeHtml(t(state.language, "any_meal"))}</option>`
+    : "";
+  return any + FOOD_RULE_MEAL_CODES.map((code, index) => `
+    <option value="${code}" ${selectedMeal === code ? "selected" : ""}>
+      ${escapeHtml(state.snapshot.meals[index] || code)}
+    </option>`).join("");
+}
+
+function foodRuleItemOptions(selectedKeys = []) {
+  const selected = new Set(selectedKeys);
+  return state.snapshot.item_options.map((item) => `
+    <label class="food-rule-choice">
+      <input type="checkbox" value="${escapeHtml(item.key)}" ${selected.has(item.key) ? "checked" : ""}>
+      <span>${escapeHtml(item.name)}</span>
+    </label>`).join("");
+}
+
+function foodRuleDayOptions(selectedDays = []) {
+  const selected = new Set(selectedDays.length ? selectedDays : FOOD_RULE_DAY_CODES);
+  return FOOD_RULE_DAY_CODES.map((code, index) => `
+    <label class="food-rule-day">
+      <input type="checkbox" value="${code}" ${selected.has(code) ? "checked" : ""}>
+      <span>${escapeHtml(state.snapshot.days[index] || code)}</span>
+    </label>`).join("");
+}
+
+function foodRuleMarkup(rule = {}) {
+  const kind = rule.kind === "never" ? "never" : "routine";
+  const meal = rule.meal || (kind === "never" ? "any" : "breakfast");
+  const quantity = Number.isFinite(Number(rule.quantity)) ? Number(rule.quantity) : 1;
+  const unit = ["portion", "g", "unit"].includes(rule.quantity_unit)
+    ? rule.quantity_unit
+    : "portion";
+  return `<div class="family-food-rule ${kind === "never" ? "never-rule" : ""}" data-food-rule>
+    <label><span>${escapeHtml(t(state.language, "food_rule_type"))}</span>
+      <select data-food-rule-kind>
+        <option value="routine" ${kind === "routine" ? "selected" : ""}>${escapeHtml(t(state.language, "food_rule_routine"))}</option>
+        <option value="never" ${kind === "never" ? "selected" : ""}>${escapeHtml(t(state.language, "food_rule_never"))}</option>
+      </select>
+    </label>
+    <label><span>${escapeHtml(t(state.language, "food_rule_meal"))}</span>
+      <select data-food-rule-meal>${foodRuleMealOptions(meal)}</select>
+    </label>
+    <div class="food-rule-items-field"><span>${escapeHtml(t(state.language, "food_rule_choices"))}</span>
+      <div data-food-rule-items role="group">${foodRuleItemOptions(rule.item_keys)}</div>
+    </div>
+    <label data-routine-field><span>${escapeHtml(t(state.language, "food_rule_quantity"))}</span>
+      <input data-food-rule-quantity type="number" min="0.000000001" step="any" value="${escapeHtml(formatInputNumber(quantity))}">
+    </label>
+    <label data-routine-field><span>${escapeHtml(t(state.language, "food_rule_unit"))}</span>
+      <select data-food-rule-unit>
+        <option value="portion" ${unit === "portion" ? "selected" : ""}>portion</option>
+        <option value="g" ${unit === "g" ? "selected" : ""}>g</option>
+        <option value="unit" ${unit === "unit" ? "selected" : ""}>unit</option>
+      </select>
+    </label>
+    <button class="icon-button remove-food-rule" type="button" aria-label="${escapeHtml(t(state.language, "delete"))}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+    </button>
+    <div class="food-rule-days-field" data-routine-field>
+      <span>${escapeHtml(t(state.language, "food_rule_days"))}</span>
+      <small>${escapeHtml(t(state.language, "food_rule_days_hint"))}</small>
+      <div data-food-rule-days role="group">${foodRuleDayOptions(rule.days)}</div>
+    </div>
+  </div>`;
+}
+
+function setFoodRuleMode(row) {
+  const routine = row.querySelector("[data-food-rule-kind]").value === "routine";
+  row.classList.toggle("never-rule", !routine);
+  const meal = row.querySelector("[data-food-rule-meal]");
+  meal.querySelector('option[value="any"]').disabled = routine;
+  if (routine && meal.value === "any") meal.value = "breakfast";
+}
+
+function renderFamilyFoodRules(rules = []) {
+  const list = $("#family-food-rules-list");
+  list.innerHTML = rules.length
+    ? rules.map(foodRuleMarkup).join("")
+    : `<p class="family-food-rules-empty">${escapeHtml(t(state.language, "no_food_rules"))}</p>`;
+  $$("#family-food-rules-list [data-food-rule]").forEach(setFoodRuleMode);
+}
+
+function familyFoodRulesPayload() {
+  return $$("#family-food-rules-list [data-food-rule]").map((row) => {
+    const kind = row.querySelector("[data-food-rule-kind]").value;
+    const selectedDays = [...row.querySelectorAll("[data-food-rule-days] input:checked")]
+      .map((input) => input.value);
+    return {
+      kind,
+      meal: row.querySelector("[data-food-rule-meal]").value,
+      item_keys: [...row.querySelectorAll("[data-food-rule-items] input:checked")]
+        .map((input) => input.value),
+      days: kind !== "routine" || selectedDays.length === FOOD_RULE_DAY_CODES.length
+        ? []
+        : (selectedDays.length ? selectedDays : ["__no_day_selected__"]),
+      quantity: kind === "routine"
+        ? Number(row.querySelector("[data-food-rule-quantity]").value)
+        : 1,
+      quantity_unit: kind === "routine"
+        ? row.querySelector("[data-food-rule-unit]").value
+        : "portion",
+    };
+  });
+}
+
+function familyFoodRulesAreValid(rules = familyFoodRulesPayload()) {
+  return rules.every((rule) => rule.item_keys.length > 0
+    && (rule.kind !== "routine" || (
+      rule.meal !== "any"
+      && rule.days.every((day) => FOOD_RULE_DAY_CODES.includes(day))
+      && Number.isFinite(rule.quantity)
+      && rule.quantity > 0
+    )));
+}
+
 function familyFormSignature() {
   return JSON.stringify({
     name: $("#family-member-name").value.trim(),
@@ -1632,6 +1790,7 @@ function familyFormSignature() {
       ? null
       : Number($("#family-member-kcal").value),
     description: $("#family-member-description").value.trim(),
+    food_rules: familyFoodRulesPayload(),
   });
 }
 
@@ -1640,7 +1799,8 @@ function updateFamilyFormSaveState() {
   const kcalValue = $("#family-member-kcal").value;
   const kcalTarget = kcalValue === "" ? null : Number(kcalValue);
   const valid = Boolean(name)
-    && (kcalTarget == null || (Number.isFinite(kcalTarget) && kcalTarget > 0));
+    && (kcalTarget == null || (Number.isFinite(kcalTarget) && kcalTarget > 0))
+    && familyFoodRulesAreValid();
   const unchanged = Boolean(state.familyEditKey)
     && familyFormSignature() === state.familyOriginal;
   $("#family-dialog-submit").disabled = !valid || unchanged;
@@ -1667,6 +1827,7 @@ function openFamilyDialog(person = null) {
   $(`#family-form input[name="family-kind"][value="${kind}"]`).checked = true;
   $("#family-member-kcal").value = person?.kcal_target ?? "";
   $("#family-member-description").value = person?.description || "";
+  renderFamilyFoodRules(person?.food_rules || []);
   state.familyOriginal = editing ? familyFormSignature() : "";
   updateFamilyFormSaveState();
   const dialog = $("#family-dialog");
@@ -1723,6 +1884,7 @@ function closeMealReplacement() {
 }
 
 function renderMenu() {
+  state.draft = mergeCompatibleMenuRows(state.draft);
   const profileSelect = $("#profile-select");
   const peopleNames = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
   const itemNames = new Map(state.snapshot.item_options.map((item) => [item.key, item.name]));
@@ -2546,6 +2708,7 @@ function updateDishRange(changedControl) {
 
 function scheduleMenuUpdate() {
   clearTimeout(state.editTimer);
+  state.draft = mergeCompatibleMenuRows(state.draft);
   state.autoMenuProposal = null;
   state.autoMenuSignature = "";
   renderAutoMenu();
@@ -2973,6 +3136,7 @@ $("#new-dish-form").addEventListener("submit", (event) => {
       recipe_url: $("#new-dish-url").value.trim(),
       source: $("#new-dish-source").value.trim(),
       nutri_score: $("#new-dish-nutri-score").value,
+      auto_menu_main: $("#new-dish-auto-menu-main").checked,
       source_notes: dishSourceNotesPayload(),
       components,
     },
@@ -3126,6 +3290,31 @@ $("#family-grid").addEventListener("keydown", (event) => {
 });
 $("#family-dialog-close").addEventListener("click", closeFamilyDialog);
 $("#family-dialog-cancel").addEventListener("click", closeFamilyDialog);
+$("#family-food-rule-add").addEventListener("click", () => {
+  const list = $("#family-food-rules-list");
+  list.querySelector(".family-food-rules-empty")?.remove();
+  list.insertAdjacentHTML("beforeend", foodRuleMarkup());
+  const row = list.lastElementChild;
+  setFoodRuleMode(row);
+  updateFamilyFormSaveState();
+  row.querySelector("[data-food-rule-kind]").focus();
+});
+$("#family-food-rules-list").addEventListener("click", (event) => {
+  const remove = event.target.closest(".remove-food-rule");
+  if (!remove) return;
+  remove.closest("[data-food-rule]").remove();
+  if (!$("#family-food-rules-list").children.length) renderFamilyFoodRules();
+  updateFamilyFormSaveState();
+});
+$("#family-food-rules-list").addEventListener("change", (event) => {
+  const row = event.target.closest("[data-food-rule]");
+  if (row && event.target.matches("[data-food-rule-kind]")) setFoodRuleMode(row);
+  if (row && event.target.matches("[data-food-rule-days] input")
+    && !row.querySelector("[data-food-rule-days] input:checked")) {
+    event.target.checked = true;
+  }
+  updateFamilyFormSaveState();
+});
 $("#family-form").addEventListener("input", updateFamilyFormSaveState);
 $("#family-form").addEventListener("change", updateFamilyFormSaveState);
 $("#family-form").addEventListener("submit", (event) => {
@@ -3133,7 +3322,10 @@ $("#family-form").addEventListener("submit", (event) => {
   const name = $("#family-member-name").value.trim();
   const kcalValue = $("#family-member-kcal").value;
   const kcalTarget = kcalValue === "" ? null : Number(kcalValue);
-  if (!name || (kcalTarget != null && (!Number.isFinite(kcalTarget) || kcalTarget <= 0))) return;
+  const foodRules = familyFoodRulesPayload();
+  if (!name
+    || (kcalTarget != null && (!Number.isFinite(kcalTarget) || kcalTarget <= 0))
+    || !familyFoodRulesAreValid(foodRules)) return;
   const editingKey = state.familyEditKey;
   const person = {
     key: editingKey || familyMemberKey(name),
@@ -3141,6 +3333,7 @@ $("#family-form").addEventListener("submit", (event) => {
     kind: $("#family-form input[name='family-kind']:checked")?.value || "adult",
     kcal_target: kcalTarget,
     description: $("#family-member-description").value.trim(),
+    food_rules: foodRules,
   };
   const existingIndex = state.familyDraft.findIndex((candidate) => candidate.key === editingKey);
   if (editingKey && existingIndex >= 0) state.familyDraft[existingIndex] = person;
@@ -3199,7 +3392,9 @@ $("#auto-menu-form").addEventListener("input", () => {
     minPortions: Number($("#auto-min-portions").value),
     maxPortions: Number($("#auto-max-portions").value),
     portionStep: Number($("#auto-portion-step").value),
+    samePortionForEveryone: $("#auto-same-portions").checked,
   };
+  localStorage.setItem("homealacarte-auto-menu-options", JSON.stringify(state.autoMenuOptions));
   state.autoMenuProposal = null;
   renderAutoMenuResult();
 });
@@ -3229,6 +3424,7 @@ $("#auto-menu-form").addEventListener("submit", (event) => {
       min_portions: state.autoMenuOptions.minPortions,
       max_portions: state.autoMenuOptions.maxPortions,
       portion_step: state.autoMenuOptions.portionStep,
+      same_portion_for_everyone: state.autoMenuOptions.samePortionForEveryone,
       availability: relevantAvailability,
       slots,
       candidate_dish_keys: candidateDishKeys,
@@ -4008,13 +4204,23 @@ async function bootstrap() {
   const requestedTab = location.hash.slice(1);
   if (["family", "menu", "grocery", "dishes", "items", "data"].includes(requestedTab)) switchTab(requestedTab);
   const saved = await loadPrivateState().catch(() => null);
-  if (saved?.version === DATA_SCHEMA_VERSION) {
+  if ([...FOOD_RULE_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION].includes(saved?.version)) {
     state.language = saved.language || state.language;
     state.importedSources = saved.sources || null;
     state.restorePeople = saved.version >= 4 ? (saved.people || null) : null;
     state.restoreMenu = saved.menu || null;
     state.restoreStock = saved.version >= 2 ? (saved.stock || null) : null;
     state.restoreCustom = saved.version >= 3 ? (saved.customGrocery || null) : null;
+    if (FOOD_RULE_MIGRATION_VERSIONS.includes(saved.version)) {
+      const bundled = await loadBundledDefaults().catch(() => ({ people: [], dishes: [] }));
+      if (state.restorePeople) {
+        state.restorePeople = mergeBundledFoodRules(state.restorePeople, bundled.people);
+      }
+      state.importedSources = mergeBundledDishClassifications(
+        state.importedSources || [],
+        bundled.dishes,
+      );
+    }
     applyTranslations();
   }
   if (state.importedSources?.length) {
