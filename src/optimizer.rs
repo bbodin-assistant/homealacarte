@@ -867,8 +867,17 @@ fn generate_menu_once(
 pub fn generate_menu(
     dataset: &Dataset,
     language: &str,
-    request: AutoMenuRequest,
+    mut request: AutoMenuRequest,
 ) -> Result<AutoMenuProposal, String> {
+    let people_with_targets = dataset
+        .people
+        .iter()
+        .filter(|person| person.kcal_target.is_some())
+        .map(|person| person.key.as_str())
+        .collect::<HashSet<_>>();
+    request
+        .availability
+        .retain(|entry| people_with_targets.contains(entry.person_key.as_str()));
     let selected_days = request
         .slots
         .iter()
@@ -1064,7 +1073,7 @@ mod tests {
 
         let mut targetless = dataset.clone();
         targetless.people[0].kcal_target = None;
-        let targetless_proposal = generate_menu(
+        let targetless_error = generate_menu(
             &targetless,
             "en",
             AutoMenuRequest {
@@ -1087,15 +1096,14 @@ mod tests {
                 ],
             },
         )
-        .unwrap();
-        assert_eq!(targetless_proposal.rows.len(), 2);
-        assert!(targetless_proposal.daily_results.is_empty());
+        .unwrap_err();
+        assert_eq!(targetless_error, "auto_menu_no_availability");
 
         let weekend_proposal = generate_menu(
-            &targetless,
+            &dataset,
             "en",
             AutoMenuRequest {
-                kcal_threshold: 50.0,
+                kcal_threshold: 100.0,
                 min_portions: 1.0,
                 max_portions: 1.0,
                 portion_step: 0.05,
@@ -1118,7 +1126,7 @@ mod tests {
         assert_eq!(weekend_proposal.rows.len(), 1);
         assert_eq!(weekend_proposal.rows[0].meal, "Lunch");
 
-        let mut dessert_only = targetless.clone();
+        let mut dessert_only = dataset.clone();
         dessert_only.dishes[0].auto_menu_main = false;
         let dessert_error = generate_menu(
             &dessert_only,
@@ -1144,7 +1152,7 @@ mod tests {
         assert_eq!(dessert_error, "auto_menu_not_enough_dishes");
 
         let repeated_across_days = generate_menu(
-            &targetless,
+            &dataset,
             "en",
             AutoMenuRequest {
                 kcal_threshold: 50.0,
@@ -1205,6 +1213,14 @@ mod tests {
                     description: String::new(),
                     food_rules: vec![],
                 },
+                Person {
+                    key: "visitor".to_string(),
+                    name: "Visitor".to_string(),
+                    kcal_target: None,
+                    kind: "adult".to_string(),
+                    description: String::new(),
+                    food_rules: vec![],
+                },
             ],
             menu: vec![],
             stock: BTreeMap::new(),
@@ -1231,6 +1247,10 @@ mod tests {
                     person_key: "child".to_string(),
                     day: "Monday".to_string(),
                 },
+                crate::model::AutoMenuAvailability {
+                    person_key: "visitor".to_string(),
+                    day: "Monday".to_string(),
+                },
             ],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Monday".to_string(),
@@ -1253,5 +1273,6 @@ mod tests {
         .unwrap();
         assert_eq!(shared.rows.len(), 1);
         assert_eq!(shared.rows[0].people.len(), 2);
+        assert!(!shared.rows[0].people.iter().any(|person| person == "visitor"));
     }
 }

@@ -13,32 +13,34 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-68";
-import { t, translations } from "./translations.js?v=homealacarte-68";
+} from "./storage.js?v=homealacarte-70";
+import { t, translations } from "./translations.js?v=homealacarte-70";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-68";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-68";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-68";
-import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-68";
+} from "./item-details.js?v=homealacarte-70";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-70";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-70";
+import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-70";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-68";
+} from "./catalogue-filters.js?v=homealacarte-70";
 import {
   loadBundledDefaults,
   mergeBundledDishClassifications,
+  mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "./profile-rules.js?v=homealacarte-68";
+} from "./profile-rules.js?v=homealacarte-70";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
-const DATA_SCHEMA_VERSION = 8;
+const DATA_SCHEMA_VERSION = 9;
 const FOOD_RULE_MIGRATION_VERSIONS = [6, 7];
+const INGREDIENT_MIGRATION_VERSIONS = [6, 7, 8];
 const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   items: [],
   dishes: [],
@@ -61,7 +63,7 @@ function storedAutoMenuNumber(key, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-68", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-70", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -684,6 +686,9 @@ function initializeAutoMenuSettings() {
     for (const day of state.snapshot.days) {
       state.autoMenuAvailability[autoMenuSettingKey(person.key, day)] = !hasMenu
         || state.draft.some((row) => row.day === day && row.people.includes(person.key));
+      if (person.kcal_target == null) {
+        state.autoMenuAvailability[autoMenuSettingKey(person.key, day)] = false;
+      }
     }
   }
   for (const day of state.snapshot.days) {
@@ -711,10 +716,10 @@ function renderAutoMenu() {
     <table class="auto-menu-availability">
       <thead><tr><th>${escapeHtml(t(state.language, "people"))}</th>${state.snapshot.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("")}</tr></thead>
       <tbody>${people.map((person) => `<tr>
-        <td><strong>${escapeHtml(person.name)}</strong><span>${person.kcal_target == null ? escapeHtml(t(state.language, "no_calorie_target")) : `${formatNumber(person.kcal_target, 0)} kcal`}</span></td>
+        <td><strong>${escapeHtml(person.name)}</strong><span>${person.kcal_target == null ? escapeHtml(t(state.language, "excluded_without_calorie_target")) : `${formatNumber(person.kcal_target, 0)} kcal`}</span></td>
         ${state.snapshot.days.map((day) => {
           const key = autoMenuSettingKey(person.key, day);
-          return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" ${state.autoMenuAvailability[key] ? "checked" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
+          return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" ${state.autoMenuAvailability[key] ? "checked" : ""} ${person.kcal_target == null ? "disabled" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
         }).join("")}
       </tr>`).join("")}</tbody>
     </table>`;
@@ -4204,7 +4209,7 @@ async function bootstrap() {
   const requestedTab = location.hash.slice(1);
   if (["family", "menu", "grocery", "dishes", "items", "data"].includes(requestedTab)) switchTab(requestedTab);
   const saved = await loadPrivateState().catch(() => null);
-  if ([...FOOD_RULE_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION].includes(saved?.version)) {
+  if ([...INGREDIENT_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION].includes(saved?.version)) {
     state.language = saved.language || state.language;
     state.importedSources = saved.sources || null;
     state.restorePeople = saved.version >= 4 ? (saved.people || null) : null;
@@ -4220,6 +4225,9 @@ async function bootstrap() {
         state.importedSources || [],
         bundled.dishes,
       );
+    }
+    if (INGREDIENT_MIGRATION_VERSIONS.includes(saved.version)) {
+      state.importedSources = mergeDuplicateIngredient(state.importedSources || []);
     }
     applyTranslations();
   }

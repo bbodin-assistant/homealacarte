@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   mergeBundledDishClassifications,
+  mergeDuplicateIngredient,
   mergeBundledFoodRules,
 } from "../www/profile-rules.js";
 
@@ -59,5 +60,32 @@ const migratedDishes = JSON.parse(migratedSources[0].content).dishes;
 assert.equal(migratedDishes[0].auto_menu_main, false);
 assert.deepEqual(migratedDishes[0].components, ["unchanged"]);
 assert.equal(migratedDishes[1].auto_menu_main, undefined);
+
+const duplicateSources = [{
+  path: "items.json",
+  content: JSON.stringify({
+    items: [
+      { key: "fromage_rape", name: "Fromage râpé", price_history: [{ date: "old", price: 9 }] },
+      { key: "emmental_rape", name: "Emmental râpé", price_history: [{ date: "new", price: 8 }] },
+    ],
+    dishes: [{ components: [{ item_key: "fromage_rape" }] }],
+  }),
+}];
+const mergedIngredientSources = mergeDuplicateIngredient(duplicateSources);
+const mergedIngredientData = JSON.parse(mergedIngredientSources[0].content);
+assert.deepEqual(mergedIngredientData.items.map((item) => item.key), ["emmental_rape"]);
+assert.deepEqual(
+  mergedIngredientData.items[0].price_history.map((entry) => entry.date),
+  ["old", "new"],
+);
+assert.equal(mergedIngredientData.dishes[0].components[0].item_key, "emmental_rape");
+const promotedIngredientData = JSON.parse(mergeDuplicateIngredient([{
+  path: "legacy.json",
+  content: JSON.stringify({ items: [{ key: "fromage_rape", name: "Fromage râpé" }] }),
+}])[0].content);
+assert.deepEqual(
+  promotedIngredientData.items.map((item) => [item.key, item.name]),
+  [["emmental_rape", "Emmental râpé"]],
+);
 
 console.log("Legacy profiles receive missing rules and dish classifications without data loss.");

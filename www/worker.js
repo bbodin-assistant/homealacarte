@@ -1,11 +1,11 @@
-import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-68";
+import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-70";
 
 let engine;
 let readyPromise;
 
 async function ensureEngine() {
   if (!readyPromise) {
-    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-68", self.location.href);
+    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-70", self.location.href);
     readyPromise = init({ module_or_path: wasmUrl }).then(() => {
       engine = new HomeALaCarteEngine();
     });

@@ -53,6 +53,72 @@ export function mergeBundledDishClassifications(sources = [], bundledDishes = []
   });
 }
 
+export function mergeDuplicateIngredient(
+  sources = [],
+  fromKey = "fromage_rape",
+  toKey = "emmental_rape",
+  toName = "Emmental râpé",
+) {
+  const parsed = sources.map((source) => {
+    try {
+      return { source, value: JSON.parse(source.content) };
+    } catch {
+      return { source, value: null };
+    }
+  });
+  const items = parsed.flatMap(({ value }) => Array.isArray(value?.items) ? value.items : []);
+  const hasTarget = items.some((item) => item.key === toKey);
+  const legacyRecords = items.filter((item) => item.key === fromKey);
+  if (!legacyRecords.length) return sources;
+
+  const legacyHistory = legacyRecords.flatMap((item) => item.price_history || []);
+  const replaceReferences = (value) => {
+    if (Array.isArray(value)) return value.map(replaceReferences);
+    if (!value || typeof value !== "object") return value === fromKey ? toKey : value;
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        key === "items" ? entry : replaceReferences(entry),
+      ]),
+    );
+  };
+  const mergeHistory = (history = []) => {
+    const seen = new Set();
+    return [...legacyHistory, ...history].filter((entry) => {
+      const identity = JSON.stringify([entry.date || "", entry.price, entry.description || ""]);
+      if (seen.has(identity)) return false;
+      seen.add(identity);
+      return true;
+    });
+  };
+
+  let promotedLegacy = false;
+  return parsed.map(({ source, value }) => {
+    if (!value) return source;
+    const containsLegacy = Array.isArray(value.items)
+      && value.items.some((item) => item.key === fromKey);
+    const migrated = replaceReferences(value);
+    if (Array.isArray(migrated.items)) {
+      migrated.items = migrated.items.flatMap((item) => {
+        if (item.key === fromKey) return [];
+        if (item.key !== toKey) return [item];
+        return [{ ...item, name: toName, price_history: mergeHistory(item.price_history) }];
+      });
+      if (!hasTarget && containsLegacy && !promotedLegacy) {
+        const legacy = legacyRecords[0];
+        migrated.items.push({
+          ...legacy,
+          key: toKey,
+          name: toName,
+          price_history: mergeHistory(legacy.price_history),
+        });
+        promotedLegacy = true;
+      }
+    }
+    return { ...source, content: `${JSON.stringify(migrated, null, 2)}\n` };
+  });
+}
+
 export async function loadBundledDefaults(manifestUrl = "./data-manifest.json") {
   const manifestResponse = await fetch(manifestUrl, { cache: "no-store" });
   if (!manifestResponse.ok) throw new Error(`Cannot load ${manifestUrl}`);
