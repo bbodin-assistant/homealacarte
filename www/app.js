@@ -13,34 +13,36 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-70";
-import { t, translations } from "./translations.js?v=homealacarte-70";
+} from "./storage.js?v=homealacarte-71";
+import { t, translations } from "./translations.js?v=homealacarte-71";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-70";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-70";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-70";
-import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-70";
+} from "./item-details.js?v=homealacarte-71";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-71";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-71";
+import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-71";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-70";
+} from "./catalogue-filters.js?v=homealacarte-71";
 import {
   loadBundledDefaults,
   mergeBundledDishClassifications,
+  mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "./profile-rules.js?v=homealacarte-70";
+} from "./profile-rules.js?v=homealacarte-71";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
-const DATA_SCHEMA_VERSION = 9;
+const DATA_SCHEMA_VERSION = 10;
 const FOOD_RULE_MIGRATION_VERSIONS = [6, 7];
 const INGREDIENT_MIGRATION_VERSIONS = [6, 7, 8];
+const NUTRITION_MIGRATION_VERSIONS = [6, 7, 8, 9];
 const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   items: [],
   dishes: [],
@@ -63,7 +65,7 @@ function storedAutoMenuNumber(key, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-70", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-71", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -4209,15 +4211,19 @@ async function bootstrap() {
   const requestedTab = location.hash.slice(1);
   if (["family", "menu", "grocery", "dishes", "items", "data"].includes(requestedTab)) switchTab(requestedTab);
   const saved = await loadPrivateState().catch(() => null);
-  if ([...INGREDIENT_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION].includes(saved?.version)) {
+  if ([...NUTRITION_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION].includes(saved?.version)) {
     state.language = saved.language || state.language;
     state.importedSources = saved.sources || null;
     state.restorePeople = saved.version >= 4 ? (saved.people || null) : null;
     state.restoreMenu = saved.menu || null;
     state.restoreStock = saved.version >= 2 ? (saved.stock || null) : null;
     state.restoreCustom = saved.version >= 3 ? (saved.customGrocery || null) : null;
+    const needsBundledDefaults = FOOD_RULE_MIGRATION_VERSIONS.includes(saved.version)
+      || NUTRITION_MIGRATION_VERSIONS.includes(saved.version);
+    const bundled = needsBundledDefaults
+      ? await loadBundledDefaults().catch(() => ({ people: [], dishes: [], items: [] }))
+      : { people: [], dishes: [], items: [] };
     if (FOOD_RULE_MIGRATION_VERSIONS.includes(saved.version)) {
-      const bundled = await loadBundledDefaults().catch(() => ({ people: [], dishes: [] }));
       if (state.restorePeople) {
         state.restorePeople = mergeBundledFoodRules(state.restorePeople, bundled.people);
       }
@@ -4228,6 +4234,12 @@ async function bootstrap() {
     }
     if (INGREDIENT_MIGRATION_VERSIONS.includes(saved.version)) {
       state.importedSources = mergeDuplicateIngredient(state.importedSources || []);
+    }
+    if (NUTRITION_MIGRATION_VERSIONS.includes(saved.version)) {
+      state.importedSources = mergeBundledIngredientNutrition(
+        state.importedSources || [],
+        bundled.items,
+      );
     }
     applyTranslations();
   }

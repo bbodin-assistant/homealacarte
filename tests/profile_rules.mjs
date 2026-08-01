@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
   mergeBundledDishClassifications,
+  mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
 } from "../www/profile-rules.js";
@@ -87,5 +88,26 @@ assert.deepEqual(
   promotedIngredientData.items.map((item) => [item.key, item.name]),
   [["emmental_rape", "Emmental râpé"]],
 );
+
+const nutritionSources = [{
+  path: "nutrition.json",
+  content: JSON.stringify({
+    items: [
+      { key: "spice", sugars_g: null, salt_g: 0.2 },
+      { key: "custom", sugars_g: 4.5 },
+    ],
+  }),
+}];
+const migratedNutrition = JSON.parse(mergeBundledIngredientNutrition(
+  nutritionSources,
+  [
+    { key: "spice", sugars_g: 1.2, salt_g: 0.8, saturated_fat_g: 0.1 },
+    { key: "custom", sugars_g: 9.9 },
+  ],
+)[0].content).items;
+assert.deepEqual(migratedNutrition[0], {
+  key: "spice", sugars_g: 1.2, salt_g: 0.2, saturated_fat_g: 0.1,
+});
+assert.equal(migratedNutrition[1].sugars_g, 4.5);
 
 console.log("Legacy profiles receive missing rules and dish classifications without data loss.");

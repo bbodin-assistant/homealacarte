@@ -119,18 +119,56 @@ export function mergeDuplicateIngredient(
   });
 }
 
+export function mergeBundledIngredientNutrition(sources = [], bundledItems = []) {
+  const nutritionFields = [
+    "sugars_g",
+    "saturated_fat_g",
+    "salt_g",
+    "fruit_vegetable_legume_percent",
+  ];
+  const bundledByKey = new Map(bundledItems.map((item) => [item.key, item]));
+  return sources.map((source) => {
+    let value;
+    try {
+      value = JSON.parse(source.content);
+    } catch {
+      return source;
+    }
+    if (!Array.isArray(value.items)) return source;
+    let changed = false;
+    value.items = value.items.map((item) => {
+      const bundled = bundledByKey.get(item.key);
+      if (!bundled) return item;
+      const additions = {};
+      for (const field of nutritionFields) {
+        if (item[field] == null && bundled[field] != null) {
+          additions[field] = bundled[field];
+        }
+      }
+      if (!Object.keys(additions).length) return item;
+      changed = true;
+      return { ...item, ...additions };
+    });
+    return changed
+      ? { ...source, content: `${JSON.stringify(value, null, 2)}\n` }
+      : source;
+  });
+}
+
 export async function loadBundledDefaults(manifestUrl = "./data-manifest.json") {
   const manifestResponse = await fetch(manifestUrl, { cache: "no-store" });
   if (!manifestResponse.ok) throw new Error(`Cannot load ${manifestUrl}`);
   const manifest = await manifestResponse.json();
   const people = [];
   const dishes = [];
+  const items = [];
   for (const path of manifest.files || []) {
     const response = await fetch(path, { cache: "no-store" });
     if (!response.ok) throw new Error(`Cannot load ${path}`);
     const value = await response.json();
     if (Array.isArray(value.people)) people.push(...value.people);
     if (Array.isArray(value.dishes)) dishes.push(...value.dishes);
+    if (Array.isArray(value.items)) items.push(...value.items);
   }
-  return { people, dishes };
+  return { people, dishes, items };
 }
