@@ -7,6 +7,23 @@ The interface is plain HTML, CSS, and JavaScript. Validation, planning,
 nutrition calculations, grocery pricing, and PDF generation run in
 Rust/WebAssembly. There is no Node or npm build step.
 
+## Screenshots
+
+These screenshots use the synthetic, non-personal database from
+`sample-data/`. Select an image to open it at full size.
+
+### Desktop
+
+<a href="docs/images/homealacarte-demo-desktop.png">
+  <img src="docs/images/homealacarte-demo-desktop.png" alt="Home à la Carte demo household view on desktop" width="100%">
+</a>
+
+### Mobile
+
+<a href="docs/images/homealacarte-demo-mobile.png">
+  <img src="docs/images/homealacarte-demo-mobile.png" alt="Home à la Carte demo household view on mobile" width="390">
+</a>
+
 ## Highlights
 
 - visual household profiles for adults and children;
