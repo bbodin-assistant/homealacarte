@@ -13,28 +13,28 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-71";
-import { t, translations } from "./translations.js?v=homealacarte-71";
+} from "./storage.js?v=homealacarte-72";
+import { t, translations } from "./translations.js?v=homealacarte-72";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-71";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-71";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-71";
-import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-71";
+} from "./item-details.js?v=homealacarte-72";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-72";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-72";
+import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-72";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-71";
+} from "./catalogue-filters.js?v=homealacarte-72";
 import {
   loadBundledDefaults,
   mergeBundledDishClassifications,
   mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "./profile-rules.js?v=homealacarte-71";
+} from "./profile-rules.js?v=homealacarte-72";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -65,7 +65,7 @@ function storedAutoMenuNumber(key, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-71", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-72", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,

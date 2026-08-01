@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -13,6 +14,17 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "sample-data")).resolve()
 DEMO_DATA_DIR = (ROOT / "sample-data").resolve()
 DIST = ROOT / "dist"
+INDEX_SOURCE = ROOT / "www" / "index.html"
+index_source = INDEX_SOURCE.read_text(encoding="utf-8")
+asset_versions = set(re.findall(r"homealacarte-(\d+)", index_source))
+visible_versions = set(re.findall(r'class="app-version"[^>]*>v(\d+)</small>', index_source))
+if len(asset_versions) != 1:
+    raise SystemExit(f"Expected one asset version in {INDEX_SOURCE}, found {sorted(asset_versions)}")
+APP_VERSION = asset_versions.pop()
+if visible_versions != {APP_VERSION}:
+    raise SystemExit(
+        f"Visible app version {sorted(visible_versions)} does not match asset version {APP_VERSION}"
+    )
 
 
 def json_paths(directory: Path) -> list[Path]:
@@ -55,7 +67,7 @@ file_count = copy_dataset(DATA_DIR, "data", "data-manifest.json")
 demo_file_count = copy_dataset(DEMO_DATA_DIR, "demo-data", "demo-data-manifest.json")
 (DIST / "build-meta.json").write_text(
     json.dumps(
-        {"app": "homealacarte-static-web", "version": "0.1.0"},
+        {"app": "homealacarte-static-web", "version": APP_VERSION},
         ensure_ascii=False,
         indent=2,
     )
