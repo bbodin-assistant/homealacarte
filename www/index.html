@@ -6,7 +6,7 @@
     <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
     <title>Home à la Carte</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./style.css?v=homealacarte-51">
+    <link rel="stylesheet" href="./style.css?v=homealacarte-59">
   </head>
   <body>
     <header class="topbar">
@@ -70,6 +70,7 @@
           </button>
         </nav>
         <div class="sidebar-footer">
+          <small class="app-version" aria-label="Version de l’application">v59</small>
           <button id="about-open" class="secondary-action" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
             <span data-i18n="about">À propos</span>
@@ -96,28 +97,92 @@
         </section>
 
         <section id="menu-view" class="view" data-view="menu">
-          <div class="page-heading">
-            <div>
-              <p class="eyebrow" data-i18n="overview_eyebrow">Vue d’ensemble</p>
-              <h1 data-i18n="menu_title">Menu de la semaine</h1>
-              <p data-i18n="menu_intro">Une vue claire des repas et apports quotidiens.</p>
+          <div class="planner-mode-switch menu-mode-switch" role="tablist" aria-label="Mode du menu">
+            <button class="active" type="button" data-menu-mode="manual" data-i18n="manual_menu">Menu</button>
+            <button type="button" data-menu-mode="automatic" data-i18n="automatic_menu">Génération automatique</button>
+          </div>
+
+          <div class="menu-subview active" data-menu-panel="manual">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="overview_eyebrow">Vue d’ensemble</p>
+                <h1 data-i18n="menu_title">Menu de la semaine</h1>
+                <p data-i18n="menu_intro">Une vue claire des repas et apports quotidiens.</p>
+              </div>
+              <div class="menu-profile-controls">
+                <label class="profile-control">
+                  <span data-i18n="nutrition_profile">Profil nutrition</span>
+                  <select id="profile-select"></select>
+                </label>
+                <label class="show-only-control">
+                  <input id="show-selected-only" type="checkbox">
+                  <span data-i18n="show_selected_only">Afficher uniquement ses repas</span>
+                </label>
+                <button id="empty-menu" class="button danger" type="button" data-i18n="empty_menu">Vider le menu</button>
+              </div>
             </div>
-            <div class="menu-profile-controls">
-              <label class="profile-control">
-                <span data-i18n="nutrition_profile">Profil nutrition</span>
-                <select id="profile-select"></select>
-              </label>
-              <label class="show-only-control">
-                <input id="show-selected-only" type="checkbox">
-                <span data-i18n="show_selected_only">Afficher uniquement ses repas</span>
-              </label>
-              <button id="empty-menu" class="button danger" type="button" data-i18n="empty_menu">Vider le menu</button>
+            <div class="panel menu-panel">
+              <div class="table-scroll">
+                <table id="weekly-menu" class="weekly-menu"></table>
+              </div>
             </div>
           </div>
-          <div class="panel menu-panel">
-            <div class="table-scroll">
-              <table id="weekly-menu" class="weekly-menu"></table>
+
+          <div class="menu-subview" data-menu-panel="automatic" hidden>
+            <div class="page-heading auto-menu-heading">
+              <div>
+                <p class="eyebrow" data-i18n="automatic_menu_eyebrow">Optimisation</p>
+                <h1 data-i18n="automatic_menu_title">Générer le menu</h1>
+                <p data-i18n="automatic_menu_intro">Le solveur complète les déjeuners et dîners vides en respectant les calories, le stock et la variété.</p>
+              </div>
             </div>
+            <form id="auto-menu-form" class="auto-menu-layout">
+              <section class="panel auto-menu-section">
+                <div class="auto-menu-section-heading">
+                  <div>
+                    <h2 data-i18n="automatic_parameters">Paramètres</h2>
+                    <p data-i18n="automatic_parameters_intro">Définissez la tolérance calorique et les portions autorisées.</p>
+                  </div>
+                </div>
+                <div class="auto-menu-parameters">
+                  <label><span data-i18n="kcal_threshold">Tolérance kcal</span><input id="auto-kcal-threshold" type="number" min="0" max="1000" step="5" value="50" required></label>
+                  <label><span data-i18n="minimum_portions">Portions minimum</span><input id="auto-min-portions" type="number" min="0.05" max="5" step="0.05" value="0.5" required></label>
+                  <label><span data-i18n="maximum_portions">Portions maximum</span><input id="auto-max-portions" type="number" min="0.05" max="5" step="0.05" value="2" required></label>
+                  <label><span data-i18n="portion_step">Pas des portions</span><input id="auto-portion-step" type="number" min="0.01" max="1" step="0.01" value="0.05" required></label>
+                </div>
+              </section>
+
+              <section class="panel auto-menu-section">
+                <div class="auto-menu-section-heading">
+                  <div><h2 data-i18n="availability">Présences</h2><p data-i18n="availability_intro">Cochez les jours où chaque personne mange à la maison.</p></div>
+                </div>
+                <div id="auto-menu-availability" class="table-scroll"></div>
+              </section>
+
+              <section class="panel auto-menu-section">
+                <div class="auto-menu-section-heading">
+                  <div><h2 data-i18n="slots_to_fill">Repas à compléter</h2><p data-i18n="slots_to_fill_intro">Seuls les déjeuners et dîners entièrement vides peuvent être générés.</p></div>
+                </div>
+                <div id="auto-menu-slots" class="auto-menu-slots"></div>
+              </section>
+
+              <section class="panel auto-menu-section">
+                <div class="auto-menu-section-heading">
+                  <div><h2 data-i18n="eligible_dishes">Plats autorisés</h2><p data-i18n="eligible_dishes_intro">Les plats déjà présents dans le menu sont automatiquement exclus.</p></div>
+                  <div class="auto-menu-inline-actions">
+                    <button id="auto-dishes-all" class="button ghost compact" type="button" data-i18n="select_all">Tout sélectionner</button>
+                    <button id="auto-dishes-none" class="button ghost compact" type="button" data-i18n="select_none">Tout désélectionner</button>
+                  </div>
+                </div>
+                <div id="auto-menu-dishes" class="auto-menu-dishes"></div>
+              </section>
+
+              <div class="auto-menu-run">
+                <p data-i18n="automatic_menu_notice">Le calcul peut prendre quelques secondes. Le résultat sera prévisualisé avant toute modification.</p>
+                <button id="auto-menu-generate" class="button primary" type="submit" data-i18n="generate_menu">Générer le menu</button>
+              </div>
+            </form>
+            <div id="auto-menu-result" class="auto-menu-result" hidden></div>
           </div>
         </section>
 
@@ -1066,6 +1131,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=homealacarte-52"></script>
+    <script type="module" src="./app.js?v=homealacarte-59"></script>
   </body>
 </html>

@@ -13,20 +13,20 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-51";
-import { t, translations } from "./translations.js?v=homealacarte-52";
+} from "./storage.js?v=homealacarte-59";
+import { t, translations } from "./translations.js?v=homealacarte-59";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-51";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-51";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-51";
+} from "./item-details.js?v=homealacarte-59";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-59";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-59";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-51";
+} from "./catalogue-filters.js?v=homealacarte-59";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -40,7 +40,7 @@ function storedJson(key, fallback = null) {
   }
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-51", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-59", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -55,6 +55,7 @@ const state = {
     ? "other"
     : "food",
   groceryMode: localStorage.getItem("homealacarte-grocery-mode") || "list",
+  menuMode: localStorage.getItem("homealacarte-menu-mode") || "manual",
   menuSelectedOnly: localStorage.getItem("homealacarte-menu-selected-only") === "true",
   groceryHideStocked: localStorage.getItem("homealacarte-grocery-hide-stocked") === "true",
   colorTheme: Number(localStorage.getItem("homealacarte-color-theme") || 0),
@@ -91,6 +92,17 @@ const state = {
   ingredientOriginal: "",
   householdItemOriginal: "",
   draggedMenuIndex: null,
+  autoMenuSignature: "",
+  autoMenuAvailability: {},
+  autoMenuSlots: {},
+  autoMenuCandidates: {},
+  autoMenuOptions: {
+    kcalThreshold: 50,
+    minPortions: 0.5,
+    maxPortions: 2,
+    portionStep: 0.05,
+  },
+  autoMenuProposal: null,
   engineBusy: false,
   engineMessage: "",
   lastError: null,
@@ -291,6 +303,10 @@ function localizeError(message, code = "") {
   if (code && translations[state.language]?.[code]) return t(state.language, code);
   const rawMessage = String(message || "");
   if (translations[state.language]?.[rawMessage]) return t(state.language, rawMessage);
+  const prefixedKey = rawMessage.match(/^([a-z0-9_]+)(?::|$)/)?.[1];
+  if (prefixedKey && translations[state.language]?.[prefixedKey]) {
+    return t(state.language, prefixedKey);
+  }
   const failedAsset = rawMessage.match(/Cannot load\s+(.+)/i);
   if (failedAsset) {
     return translatedTemplate("asset_load_error", { path: failedAsset[1] });
@@ -314,6 +330,7 @@ function showError(message, code = "") {
   state.lastError = { message, code };
   const panel = $("#error-panel");
   panel.textContent = localizeError(message, code);
+  panel.title = String(message || code || "");
   panel.hidden = false;
   setBusy(false);
 }
@@ -387,6 +404,13 @@ worker.onmessage = async ({ data }) => {
       persistDraft();
       render();
     }
+    setBusy(false);
+    return;
+  }
+  if (data.type === "menu-generated") {
+    clearError();
+    state.autoMenuProposal = data.proposal;
+    renderAutoMenuResult();
     setBusy(false);
     return;
   }
@@ -593,12 +617,154 @@ function setGroceryMode(mode) {
   });
 }
 
+function setMenuMode(mode) {
+  const safeMode = mode === "automatic" ? "automatic" : "manual";
+  state.menuMode = safeMode;
+  localStorage.setItem("homealacarte-menu-mode", safeMode);
+  $$('[data-menu-mode]').forEach((button) => {
+    const active = button.dataset.menuMode === safeMode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+  $$('[data-menu-panel]').forEach((panel) => {
+    const active = panel.dataset.menuPanel === safeMode;
+    panel.classList.toggle("active", active);
+    panel.hidden = !active;
+  });
+}
+
+const autoMenuSettingKey = (...parts) => JSON.stringify(parts);
+const autoMenuMeals = () => [state.snapshot.meals[2], state.snapshot.meals[5]].filter(Boolean);
+
+function initializeAutoMenuSettings() {
+  const people = state.snapshot.people.filter((person) => person.kcal_target != null);
+  const signature = JSON.stringify([
+    state.language,
+    state.snapshot.days,
+    people.map((person) => person.key),
+  ]);
+  if (state.autoMenuSignature === signature) return;
+  state.autoMenuSignature = signature;
+  state.autoMenuAvailability = {};
+  state.autoMenuSlots = {};
+  state.autoMenuCandidates = {};
+  state.autoMenuProposal = null;
+  const hasMenu = state.draft.length > 0;
+  for (const person of people) {
+    for (const day of state.snapshot.days) {
+      state.autoMenuAvailability[autoMenuSettingKey(person.key, day)] = !hasMenu
+        || state.draft.some((row) => row.day === day && row.people.includes(person.key));
+    }
+  }
+  for (const day of state.snapshot.days) {
+    for (const meal of autoMenuMeals()) {
+      state.autoMenuSlots[autoMenuSettingKey(day, meal)] = !state.draft
+        .some((row) => row.day === day && row.meal === meal);
+    }
+  }
+  const used = new Set(state.draft.map((row) => row.item_key));
+  for (const dish of state.snapshot.dishes) {
+    state.autoMenuCandidates[dish.key] = !used.has(dish.key);
+  }
+}
+
+function renderAutoMenu() {
+  initializeAutoMenuSettings();
+  const people = state.snapshot.people.filter((person) => person.kcal_target != null);
+  $("#auto-kcal-threshold").value = formatInputNumber(state.autoMenuOptions.kcalThreshold);
+  $("#auto-min-portions").value = formatInputNumber(state.autoMenuOptions.minPortions);
+  $("#auto-max-portions").value = formatInputNumber(state.autoMenuOptions.maxPortions);
+  $("#auto-portion-step").value = formatInputNumber(state.autoMenuOptions.portionStep);
+
+  $("#auto-menu-availability").innerHTML = `
+    <table class="auto-menu-availability">
+      <thead><tr><th>${escapeHtml(t(state.language, "people"))}</th>${state.snapshot.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("")}</tr></thead>
+      <tbody>${people.map((person) => `<tr>
+        <td><strong>${escapeHtml(person.name)}</strong><span>${formatNumber(person.kcal_target, 0)} kcal</span></td>
+        ${state.snapshot.days.map((day) => {
+          const key = autoMenuSettingKey(person.key, day);
+          return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" ${state.autoMenuAvailability[key] ? "checked" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
+        }).join("")}
+      </tr>`).join("")}</tbody>
+    </table>`;
+
+  $("#auto-menu-slots").innerHTML = state.snapshot.days.map((day) => `
+    <div class="auto-menu-slot-day">
+      <h3>${escapeHtml(day)}</h3>
+      ${autoMenuMeals().map((meal) => {
+        const occupied = state.draft.some((row) => row.day === day && row.meal === meal);
+        const key = autoMenuSettingKey(day, meal);
+        return `<label class="auto-menu-slot ${occupied ? "unavailable" : ""}">
+          <input type="checkbox" data-auto-slot-day="${escapeHtml(encodeURIComponent(day))}" data-auto-slot-meal="${escapeHtml(encodeURIComponent(meal))}" ${!occupied && state.autoMenuSlots[key] ? "checked" : ""} ${occupied ? "disabled" : ""}>
+          <span>${escapeHtml(meal)}${occupied ? ` · ${escapeHtml(t(state.language, "already_scheduled"))}` : ""}</span>
+        </label>`;
+      }).join("")}
+    </div>`).join("");
+
+  const usedDishes = new Set(state.draft.map((row) => row.item_key));
+  $("#auto-menu-dishes").innerHTML = state.snapshot.dishes.map((dish) => {
+    const used = usedDishes.has(dish.key);
+    return `<label class="auto-menu-dish ${used ? "used" : ""}">
+      <input type="checkbox" data-auto-dish-key="${escapeHtml(encodeURIComponent(dish.key))}" ${!used && state.autoMenuCandidates[dish.key] !== false ? "checked" : ""} ${used ? "disabled" : ""}>
+      <strong title="${escapeHtml(dish.name)}">${escapeHtml(dish.name)}</strong>
+      <small>${formatNumber(dish.per_serving.kcal, 0)} kcal · ${formatMoney(dish.per_serving.cost)}</small>
+    </label>`;
+  }).join("") || `<p>${escapeHtml(t(state.language, "no_eligible_dishes"))}</p>`;
+  renderAutoMenuResult();
+}
+
+function renderAutoMenuResult() {
+  const container = $("#auto-menu-result");
+  const proposal = state.autoMenuProposal;
+  if (!proposal) {
+    container.hidden = true;
+    container.innerHTML = "";
+    return;
+  }
+  const people = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
+  const dishes = new Map(state.snapshot.dishes.map((dish) => [dish.key, dish.name]));
+  container.hidden = false;
+  container.innerHTML = `
+    <div class="auto-menu-result-summary">
+      <div><span>${escapeHtml(t(state.language, "grocery_total_after_generation"))}</span><strong>${formatMoney(proposal.estimated_grocery_total)}</strong></div>
+      <div><span>${escapeHtml(t(state.language, "additional_grocery_cost"))}</span><strong>${formatMoney(proposal.estimated_additional_cost)}</strong></div>
+      <div><span>${escapeHtml(t(state.language, "generated_rows"))}</span><strong>${proposal.rows.length}</strong><small>${escapeHtml(t(state.language, proposal.decomposed ? "solver_daily_optimized" : proposal.optimal ? "solver_optimal" : "solver_feasible"))}</small></div>
+    </div>
+    <section class="panel auto-menu-preview">
+      <h2>${escapeHtml(t(state.language, "generated_menu_preview"))}</h2>
+      <div class="auto-menu-preview-grid">${proposal.rows.map((row) => `
+        <div class="auto-menu-preview-card">
+          <strong>${escapeHtml(`${row.day} · ${row.meal}`)}</strong>
+          <span>${escapeHtml(dishes.get(row.item_key) || row.item_key)} · ${formatNumber(row.quantity, 2)} ${escapeHtml(t(state.language, "portions"))}</span>
+          <span>${escapeHtml(row.people.map((key) => people.get(key) || key).join(", "))}</span>
+        </div>`).join("")}</div>
+    </section>
+    <section class="panel auto-menu-preview table-scroll">
+      <h2>${escapeHtml(t(state.language, "calorie_check"))}</h2>
+      <table class="auto-menu-daily"><thead><tr>
+        <th>${escapeHtml(t(state.language, "people"))} · ${escapeHtml(t(state.language, "day"))}</th>
+        <th>${escapeHtml(t(state.language, "existing_kcal"))}</th><th>${escapeHtml(t(state.language, "generated_kcal"))}</th>
+        <th>${escapeHtml(t(state.language, "total_kcal"))}</th><th>${escapeHtml(t(state.language, "target_kcal"))}</th>
+      </tr></thead><tbody>${proposal.daily_results.map((row) => `<tr>
+        <td>${escapeHtml(`${people.get(row.person_key) || row.person_key} · ${row.day}`)}</td>
+        <td>${formatNumber(row.existing_kcal, 0)}</td><td>${formatNumber(row.generated_kcal, 0)}</td>
+        <td><strong>${formatNumber(row.total_kcal, 0)}</strong></td><td>${formatNumber(row.target_kcal, 0)}</td>
+      </tr>`).join("")}</tbody></table>
+    </section>
+    <div class="auto-menu-result-actions">
+      <button id="auto-menu-discard" class="button ghost" type="button">${escapeHtml(t(state.language, "discard_preview"))}</button>
+      <button id="auto-menu-apply" class="button primary" type="button">${escapeHtml(t(state.language, "apply_generated_menu"))}</button>
+    </div>`;
+}
+
 function render() {
   if (!state.snapshot) return;
   applyTranslations();
+  setMenuMode(state.menuMode);
   setGroceryMode(state.groceryMode);
   renderFamily();
   renderMenu();
+  renderAutoMenu();
   renderGrocery();
   renderCustomGrocery();
   renderStock();
@@ -2364,6 +2530,9 @@ function updateDishRange(changedControl) {
 
 function scheduleMenuUpdate() {
   clearTimeout(state.editTimer);
+  state.autoMenuProposal = null;
+  state.autoMenuSignature = "";
+  renderAutoMenu();
   setBusy(true);
   state.editTimer = setTimeout(() => {
     send("replace-menu", { rows: state.draft });
@@ -2963,6 +3132,105 @@ $("#family-form").addEventListener("submit", (event) => {
   closeFamilyDialog();
   renderFamily();
   send("replace-people", { rows: state.familyDraft });
+});
+$$('[data-menu-mode]').forEach((button) => button.addEventListener("click", () => {
+  setMenuMode(button.dataset.menuMode);
+}));
+$("#auto-menu-availability").addEventListener("change", (event) => {
+  const input = event.target.closest("[data-auto-availability-person]");
+  if (!input) return;
+  const person = decodeURIComponent(input.dataset.autoAvailabilityPerson);
+  const day = decodeURIComponent(input.dataset.autoAvailabilityDay);
+  state.autoMenuAvailability[autoMenuSettingKey(person, day)] = input.checked;
+  state.autoMenuProposal = null;
+  renderAutoMenuResult();
+});
+$("#auto-menu-slots").addEventListener("change", (event) => {
+  const input = event.target.closest("[data-auto-slot-day]");
+  if (!input) return;
+  const day = decodeURIComponent(input.dataset.autoSlotDay);
+  const meal = decodeURIComponent(input.dataset.autoSlotMeal);
+  state.autoMenuSlots[autoMenuSettingKey(day, meal)] = input.checked;
+  state.autoMenuProposal = null;
+  renderAutoMenuResult();
+});
+$("#auto-menu-dishes").addEventListener("change", (event) => {
+  const input = event.target.closest("[data-auto-dish-key]");
+  if (!input) return;
+  state.autoMenuCandidates[decodeURIComponent(input.dataset.autoDishKey)] = input.checked;
+  state.autoMenuProposal = null;
+  renderAutoMenuResult();
+});
+$("#auto-dishes-all").addEventListener("click", () => {
+  $$("#auto-menu-dishes input:not(:disabled)").forEach((input) => {
+    input.checked = true;
+    state.autoMenuCandidates[decodeURIComponent(input.dataset.autoDishKey)] = true;
+  });
+  state.autoMenuProposal = null;
+  renderAutoMenuResult();
+});
+$("#auto-dishes-none").addEventListener("click", () => {
+  $$("#auto-menu-dishes input:not(:disabled)").forEach((input) => {
+    input.checked = false;
+    state.autoMenuCandidates[decodeURIComponent(input.dataset.autoDishKey)] = false;
+  });
+  state.autoMenuProposal = null;
+  renderAutoMenuResult();
+});
+$("#auto-menu-form").addEventListener("input", () => {
+  state.autoMenuOptions = {
+    kcalThreshold: Number($("#auto-kcal-threshold").value),
+    minPortions: Number($("#auto-min-portions").value),
+    maxPortions: Number($("#auto-max-portions").value),
+    portionStep: Number($("#auto-portion-step").value),
+  };
+  state.autoMenuProposal = null;
+  renderAutoMenuResult();
+});
+$("#auto-menu-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  if (!event.currentTarget.reportValidity()) return;
+  const availability = $$("#auto-menu-availability input:checked").map((input) => ({
+    person_key: decodeURIComponent(input.dataset.autoAvailabilityPerson),
+    day: decodeURIComponent(input.dataset.autoAvailabilityDay),
+  }));
+  const slots = $$("#auto-menu-slots input:checked").map((input) => ({
+    day: decodeURIComponent(input.dataset.autoSlotDay),
+    meal: decodeURIComponent(input.dataset.autoSlotMeal),
+  }));
+  const selectedDays = new Set(slots.map((slot) => slot.day));
+  const relevantAvailability = availability.filter((entry) => selectedDays.has(entry.day));
+  const candidateDishKeys = $$("#auto-menu-dishes input:checked").map((input) =>
+    decodeURIComponent(input.dataset.autoDishKey));
+  clearTimeout(state.editTimer);
+  state.autoMenuProposal = null;
+  renderAutoMenuResult();
+  send("generate-menu", {
+    rows: state.draft,
+    stock: stockPayload(),
+    request: {
+      kcal_threshold: state.autoMenuOptions.kcalThreshold,
+      min_portions: state.autoMenuOptions.minPortions,
+      max_portions: state.autoMenuOptions.maxPortions,
+      portion_step: state.autoMenuOptions.portionStep,
+      availability: relevantAvailability,
+      slots,
+      candidate_dish_keys: candidateDishKeys,
+    },
+  });
+});
+$("#auto-menu-result").addEventListener("click", (event) => {
+  if (event.target.closest("#auto-menu-discard")) {
+    state.autoMenuProposal = null;
+    renderAutoMenuResult();
+    return;
+  }
+  if (!event.target.closest("#auto-menu-apply") || !state.autoMenuProposal) return;
+  state.draft.push(...structuredClone(state.autoMenuProposal.rows));
+  state.autoMenuProposal = null;
+  setMenuMode("manual");
+  renderMenu();
+  scheduleMenuUpdate();
 });
 $("#profile-select").addEventListener("change", (event) => send("set-profile", { profile: event.target.value }));
 $("#show-selected-only").addEventListener("change", (event) => {

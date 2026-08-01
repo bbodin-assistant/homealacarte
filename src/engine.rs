@@ -674,6 +674,11 @@ impl Engine {
         build_snapshot(dataset, &self.language, self.profile.as_deref())
     }
 
+    pub fn generate_menu(&self, request: AutoMenuRequest) -> Result<AutoMenuProposal, String> {
+        let dataset = self.dataset.as_ref().ok_or("no dataset loaded")?;
+        crate::optimizer::generate_menu(dataset, &self.language, request)
+    }
+
     pub fn export_data(&self, kind: &str) -> Result<String, String> {
         let dataset = self.dataset.as_ref().ok_or("no dataset loaded")?;
         let value = if kind == "menu" {

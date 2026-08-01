@@ -1,6 +1,7 @@
 mod engine;
 mod loader;
 mod model;
+mod optimizer;
 mod personal_data;
 mod pdf;
 
@@ -58,6 +59,12 @@ impl HomeALaCarteEngine {
     pub fn replace_menu(&mut self, rows: JsValue) -> Result<JsValue, JsValue> {
         let rows: Vec<MenuInput> = serde_wasm_bindgen::from_value(rows).map_err(js_error)?;
         to_js(&self.inner.replace_menu(rows).map_err(js_error)?)
+    }
+
+    pub fn generate_menu(&self, request: JsValue) -> Result<JsValue, JsValue> {
+        let request: AutoMenuRequest =
+            serde_wasm_bindgen::from_value(request).map_err(js_error)?;
+        to_js(&self.inner.generate_menu(request).map_err(js_error)?)
     }
 
     pub fn replace_people(&mut self, rows: JsValue) -> Result<JsValue, JsValue> {

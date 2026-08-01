@@ -134,6 +134,50 @@ pub struct MenuRow {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoMenuAvailability {
+    pub person_key: String,
+    pub day: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoMenuSlot {
+    pub day: String,
+    pub meal: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoMenuRequest {
+    pub kcal_threshold: f64,
+    pub min_portions: f64,
+    pub max_portions: f64,
+    pub portion_step: f64,
+    pub availability: Vec<AutoMenuAvailability>,
+    pub slots: Vec<AutoMenuSlot>,
+    pub candidate_dish_keys: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoMenuDailyResult {
+    pub person_key: String,
+    pub day: String,
+    pub target_kcal: f64,
+    pub existing_kcal: f64,
+    pub generated_kcal: f64,
+    pub total_kcal: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AutoMenuProposal {
+    pub rows: Vec<MenuRow>,
+    pub daily_results: Vec<AutoMenuDailyResult>,
+    pub selected_dish_keys: Vec<String>,
+    pub estimated_grocery_total: f64,
+    pub estimated_additional_cost: f64,
+    pub optimal: bool,
+    pub decomposed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HouseholdItem {
     pub key: String,
     pub name: String,

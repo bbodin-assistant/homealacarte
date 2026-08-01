@@ -1,11 +1,11 @@
-import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-51";
+import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-59";
 
 let engine;
 let readyPromise;
 
 async function ensureEngine() {
   if (!readyPromise) {
-    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-51", self.location.href);
+    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-59", self.location.href);
     readyPromise = init({ module_or_path: wasmUrl }).then(() => {
       engine = new HomeALaCarteEngine();
     });
@@ -70,6 +70,10 @@ self.onmessage = async ({ data }) => {
     } else if (type === "replace-menu") {
       snapshot = engine.replace_menu(data.rows);
       respond(requestId, "result", currentState(snapshot));
+    } else if (type === "generate-menu") {
+      if (data.rows) engine.replace_menu(data.rows);
+      if (data.stock) engine.replace_stock(data.stock);
+      respond(requestId, "menu-generated", { proposal: engine.generate_menu(data.request) });
     } else if (type === "replace-people") {
       snapshot = engine.replace_people(data.rows);
       respond(requestId, "result", currentState(snapshot));
