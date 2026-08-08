@@ -13,30 +13,30 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-75";
-import { t, translations } from "./translations.js?v=homealacarte-75";
+} from "./storage.js?v=homealacarte-77";
+import { t, translations } from "./translations.js?v=homealacarte-77";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
   latestPriceTrend,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-75";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-75";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-75";
-import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-75";
+} from "./item-details.js?v=homealacarte-77";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-77";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-77";
+import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-77";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-75";
+} from "./catalogue-filters.js?v=homealacarte-77";
 import {
   loadBundledDefaults,
   mergeBundledDishClassifications,
   mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "./profile-rules.js?v=homealacarte-75";
-import { dishStockAvailability } from "./stock-availability.js?v=homealacarte-75";
+} from "./profile-rules.js?v=homealacarte-77";
+import { dishStockAvailability } from "./stock-availability.js?v=homealacarte-77";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -67,7 +67,7 @@ function storedAutoMenuNumber(key, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-75", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-77", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -1815,6 +1815,18 @@ function foodRuleItemOptions(selectedKeys = []) {
     </label>`).join("");
 }
 
+function foodRuleSelectedItems(selectedKeys = []) {
+  const selected = new Set(selectedKeys);
+  return state.snapshot.item_options
+    .filter((item) => selected.has(item.key))
+    .map((item) => `
+      <button class="food-rule-selected-item" type="button" data-food-rule-selected-item="${encodeURIComponent(item.key)}" aria-label="${escapeHtml(`${t(state.language, "delete")}: ${item.name}`)}">
+        <span class="food-rule-selected-check" aria-hidden="true">✓</span>
+        <span>${escapeHtml(item.name)}</span>
+        <span class="food-rule-selected-remove" aria-hidden="true">×</span>
+      </button>`).join("");
+}
+
 function foodRuleDayOptions(selectedDays = []) {
   const selected = new Set(selectedDays.length ? selectedDays : FOOD_RULE_DAY_CODES);
   return FOOD_RULE_DAY_CODES.map((code, index) => `
@@ -1842,8 +1854,16 @@ function foodRuleMarkup(rule = {}) {
       <select data-food-rule-meal>${foodRuleMealOptions(meal)}</select>
     </label>
     <div class="food-rule-items-field"><span>${escapeHtml(t(state.language, "food_rule_choices"))}</span>
-      <input type="search" data-food-rule-item-search placeholder="${escapeHtml(t(state.language, "search_items"))}" aria-label="${escapeHtml(t(state.language, "search_items"))}">
-      <div data-food-rule-items role="group">${foodRuleItemOptions(rule.item_keys)}</div>
+      <div class="food-rule-item-picker" data-food-rule-item-picker>
+        <div class="food-rule-item-selection">
+          <div class="food-rule-selected-items" data-food-rule-selected-items>${foodRuleSelectedItems(rule.item_keys)}</div>
+          <input type="search" data-food-rule-item-search placeholder="${escapeHtml(t(state.language, "search_items"))}" aria-label="${escapeHtml(t(state.language, "search_items"))}" autocomplete="off" aria-expanded="false">
+        </div>
+        <div class="food-rule-item-results" data-food-rule-items role="group" hidden>
+          ${foodRuleItemOptions(rule.item_keys)}
+          <p class="food-rule-items-empty" data-food-rule-items-empty hidden>${escapeHtml(t(state.language, "no_matching_items"))}</p>
+        </div>
+      </div>
     </div>
     <label data-routine-field><span>${escapeHtml(t(state.language, "food_rule_quantity"))}</span>
       <input data-food-rule-quantity type="number" min="0.000000001" step="any" value="${escapeHtml(formatInputNumber(quantity))}">
@@ -1880,6 +1900,33 @@ function renderFamilyFoodRules(rules = []) {
     ? rules.map(foodRuleMarkup).join("")
     : `<p class="family-food-rules-empty">${escapeHtml(t(state.language, "no_food_rules"))}</p>`;
   $$("#family-food-rules-list [data-food-rule]").forEach(setFoodRuleMode);
+}
+
+function renderFoodRuleSelectedItems(row) {
+  const selectedKeys = [...row.querySelectorAll("[data-food-rule-items] input:checked")]
+    .map((input) => input.value);
+  row.querySelector("[data-food-rule-selected-items]").innerHTML = foodRuleSelectedItems(selectedKeys);
+}
+
+function filterFoodRuleItems(search) {
+  const row = search.closest("[data-food-rule]");
+  const results = row.querySelector("[data-food-rule-items]");
+  const query = search.value.trim().toLocaleLowerCase(state.language);
+  let visibleChoices = 0;
+  row.querySelectorAll(".food-rule-choice").forEach((choice) => {
+    const matches = Boolean(query)
+      && choice.textContent.toLocaleLowerCase(state.language).includes(query);
+    choice.hidden = !matches;
+    if (matches) visibleChoices += 1;
+  });
+  results.hidden = !query;
+  row.querySelector("[data-food-rule-items-empty]").hidden = !query || visibleChoices > 0;
+  search.setAttribute("aria-expanded", String(Boolean(query)));
+}
+
+function closeFoodRuleItems(row) {
+  row.querySelector("[data-food-rule-items]").hidden = true;
+  row.querySelector("[data-food-rule-item-search]").setAttribute("aria-expanded", "false");
 }
 
 function familyFoodRulesPayload() {
@@ -3604,6 +3651,23 @@ $("#family-food-rule-add").addEventListener("click", () => {
   row.querySelector("[data-food-rule-kind]").focus();
 });
 $("#family-food-rules-list").addEventListener("click", (event) => {
+  const selection = event.target.closest(".food-rule-item-selection");
+  if (selection && !event.target.closest("[data-food-rule-selected-item], [data-food-rule-item-search]")) {
+    selection.querySelector("[data-food-rule-item-search]").focus();
+    return;
+  }
+  const selectedItem = event.target.closest("[data-food-rule-selected-item]");
+  if (selectedItem) {
+    const row = selectedItem.closest("[data-food-rule]");
+    const key = decodeURIComponent(selectedItem.dataset.foodRuleSelectedItem);
+    const checkbox = [...row.querySelectorAll("[data-food-rule-items] input")]
+      .find((input) => input.value === key);
+    if (checkbox) checkbox.checked = false;
+    renderFoodRuleSelectedItems(row);
+    updateFamilyFormSaveState();
+    row.querySelector("[data-food-rule-item-search]").focus();
+    return;
+  }
   const remove = event.target.closest(".remove-food-rule");
   if (!remove) return;
   remove.closest("[data-food-rule]").remove();
@@ -3613,6 +3677,9 @@ $("#family-food-rules-list").addEventListener("click", (event) => {
 $("#family-food-rules-list").addEventListener("change", (event) => {
   const row = event.target.closest("[data-food-rule]");
   if (row && event.target.matches("[data-food-rule-kind]")) setFoodRuleMode(row);
+  if (row && event.target.matches("[data-food-rule-items] input")) {
+    renderFoodRuleSelectedItems(row);
+  }
   if (row && event.target.matches("[data-food-rule-days] input")
     && !row.querySelector("[data-food-rule-days] input:checked")) {
     event.target.checked = true;
@@ -3621,12 +3688,24 @@ $("#family-food-rules-list").addEventListener("change", (event) => {
 });
 $("#family-food-rules-list").addEventListener("input", (event) => {
   if (!event.target.matches("[data-food-rule-item-search]")) return;
-  const query = event.target.value.trim().toLocaleLowerCase(state.language);
-  event.target.closest("[data-food-rule]").querySelectorAll(".food-rule-choice")
-    .forEach((choice) => {
-      choice.hidden = Boolean(query)
-        && !choice.textContent.toLocaleLowerCase(state.language).includes(query);
-    });
+  filterFoodRuleItems(event.target);
+});
+$("#family-food-rules-list").addEventListener("focusin", (event) => {
+  if (event.target.matches("[data-food-rule-item-search]") && event.target.value.trim()) {
+    filterFoodRuleItems(event.target);
+  }
+});
+$("#family-food-rules-list").addEventListener("focusout", (event) => {
+  const picker = event.target.closest("[data-food-rule-item-picker]");
+  if (picker && !picker.contains(event.relatedTarget)) {
+    closeFoodRuleItems(picker.closest("[data-food-rule]"));
+  }
+});
+$("#family-food-rules-list").addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !event.target.closest("[data-food-rule-item-picker]")) return;
+  const row = event.target.closest("[data-food-rule]");
+  closeFoodRuleItems(row);
+  row.querySelector("[data-food-rule-item-search]").focus();
 });
 $("#family-form").addEventListener("input", updateFamilyFormSaveState);
 $("#family-form").addEventListener("change", updateFamilyFormSaveState);
