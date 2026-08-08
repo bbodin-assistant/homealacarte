@@ -280,6 +280,10 @@ fn synthetic_data_supports_groceries_stock_export_and_pdf() {
             .abs()
             < 0.005
     );
+    assert!(
+        snapshot.grocery_plan.estimated_full_purchase_total
+            > snapshot.grocery_plan.estimated_purchase_total
+    );
 
     assert_eq!(snapshot.custom_grocery.len(), 2);
     assert_eq!(snapshot.household_options.len(), 4);

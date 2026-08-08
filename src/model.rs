@@ -423,6 +423,8 @@ pub struct GroceryResult {
     pub items: Vec<GroceryItem>,
     pub categories: Vec<GroceryCategory>,
     pub estimated_purchase_total: f64,
+    #[serde(default)]
+    pub estimated_full_purchase_total: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

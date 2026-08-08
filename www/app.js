@@ -2921,13 +2921,17 @@ function setStockAddUnit() {
 }
 
 function updateGroceryProgress() {
-  const items = state.snapshot?.grocery_plan.items || [];
+  const grocery = state.snapshot?.grocery_plan;
+  const items = grocery?.items || [];
   const total = items.length;
   const checked = items.filter((item) => item.stock_sufficient).length;
   const remainingTotal = items
     .filter((item) => !item.stock_sufficient)
     .reduce((sum, item) => sum + item.estimated_purchase_price, 0);
-  $("#grocery-total").textContent = formatMoney(remainingTotal);
+  const fullTotal = Number(grocery?.estimated_full_purchase_total);
+  $("#grocery-total").textContent = `${formatMoney(remainingTotal)} / ${formatMoney(
+    Number.isFinite(fullTotal) && fullTotal >= remainingTotal ? fullTotal : remainingTotal,
+  )}`;
   $("#grocery-progress-label").textContent = `${checked} / ${total}`;
   $("#grocery-progress-bar").style.width = `${total ? checked / total * 100 : 0}%`;
   setCountBadge("#grocery-tab-count", total - checked);

@@ -7,7 +7,7 @@ PERSONAL_OVERLAY_DIR ?= ./perso-data
 PERSONAL_MERGED_IMPORT ?= ./private-import/homealacarte-merged.json
 PERSONAL_MERGE_AUDIT ?= ./private-import/homealacarte-merge-audit.json
 
-.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-browser-startup test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
+.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-browser-startup test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
 
 build: rust-build web-build
 
@@ -42,6 +42,7 @@ test-web:
 	node tests/food_rules.mjs
 	node tests/profile_rules.mjs
 	node tests/stock_availability.mjs
+	node tests/grocery_total.mjs
 
 test-browser-startup: web-build
 	bash tests/browser_startup.sh
@@ -65,6 +66,10 @@ test-item-usage-people:
 
 test-grocery-item-click:
 	node tests/grocery_item_click.mjs
+	node --check www/app.js
+
+test-grocery-total:
+	node tests/grocery_total.mjs
 	node --check www/app.js
 
 test-dish-ingredient-details:

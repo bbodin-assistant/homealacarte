@@ -1780,6 +1780,7 @@ pub fn build_grocery(dataset: &Dataset) -> Result<GroceryResult, String> {
         items,
         categories,
         estimated_purchase_total,
+        estimated_full_purchase_total: estimated_purchase_total,
     })
 }
 
@@ -1826,6 +1827,7 @@ pub fn build_grocery_plan(dataset: &Dataset) -> Result<GroceryResult, String> {
     without_stock.stock.clear();
     without_stock.household_stock.clear();
     let mut plan = build_grocery(&without_stock)?;
+    let estimated_full_purchase_total = plan.estimated_purchase_total;
     for item in &mut plan.items {
         apply_purchase_result(item, &purchases);
     }
@@ -1837,6 +1839,7 @@ pub fn build_grocery_plan(dataset: &Dataset) -> Result<GroceryResult, String> {
         }
     }
     plan.estimated_purchase_total = purchase.estimated_purchase_total;
+    plan.estimated_full_purchase_total = estimated_full_purchase_total;
     Ok(plan)
 }
 
@@ -1865,5 +1868,6 @@ pub fn exclude_grocery_items(
         .iter()
         .map(|item| item.estimated_purchase_price)
         .sum();
+    grocery.estimated_full_purchase_total = grocery.estimated_purchase_total;
     grocery
 }
