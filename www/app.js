@@ -13,28 +13,30 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-72";
-import { t, translations } from "./translations.js?v=homealacarte-72";
+} from "./storage.js?v=homealacarte-75";
+import { t, translations } from "./translations.js?v=homealacarte-75";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
+  latestPriceTrend,
   menuUsageContext,
   priceChartGeometry,
-} from "./item-details.js?v=homealacarte-72";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-72";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-72";
-import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-72";
+} from "./item-details.js?v=homealacarte-75";
+import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-75";
+import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-75";
+import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-75";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-72";
+} from "./catalogue-filters.js?v=homealacarte-75";
 import {
   loadBundledDefaults,
   mergeBundledDishClassifications,
   mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "./profile-rules.js?v=homealacarte-72";
+} from "./profile-rules.js?v=homealacarte-75";
+import { dishStockAvailability } from "./stock-availability.js?v=homealacarte-75";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -65,7 +67,7 @@ function storedAutoMenuNumber(key, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-const worker = new Worker("./worker.js?v=homealacarte-72", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-75", { type: "module" });
 const state = {
   language: localStorage.getItem("homealacarte-language") || "fr",
   snapshot: null,
@@ -105,6 +107,7 @@ const state = {
   menuCellDraft: null,
   pendingConfirmation: null,
   pendingReplacementIndex: null,
+  pendingMissingValue: null,
   dishDetailsMenuIndex: null,
   dishDetailsDishKey: null,
   dishDetailsOriginal: null,
@@ -137,6 +140,87 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function searchableSelectInput(select) {
+  return select?.closest(".searchable-select")?.querySelector(".searchable-select-input") || null;
+}
+
+function enhanceSearchableSelect(
+  select,
+  placeholder = "",
+  requiredOverride = null,
+  allowCustom = false,
+) {
+  if (!select) return null;
+  const required = requiredOverride == null
+    ? (select.required || select.dataset.wasRequired === "true")
+    : Boolean(requiredOverride);
+  let wrapper = select.closest(".searchable-select");
+  let input = searchableSelectInput(select);
+  if (!wrapper) {
+    wrapper = document.createElement("div");
+    wrapper.className = "searchable-select";
+    select.before(wrapper);
+    wrapper.append(select);
+    input = document.createElement("input");
+    input.type = "search";
+    input.className = "searchable-select-input";
+    input.autocomplete = "off";
+    const list = document.createElement("datalist");
+    list.id = `searchable-select-${Math.random().toString(36).slice(2)}`;
+    input.setAttribute("list", list.id);
+    wrapper.prepend(input);
+    wrapper.append(list);
+    select.classList.add("searchable-select-source");
+    input.addEventListener("input", () => {
+      const query = input.value.trim().toLocaleLowerCase(state.language);
+      const customAllowed = input.dataset.allowCustom === "true";
+      const options = [...select.options].filter((option) => option.value);
+      const exact = options.find((option) => option.textContent.trim()
+        .toLocaleLowerCase(state.language) === query);
+      const startsWith = options.filter((option) => option.textContent.trim()
+        .toLocaleLowerCase(state.language).startsWith(query));
+      const match = exact
+        || (!customAllowed && query && startsWith.length === 1 ? startsWith[0] : null);
+      const nextValue = match?.value || "";
+      if (select.value !== nextValue) {
+        select.value = nextValue;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      input.setCustomValidity((customAllowed && query)
+        || nextValue
+        || input.dataset.required !== "true"
+        ? ""
+        : t(state.language, "select_catalogue_suggestion"));
+    });
+    input.addEventListener("change", () => input.dispatchEvent(new Event("input")));
+  }
+  select.dataset.wasRequired = String(required);
+  select.required = false;
+  input.placeholder = placeholder;
+  input.dataset.required = String(required);
+  input.dataset.allowCustom = String(allowCustom);
+  input.required = required;
+  const list = wrapper.querySelector("datalist");
+  list.innerHTML = [...select.options]
+    .filter((option) => option.value)
+    .map((option) => `<option value="${escapeHtml(option.textContent.trim())}"></option>`)
+    .join("");
+  const selected = select.selectedOptions[0];
+  input.value = selected?.value ? selected.textContent.trim() : "";
+  input.setCustomValidity("");
+  return input;
+}
+
+function setSearchableSelectHidden(select, hidden) {
+  const wrapper = select?.closest(".searchable-select");
+  if (wrapper) {
+    wrapper.hidden = hidden;
+    const input = searchableSelectInput(select);
+    if (input) input.disabled = hidden;
+  }
+  else if (select) select.hidden = hidden;
+}
 const formatNumber = (value, digits = 1) => new Intl.NumberFormat(
   state.language === "fr" ? "fr-FR" : "en-GB",
   { maximumFractionDigits: digits },
@@ -182,6 +266,26 @@ const NUTRI_SCORE_FIELDS = [
   "salt_g",
   "fruit_vegetable_legume_percent",
 ];
+const EDITABLE_DETAIL_FIELDS = {
+  sugars_g: { label: "sugars_grams", kind: "number", reference: "nutrition" },
+  saturated_fat_g: { label: "saturated_fat_grams", kind: "number", reference: "nutrition" },
+  salt_g: { label: "salt_grams", kind: "number", reference: "nutrition" },
+  fruit_vegetable_legume_percent: {
+    label: "fruit_vegetable_legume_percent",
+    kind: "number",
+    reference: "percent",
+  },
+  category: { label: "category", kind: "text" },
+  source: { label: "source", kind: "text" },
+  url: { label: "source_url", kind: "text", inputMode: "url" },
+  price_checked_at: {
+    label: "price_checked_at",
+    kind: "text",
+    inputMode: "numeric",
+    placeholder: "date_format_hint",
+  },
+  price_source: { label: "price_source", kind: "text" },
+};
 const ingredientNutriScoreMissing = (ingredient) =>
   NUTRI_SCORE_FIELDS.filter((field) => ingredient[field] == null).length;
 
@@ -630,10 +734,6 @@ function applyTranslations() {
     node.title = t(state.language, node.dataset.i18nTitle);
   });
   renderStorageStatus(state.storageStatus);
-  if (!$("#custom-add-name").value) {
-    $("#custom-add-category").value = t(state.language, "other");
-    $("#custom-add-measure-unit").value = t(state.language, "units");
-  }
 }
 
 function setGroceryMode(mode) {
@@ -705,6 +805,24 @@ function initializeAutoMenuSettings() {
   }
 }
 
+function renderAutoMenuDishes() {
+  const usedDishes = new Set(state.draft.map((row) => row.item_key));
+  const query = $("#auto-dish-search").value.trim().toLocaleLowerCase(state.language);
+  const dishes = state.snapshot.dishes.filter((dish) => !query
+    || `${dish.name} ${dish.nutri_score || ""}`
+      .toLocaleLowerCase(state.language).includes(query));
+  $("#auto-menu-dishes").innerHTML = dishes.map((dish) => {
+    const used = usedDishes.has(dish.key);
+    const mainMeal = dish.auto_menu_main !== false;
+    const disabled = used || !mainMeal;
+    return `<label class="auto-menu-dish ${disabled ? "used" : ""}">
+      <input type="checkbox" data-auto-dish-key="${escapeHtml(encodeURIComponent(dish.key))}" ${!disabled && state.autoMenuCandidates[dish.key] !== false ? "checked" : ""} ${disabled ? "disabled" : ""}>
+      <strong title="${escapeHtml(dish.name)}">${escapeHtml(dish.name)}</strong>
+      <small>${mainMeal ? `${formatNumber(dish.per_serving.kcal, 0)} kcal · ${formatMoney(dish.per_serving.cost)}` : escapeHtml(t(state.language, "not_main_meal"))}</small>
+    </label>`;
+  }).join("") || `<p class="auto-menu-dishes-empty">${escapeHtml(t(state.language, query ? "no_matching_dishes" : "no_eligible_dishes"))}</p>`;
+}
+
 function renderAutoMenu() {
   initializeAutoMenuSettings();
   const people = state.snapshot.people;
@@ -739,17 +857,7 @@ function renderAutoMenu() {
       }).join("")}
     </div>`).join("");
 
-  const usedDishes = new Set(state.draft.map((row) => row.item_key));
-  $("#auto-menu-dishes").innerHTML = state.snapshot.dishes.map((dish) => {
-    const used = usedDishes.has(dish.key);
-    const mainMeal = dish.auto_menu_main !== false;
-    const disabled = used || !mainMeal;
-    return `<label class="auto-menu-dish ${disabled ? "used" : ""}">
-      <input type="checkbox" data-auto-dish-key="${escapeHtml(encodeURIComponent(dish.key))}" ${!disabled && state.autoMenuCandidates[dish.key] !== false ? "checked" : ""} ${disabled ? "disabled" : ""}>
-      <strong title="${escapeHtml(dish.name)}">${escapeHtml(dish.name)}</strong>
-      <small>${mainMeal ? `${formatNumber(dish.per_serving.kcal, 0)} kcal · ${formatMoney(dish.per_serving.cost)}` : escapeHtml(t(state.language, "not_main_meal"))}</small>
-    </label>`;
-  }).join("") || `<p>${escapeHtml(t(state.language, "no_eligible_dishes"))}</p>`;
+  renderAutoMenuDishes();
   renderAutoMenuResult();
 }
 
@@ -1191,15 +1299,28 @@ function configureItemCategoryFilter(items) {
   return selected;
 }
 
+function itemPriceTrendMarkup(item) {
+  const trend = latestPriceTrend([item]);
+  if (!trend) return "";
+  const directionKey = trend.direction === "up" ? "price_increased" : "price_decreased";
+  const percent = trend.percent == null
+    ? ""
+    : ` ${formatNumber(Math.abs(trend.percent), 1)} %`;
+  return `<span class="item-price-trend ${trend.direction}" title="${escapeHtml(translatedTemplate(directionKey, {
+    previous: formatMoney(trend.previous),
+    latest: formatMoney(trend.latest),
+  }))}">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8 4l4 4-4 4"/></svg>
+    <small>${escapeHtml(percent.trim())}</small>
+  </span>`;
+}
+
 function renderItemsCatalogue() {
   const ingredients = state.snapshot.ingredients || [];
   const householdItems = state.snapshot.household_items || [];
   const incompleteCount = ingredients.filter((ingredient) => ingredient.incomplete).length;
   setCountBadge("#ingredient-incomplete-count", incompleteCount);
-  $("#add-catalogue-item-label").textContent = t(
-    state.language,
-    state.itemCatalogueTab === "food" ? "add_food_item" : "add_general_item",
-  );
+  $("#add-catalogue-item-label").textContent = t(state.language, "short_add");
   const catalogueRows = state.itemCatalogueTab === "food"
     ? ingredients.map((item) => ({ ...item, item_kind: "food" }))
     : householdItems.map((item) => ({
@@ -1233,7 +1354,7 @@ function renderItemsCatalogue() {
     ${rows.map((item) => `
       <div class="item-catalogue-row" role="button" tabindex="0" data-item-details="${escapeHtml(encodeURIComponent(item.key))}" data-item-kind="${item.item_kind}" aria-label="${escapeHtml(`${t(state.language, "details")}: ${item.name}`)}">
         <strong class="item-catalogue-name">
-          <span>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>
+          <span class="item-catalogue-name-line"><span>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>${item.item_kind === "food" ? itemPriceTrendMarkup(item) : ""}</span>
           ${item.item_kind === "food" && ingredientNutriScoreMissing(item)
             ? `<small>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: ingredientNutriScoreMissing(item) }))}</small>`
             : ""}
@@ -1482,7 +1603,7 @@ function setDishComponentMode(row, mode) {
   const custom = mode === "custom";
   row.dataset.componentMode = custom ? "custom" : "catalogue";
   row.querySelector("[data-component-custom-toggle]").checked = custom;
-  row.querySelector("[data-component-item]").hidden = custom;
+  setSearchableSelectHidden(row.querySelector("[data-component-item]"), custom);
   row.querySelector("[data-component-custom-name]").hidden = !custom;
   row.querySelector("[data-component-unit]").hidden = custom;
   row.querySelector("[data-component-custom-unit]").hidden = !custom;
@@ -1549,6 +1670,10 @@ function addNewDishComponent(component = null, servings = 1) {
     </label>
   `;
   $("#new-dish-component-list").append(row);
+  enhanceSearchableSelect(
+    row.querySelector("[data-component-item]"),
+    t(state.language, "search_items"),
+  );
   setNewDishComponentUnit(row);
   if (component?.quantity_unit) {
     const unit = row.querySelector("[data-component-unit]");
@@ -1717,6 +1842,7 @@ function foodRuleMarkup(rule = {}) {
       <select data-food-rule-meal>${foodRuleMealOptions(meal)}</select>
     </label>
     <div class="food-rule-items-field"><span>${escapeHtml(t(state.language, "food_rule_choices"))}</span>
+      <input type="search" data-food-rule-item-search placeholder="${escapeHtml(t(state.language, "search_items"))}" aria-label="${escapeHtml(t(state.language, "search_items"))}">
       <div data-food-rule-items role="group">${foodRuleItemOptions(rule.item_keys)}</div>
     </div>
     <label data-routine-field><span>${escapeHtml(t(state.language, "food_rule_quantity"))}</span>
@@ -1877,10 +2003,14 @@ function openMealReplacement(index) {
   $("#meal-replace-context").textContent =
     `${current?.name || row.item_key} · ${row.day} · ${row.meal}`;
   $("#meal-replace-select").innerHTML = itemOptions("", row.item_key);
+  const search = enhanceSearchableSelect(
+    $("#meal-replace-select"),
+    t(state.language, "search_items"),
+  );
   const dialog = $("#meal-replace-dialog");
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
-  $("#meal-replace-select").focus();
+  search?.focus();
 }
 
 function closeMealReplacement() {
@@ -2178,6 +2308,10 @@ function openMenuItemDialog(day, meal) {
   $("#menu-item-select").innerHTML = itemOptions("");
   const firstDish = state.snapshot.item_options.find((item) => item.kind === "dish");
   $("#menu-item-select").value = firstDish?.key || state.snapshot.item_options[0]?.key || "";
+  const search = enhanceSearchableSelect(
+    $("#menu-item-select"),
+    t(state.language, "search_items"),
+  );
   $("#menu-item-quantity").value = "1";
   $("#menu-item-notes").value = "";
   $("#menu-item-people-error").hidden = true;
@@ -2191,7 +2325,7 @@ function openMenuItemDialog(day, meal) {
   const dialog = $("#menu-item-dialog");
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
-  $("#menu-item-select").focus();
+  search?.focus();
 }
 
 function closeMenuItemDialog() {
@@ -2229,15 +2363,78 @@ function detailValue(value, suffix = "") {
   return `${formatNumber(value, 2)}${suffix}`;
 }
 
-function detailFields(rows) {
-  return `<dl class="item-detail-fields">${rows.map(([label, value, raw = false]) => `
+function detailFields(rows, itemKey = "") {
+  return `<dl class="item-detail-fields">${rows.map(([label, value, raw = false, field = ""]) => `
     <div>
       <dt>${escapeHtml(label)}</dt>
       ${value == null || value === ""
-        ? `<dd class="item-detail-missing"><span aria-hidden="true">!</span>${escapeHtml(t(state.language, "not_available"))}</dd>`
+        ? field && itemKey
+          ? `<dd><button class="item-detail-missing item-detail-missing-button" type="button" data-missing-value-field="${escapeHtml(field)}" data-missing-value-item="${escapeHtml(encodeURIComponent(itemKey))}"><span aria-hidden="true">!</span>${escapeHtml(t(state.language, "not_available"))}<small>${escapeHtml(t(state.language, "click_to_propose"))}</small></button></dd>`
+          : `<dd class="item-detail-missing"><span aria-hidden="true">!</span>${escapeHtml(t(state.language, "not_available"))}</dd>`
         : `<dd>${raw ? value : escapeHtml(value)}</dd>`}
     </div>
   `).join("")}</dl>`;
+}
+
+function ingredientStockPresentation(itemKey) {
+  const option = (state.snapshot?.stock_options || [])
+    .find((item) => item.item_key === itemKey && !item.household);
+  if (!option) return null;
+  const stock = state.stockDraft.find((row) => row.item_key === itemKey && !row.household);
+  const gramsPerUnit = Number(option.grams_per_measure_unit || 1);
+  const grams = stock
+    ? Number(stock.quantity) * (stock.quantity_unit === "unit" ? gramsPerUnit : 1)
+    : 0;
+  return { option, grams, gramsPerUnit };
+}
+
+function ingredientStockDetailMarkup(ingredient) {
+  const presentation = ingredientStockPresentation(ingredient.key);
+  if (!presentation) return "";
+  const { option, grams, gramsPerUnit } = presentation;
+  const equivalent = option.measure_unit !== "g"
+    ? translatedTemplate("stock_unit_equivalent", {
+      quantity: formatNumber(grams / gramsPerUnit, 2),
+      unit: option.measure_unit,
+    })
+    : t(state.language, grams > 0 ? "stock_available" : "stock_empty_for_item");
+  return `<section class="ingredient-detail-stock" data-ingredient-stock-detail="${escapeHtml(encodeURIComponent(ingredient.key))}">
+    <h3>${escapeHtml(t(state.language, "ingredient_stock_title"))}</h3>
+    <div class="ingredient-stock-detail-card">
+      <div class="ingredient-stock-current">
+        <span>${escapeHtml(t(state.language, "current_stock"))}</span>
+        <strong>${escapeHtml(`${formatNumber(grams, 1)} g`)}</strong>
+        <small>${escapeHtml(equivalent)}</small>
+      </div>
+      <label class="dialog-field">
+        <span>${escapeHtml(t(state.language, "quantity_to_add"))}</span>
+        <input type="number" min="0.000000001" step="any" value="1" data-detail-stock-quantity>
+      </label>
+      <label class="dialog-field">
+        <span>${escapeHtml(t(state.language, "unit"))}</span>
+        <select data-detail-stock-unit>
+          <option value="g">g</option>
+          ${option.measure_unit === "g" ? "" : `<option value="unit" selected>${escapeHtml(option.measure_unit)}</option>`}
+        </select>
+      </label>
+      <button class="button primary compact" type="button" data-detail-stock-add>${escapeHtml(t(state.language, "add_to_stock"))}</button>
+      <button class="button ghost compact" type="button" data-detail-stock-purchase>${escapeHtml(t(state.language, "add_purchase_unit"))}</button>
+      <p class="ingredient-stock-feedback" data-detail-stock-feedback role="status"></p>
+    </div>
+  </section>`;
+}
+
+function refreshIngredientDetailStock(ingredient, message = "") {
+  const current = [...$("#grocery-details-information")
+    .querySelectorAll("[data-ingredient-stock-detail]")]
+    .find((section) => decodeURIComponent(section.dataset.ingredientStockDetail) === ingredient.key);
+  if (!current) return;
+  current.outerHTML = ingredientStockDetailMarkup(ingredient);
+  const refreshed = [...$("#grocery-details-information")
+    .querySelectorAll("[data-ingredient-stock-detail]")]
+    .find((section) => decodeURIComponent(section.dataset.ingredientStockDetail) === ingredient.key);
+  const feedback = refreshed?.querySelector("[data-detail-stock-feedback]");
+  if (feedback) feedback.textContent = message;
 }
 
 function priceHistoryMarkup(items) {
@@ -2291,12 +2488,12 @@ function itemInformationMarkup(items, groceryItem) {
   const identity = detailFields([
     [t(state.language, "item_identifier"), item.key],
     [t(state.language, "item_type"), t(state.language, food ? "food_item" : "general_item")],
-    [t(state.language, "category"), displayCategory(item.category)],
+    [t(state.language, "category"), displayCategory(item.category), false, food ? "category" : ""],
     [t(state.language, "measure_unit_name"), item.measure_unit],
     [t(state.language, "description_status"), food
       ? t(state.language, item.incomplete ? "ingredient_incomplete" : "ingredient_complete")
       : t(state.language, "ingredient_complete")],
-  ]);
+  ], food ? item.key : "");
   const nutrition = food ? detailFields([
     [t(state.language, "nutrition_reference_grams"), detailValue(item.grams, " g")],
     [t(state.language, "kcal_for_reference"), detailValue(item.kcal)],
@@ -2304,26 +2501,26 @@ function itemInformationMarkup(items, groceryItem) {
     [t(state.language, "carbs_grams"), detailValue(item.carbs_g, " g")],
     [t(state.language, "fat_grams"), detailValue(item.fat_g, " g")],
     [t(state.language, "fiber_grams"), detailValue(item.fiber_g, " g")],
-    [t(state.language, "sugars_grams"), detailValue(item.sugars_g, " g")],
-    [t(state.language, "saturated_fat_grams"), detailValue(item.saturated_fat_g, " g")],
-    [t(state.language, "salt_grams"), detailValue(item.salt_g, " g")],
-    [t(state.language, "fruit_vegetable_legume_percent"), detailValue(item.fruit_vegetable_legume_percent, " %")],
-  ]) : "";
+    [t(state.language, "sugars_grams"), detailValue(item.sugars_g, " g"), false, "sugars_g"],
+    [t(state.language, "saturated_fat_grams"), detailValue(item.saturated_fat_g, " g"), false, "saturated_fat_g"],
+    [t(state.language, "salt_grams"), detailValue(item.salt_g, " g"), false, "salt_g"],
+    [t(state.language, "fruit_vegetable_legume_percent"), detailValue(item.fruit_vegetable_legume_percent, " %"), false, "fruit_vegetable_legume_percent"],
+  ], item.key) : "";
   const source = food ? detailFields([
-    [t(state.language, "source"), item.source],
+    [t(state.language, "source"), item.source, false, "source"],
     [t(state.language, "source_url"), sourceUrl
       ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a>`
-      : item.url ? escapeHtml(item.url) : null, true],
-  ]) : "";
+      : item.url ? escapeHtml(item.url) : null, true, "url"],
+  ], item.key) : "";
   const purchase = food ? detailFields([
     [t(state.language, "grams_per_unit"), detailValue(item.grams_per_measure_unit, " g")],
     [t(state.language, "purchase_unit"), item.purchase_unit],
     [t(state.language, "purchase_quantity_grams"), detailValue(item.purchase_quantity_grams, " g")],
     [t(state.language, "price_per_kg"), formatMoney(item.price_per_kg)],
     [t(state.language, "estimated_purchase_price"), formatMoney(item.price_per_kg * item.purchase_quantity_grams / 1000)],
-    [t(state.language, "price_checked_at"), item.price_checked_at],
-    [t(state.language, "price_source"), item.price_source],
-  ]) : detailFields([
+    [t(state.language, "price_checked_at"), item.price_checked_at, false, "price_checked_at"],
+    [t(state.language, "price_source"), item.price_source, false, "price_source"],
+  ], item.key) : detailFields([
     [t(state.language, "purchase_unit"), item.purchase_unit],
     [t(state.language, "purchase_quantity"), detailValue(item.purchase_quantity)],
     [t(state.language, "unit_price"), formatMoney(item.estimated_price)],
@@ -2334,6 +2531,7 @@ function itemInformationMarkup(items, groceryItem) {
   return `
     ${groceryItem ? `<section><h3>${escapeHtml(t(state.language, "grocery_list"))}</h3>${groceryFields}</section>` : ""}
     <section><h3>${escapeHtml(t(state.language, "item_identity_title"))}</h3>${identity}</section>
+    ${food ? ingredientStockDetailMarkup(item) : ""}
     ${food ? `<section><h3>${escapeHtml(t(state.language, "ingredient_nutrition_title"))}</h3>${nutrition}</section>` : ""}
     ${food ? `<section><h3>${escapeHtml(t(state.language, "ingredient_sources_title"))}</h3>${source}</section>` : ""}
     <section><h3>${escapeHtml(t(state.language, "ingredient_purchase_title"))}</h3>${purchase}</section>
@@ -2389,6 +2587,48 @@ function openCatalogueItemDetails(key, kind) {
 
 function closeGroceryDetails() {
   const dialog = $("#grocery-details-dialog");
+  if (typeof dialog.close === "function") dialog.close();
+  else dialog.removeAttribute("open");
+}
+
+function openMissingValueDialog(itemKey, field) {
+  const config = EDITABLE_DETAIL_FIELDS[field];
+  if (!config) return;
+  const ingredient = (state.snapshot?.ingredients || [])
+    .find((item) => item.key === itemKey);
+  if (!ingredient) return;
+  state.pendingMissingValue = { itemKey, field };
+  const label = t(state.language, config.label);
+  $("#missing-value-context").textContent = ingredient.name;
+  $("#missing-value-label").textContent = label;
+  $("#missing-value-reference").textContent = config.reference === "percent"
+    ? t(state.language, "value_reference_percent")
+    : config.reference === "nutrition"
+      ? translatedTemplate("value_reference_grams", { grams: formatNumber(ingredient.grams, 2) })
+      : t(state.language, "value_reference_general");
+  const input = $("#missing-value-input");
+  input.type = config.kind === "number" ? "number" : "text";
+  input.min = config.kind === "number" ? "0" : "";
+  input.max = field === "fruit_vegetable_legume_percent" ? "100" : "";
+  input.step = config.kind === "number" ? "any" : "";
+  input.inputMode = config.inputMode || "";
+  input.placeholder = config.placeholder ? t(state.language, config.placeholder) : "";
+  input.value = ingredient[field] ?? "";
+  $("#missing-value-source").value = ingredient.source || "";
+  $("#missing-value-url").value = ingredient.url || "";
+  $("#missing-value-source-field").hidden = field === "source";
+  $("#missing-value-url-field").hidden = field === "url";
+  $("#missing-value-error").textContent = "";
+  closeGroceryDetails();
+  const dialog = $("#missing-value-dialog");
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "");
+  $("#missing-value-input").focus();
+}
+
+function closeMissingValueDialog() {
+  state.pendingMissingValue = null;
+  const dialog = $("#missing-value-dialog");
   if (typeof dialog.close === "function") dialog.close();
   else dialog.removeAttribute("open");
 }
@@ -2465,11 +2705,15 @@ function renderCustomGrocery() {
   setCountBadge("#needs-tab-count", state.customDraft.length);
   $("#empty-extra-needs").disabled = state.customDraft.length === 0;
   const activeKeys = new Set(state.customDraft.map((item) => item.key));
-  $("#custom-add-existing").innerHTML = (state.snapshot.household_options || [])
+  $("#custom-add-existing").innerHTML = `<option value=""></option>${(state.snapshot.household_options || [])
     .filter((item) => !activeKeys.has(item.key))
     .map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)
-    .join("");
-  const rows = state.customDraft.map((item) => `
+    .join("")}`;
+  const query = $("#needs-search").value.trim().toLocaleLowerCase(state.language);
+  const visibleItems = state.customDraft.filter((item) => !query
+    || `${item.name} ${displayCategory(item.category)} ${item.notes || ""}`
+      .toLocaleLowerCase(state.language).includes(query));
+  const rows = visibleItems.map((item) => `
     <div class="custom-row" data-custom-key="${escapeHtml(item.key)}">
       <strong class="custom-row-name">
         ${escapeHtml(item.name)}
@@ -2484,7 +2728,7 @@ function renderCustomGrocery() {
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
       </button>
     </div>
-  `).join("") || `<p class="stock-empty">${t(state.language, "empty")}</p>`;
+  `).join("") || `<p class="stock-empty">${escapeHtml(t(state.language, query ? "no_matching_items" : "empty"))}</p>`;
   $("#custom-list").innerHTML = `
     <div class="custom-head">
       <span>${t(state.language, "name")}</span>
@@ -2497,36 +2741,35 @@ function renderCustomGrocery() {
     </div>
     ${rows}
   `;
-  setExtraNeedMode($("input[name='extra-add-mode']:checked")?.value || "existing");
+  enhanceSearchableSelect(
+    $("#custom-add-existing"),
+    t(state.language, "type_or_create_item"),
+    true,
+    true,
+  );
+  updateExtraNeedSelection();
 }
 
-function populateHouseholdFields() {
+function updateExtraNeedSelection() {
   const option = (state.snapshot.household_options || [])
     .find((item) => item.key === $("#custom-add-existing").value);
-  if (!option) return;
-  $("#custom-add-category").value = displayCategory(option.category);
-  $("#custom-add-measure-unit").value = option.measure_unit;
-  $("#custom-add-price").value = formatInputNumber(option.estimated_price);
-  $("#custom-add-notes").value = option.notes || "";
-}
-
-function setExtraNeedMode(mode) {
-  const custom = mode === "custom";
-  $("#custom-existing-field").hidden = custom;
-  $("#custom-name-field").hidden = !custom;
-  $("#custom-category-field").hidden = !custom;
-  $("#custom-add-name").required = custom;
-  $("#custom-add-existing").required = !custom;
-  $("#custom-add-category").readOnly = !custom;
-  $("#custom-add-measure-unit").readOnly = !custom;
-  $("#custom-add-price").readOnly = !custom;
-  if (custom) {
+  const form = $("#custom-add-form");
+  const wasCatalogue = form.dataset.catalogMatch === "true";
+  const catalogue = Boolean(option);
+  form.dataset.catalogMatch = String(catalogue);
+  $("#custom-add-category").readOnly = catalogue;
+  $("#custom-add-measure-unit").readOnly = catalogue;
+  $("#custom-add-price").readOnly = catalogue;
+  if (option) {
+    $("#custom-add-category").value = displayCategory(option.category);
+    $("#custom-add-measure-unit").value = option.measure_unit;
+    $("#custom-add-price").value = formatInputNumber(option.estimated_price);
+    $("#custom-add-notes").value = option.notes || "";
+  } else if (wasCatalogue || !$("#custom-add-category").value) {
     $("#custom-add-category").value = t(state.language, "other");
     $("#custom-add-measure-unit").value = t(state.language, "units");
     $("#custom-add-price").value = "0";
     $("#custom-add-notes").value = "";
-  } else {
-    populateHouseholdFields();
   }
 }
 
@@ -2540,10 +2783,49 @@ function stockPayload() {
   }));
 }
 
+function addStockQuantity(itemKey, quantity, quantityUnit, notes = "") {
+  const option = (state.snapshot?.stock_options || [])
+    .find((item) => item.item_key === itemKey);
+  const amount = Number(quantity);
+  if (!option || !Number.isFinite(amount) || amount <= 0) return false;
+  const household = Boolean(option.household);
+  const unit = household ? "unit" : quantityUnit;
+  const gramsPerUnit = Number(option.grams_per_measure_unit || 1);
+  const current = state.stockDraft.find((item) => item.item_key === itemKey
+    && Boolean(item.household) === household);
+  if (current) {
+    let amountInCurrentUnit = amount;
+    if (!household && unit !== current.quantity_unit) {
+      amountInCurrentUnit = unit === "unit"
+        ? amount * gramsPerUnit
+        : amount / gramsPerUnit;
+    }
+    current.quantity = Number(current.quantity) + amountInCurrentUnit;
+    if (notes) current.notes = notes;
+  } else {
+    state.stockDraft.push({
+      item_key: itemKey,
+      name: option.name,
+      category: option.category,
+      quantity: amount,
+      quantity_unit: unit,
+      measure_unit: option.measure_unit,
+      grams_per_measure_unit: gramsPerUnit,
+      notes,
+      household,
+    });
+  }
+  return true;
+}
+
 function renderStock() {
   setCountBadge("#stock-tab-count", state.stockDraft.length);
   $("#empty-stock").disabled = state.stockDraft.length === 0;
-  $("#stock-list").innerHTML = state.stockDraft.map((item) => `
+  const query = $("#stock-search").value.trim().toLocaleLowerCase(state.language);
+  const visibleItems = state.stockDraft.filter((item) => !query
+    || `${item.name} ${displayCategory(item.category)} ${item.notes || ""}`
+      .toLocaleLowerCase(state.language).includes(query));
+  $("#stock-list").innerHTML = visibleItems.map((item) => `
     <div class="stock-row" data-stock-key="${escapeHtml(item.item_key)}" data-stock-household="${item.household ? "true" : "false"}">
       <strong class="stock-row-name">
         <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
@@ -2561,11 +2843,16 @@ function renderStock() {
         <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
       </button>
     </div>
-  `).join("") || `<p class="stock-empty">${t(state.language, "empty")}</p>`;
+  `).join("") || `<p class="stock-empty">${escapeHtml(t(state.language, query ? "no_matching_items" : "empty"))}</p>`;
 
-  $("#stock-add-item").innerHTML = (state.snapshot.stock_options || [])
+  $("#stock-add-item").innerHTML = `<option value=""></option>${(state.snapshot.stock_options || [])
     .map((item) => `<option value="${escapeHtml(item.item_key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)
-    .join("");
+    .join("")}`;
+  enhanceSearchableSelect(
+    $("#stock-add-item"),
+    t(state.language, "type_item_to_select"),
+    true,
+  );
   setStockAddUnit();
   $("#stock-add-form").querySelector("button").disabled = !$("#stock-add-item").value;
 }
@@ -2647,20 +2934,30 @@ function renderDishes() {
       && dish.per_serving.kcal >= minimumKcal
       && dish.per_serving.kcal <= maximumKcal;
   });
-  $("#dish-grid").innerHTML = dishes.map((dish) => `
-    <article class="dish-card">
-      <button class="dish-card-open" type="button" data-dish-key="${escapeHtml(encodeURIComponent(dish.key))}">
-        <div class="dish-title"><h2>${escapeHtml(dish.name)}</h2></div>
-        <div class="dish-metrics">
-          <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
-          ${dish.nutri_score
-            ? `<div class="nutri-score metric-${escapeHtml(dish.nutri_score.toLowerCase())}" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>${escapeHtml(dish.nutri_score)}</strong><span>Nutri-Score${dish.nutri_score_computed ? " · auto" : ""}</span></div>`
-            : `<div class="nutri-score-missing" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>—</strong><span>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: dish.nutri_score_missing_values }))}</span></div>`}
-          <div><strong>${formatMoney(dish.per_serving.cost)}</strong><span>${escapeHtml(t(state.language, "cost"))} · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
-        </div>
-      </button>
-    </article>
-  `).join("") || `<p>${t(state.language, "empty")}</p>`;
+  $("#dish-grid").innerHTML = dishes.map((dish) => {
+    const availability = dishStockAvailability(dish, state.stockDraft);
+    const portions = Math.floor(availability.portions * 10) / 10;
+    const limitingIngredient = dish.components
+      .find((component) => component.key === availability.limitingKey)?.name || "";
+    return `
+      <article class="dish-card">
+        <button class="dish-card-open" type="button" data-dish-key="${escapeHtml(encodeURIComponent(dish.key))}">
+          <div class="dish-title"><h2>${escapeHtml(dish.name)}</h2></div>
+          <div class="dish-metrics">
+            <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
+            ${dish.nutri_score
+              ? `<div class="nutri-score metric-${escapeHtml(dish.nutri_score.toLowerCase())}" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>${escapeHtml(dish.nutri_score)}</strong><span>Nutri-Score${dish.nutri_score_computed ? " · auto" : ""}</span></div>`
+              : `<div class="nutri-score-missing" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>—</strong><span>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: dish.nutri_score_missing_values }))}</span></div>`}
+            <div><strong>${formatMoney(dish.per_serving.cost)}</strong><span>${escapeHtml(t(state.language, "cost"))} · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
+          </div>
+          <div class="dish-stock-availability ${portions > 0 ? "available" : "unavailable"}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M6 8l1 11h10l1-11M9 8V5h6v3"/></svg>
+            <span>${escapeHtml(translatedTemplate("dish_stock_portions", { count: formatNumber(portions, 1) }))}</span>
+            ${limitingIngredient ? `<small>${escapeHtml(translatedTemplate("limited_by", { item: limitingIngredient }))}</small>` : ""}
+          </div>
+        </button>
+      </article>`;
+  }).join("") || `<p>${t(state.language, "empty")}</p>`;
 }
 
 function configureDishRanges() {
@@ -3322,6 +3619,15 @@ $("#family-food-rules-list").addEventListener("change", (event) => {
   }
   updateFamilyFormSaveState();
 });
+$("#family-food-rules-list").addEventListener("input", (event) => {
+  if (!event.target.matches("[data-food-rule-item-search]")) return;
+  const query = event.target.value.trim().toLocaleLowerCase(state.language);
+  event.target.closest("[data-food-rule]").querySelectorAll(".food-rule-choice")
+    .forEach((choice) => {
+      choice.hidden = Boolean(query)
+        && !choice.textContent.toLocaleLowerCase(state.language).includes(query);
+    });
+});
 $("#family-form").addEventListener("input", updateFamilyFormSaveState);
 $("#family-form").addEventListener("change", updateFamilyFormSaveState);
 $("#family-form").addEventListener("submit", (event) => {
@@ -3370,6 +3676,7 @@ $("#auto-menu-slots").addEventListener("change", (event) => {
   state.autoMenuProposal = null;
   renderAutoMenuResult();
 });
+$("#auto-dish-search").addEventListener("input", renderAutoMenuDishes);
 $("#auto-menu-dishes").addEventListener("change", (event) => {
   const input = event.target.closest("[data-auto-dish-key]");
   if (!input) return;
@@ -4029,39 +4336,15 @@ $("#stock-add-form").addEventListener("submit", (event) => {
   const itemKey = $("#stock-add-item").value;
   const quantity = Number($("#stock-add-quantity").value);
   if (!itemKey || !Number.isFinite(quantity) || quantity <= 0) return;
-  const option = (state.snapshot.stock_options || [])
-    .find((item) => item.item_key === itemKey);
-  if (!option) return;
   const quantityUnit = $("#stock-add-unit").value;
-  const current = state.stockDraft.find((item) =>
-    item.item_key === itemKey
-      && item.quantity_unit === quantityUnit
-      && Boolean(item.household) === Boolean(option.household)
-  );
-  if (current) {
-    current.quantity = Number(current.quantity) + quantity;
-    if ($("#stock-add-notes").value.trim()) {
-      current.notes = $("#stock-add-notes").value.trim();
-    }
-  } else {
-    state.stockDraft.push({
-      item_key: itemKey,
-      name: option.name,
-      category: option.category,
-      quantity,
-      quantity_unit: quantityUnit,
-      measure_unit: option.measure_unit,
-      grams_per_measure_unit: Number(option.grams_per_measure_unit || 1),
-      notes: $("#stock-add-notes").value.trim(),
-      household: Boolean(option.household),
-    });
-  }
+  if (!addStockQuantity(itemKey, quantity, quantityUnit, $("#stock-add-notes").value.trim())) return;
   $("#stock-add-quantity").value = "";
   $("#stock-add-notes").value = "";
   renderStock();
   scheduleStockUpdate();
 });
 $("#stock-add-item").addEventListener("change", setStockAddUnit);
+$("#stock-search").addEventListener("input", renderStock);
 
 $("#custom-list").addEventListener("input", (event) => {
   const control = event.target.closest("[data-custom-field]");
@@ -4086,21 +4369,14 @@ $("#custom-list").addEventListener("click", (event) => {
   scheduleCustomGroceryUpdate();
 });
 
-$("input[name='extra-add-mode'][value='existing']").addEventListener("change", (event) => {
-  if (event.target.checked) setExtraNeedMode("existing");
-});
-$("input[name='extra-add-mode'][value='custom']").addEventListener("change", (event) => {
-  if (event.target.checked) setExtraNeedMode("custom");
-});
-$("#custom-add-existing").addEventListener("change", populateHouseholdFields);
+$("#custom-add-existing").addEventListener("change", updateExtraNeedSelection);
+$("#needs-search").addEventListener("input", renderCustomGrocery);
 $("#custom-add-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  const custom = $("input[name='extra-add-mode']:checked").value === "custom";
-  const option = custom
-    ? null
-    : (state.snapshot.household_options || [])
-      .find((item) => item.key === $("#custom-add-existing").value);
-  const name = custom ? $("#custom-add-name").value.trim() : option?.name || "";
+  const option = (state.snapshot.household_options || [])
+    .find((item) => item.key === $("#custom-add-existing").value);
+  const custom = !option;
+  const name = option?.name || searchableSelectInput($("#custom-add-existing"))?.value.trim() || "";
   const category = normalizedCategory($("#custom-add-category").value.trim());
   const quantity = Number($("#custom-add-quantity").value);
   const measureUnit = $("#custom-add-measure-unit").value.trim();
@@ -4121,11 +4397,10 @@ $("#custom-add-form").addEventListener("submit", (event) => {
     notes,
     custom,
   });
-  $("#custom-add-name").value = "";
   $("#custom-add-quantity").value = "1";
   $("#custom-add-notes").value = "";
+  $("#custom-add-form").dataset.catalogMatch = "true";
   renderCustomGrocery();
-  setExtraNeedMode(custom ? "custom" : "existing");
   scheduleCustomGroceryUpdate();
 });
 $("#grocery-hide-stocked").addEventListener("change", (event) => {
@@ -4192,6 +4467,68 @@ $("#grocery-details-list").addEventListener("click", (event) => {
 });
 $("#grocery-details-close").addEventListener("click", closeGroceryDetails);
 $("#grocery-details-done").addEventListener("click", closeGroceryDetails);
+$("#grocery-details-information").addEventListener("click", (event) => {
+  const stockAction = event.target.closest("[data-detail-stock-add], [data-detail-stock-purchase]");
+  if (stockAction) {
+    const section = stockAction.closest("[data-ingredient-stock-detail]");
+    const itemKey = decodeURIComponent(section?.dataset.ingredientStockDetail || "");
+    const ingredient = (state.snapshot?.ingredients || [])
+      .find((item) => item.key === itemKey);
+    if (!ingredient) return;
+    const purchase = stockAction.hasAttribute("data-detail-stock-purchase");
+    const quantity = purchase
+      ? Number(ingredient.purchase_quantity_grams)
+      : Number(section.querySelector("[data-detail-stock-quantity]").value);
+    const unit = purchase ? "g" : section.querySelector("[data-detail-stock-unit]").value;
+    if (!addStockQuantity(ingredient.key, quantity, unit)) return;
+    renderStock();
+    refreshIngredientDetailStock(
+      ingredient,
+      purchase
+        ? translatedTemplate("purchase_unit_added", { unit: ingredient.purchase_unit })
+        : t(state.language, "stock_added"),
+    );
+    scheduleStockUpdate();
+    return;
+  }
+  const button = event.target.closest("[data-missing-value-field]");
+  if (!button) return;
+  openMissingValueDialog(
+    decodeURIComponent(button.dataset.missingValueItem),
+    button.dataset.missingValueField,
+  );
+});
+$("#missing-value-close").addEventListener("click", closeMissingValueDialog);
+$("#missing-value-cancel").addEventListener("click", closeMissingValueDialog);
+$("#missing-value-dialog").addEventListener("close", () => {
+  state.pendingMissingValue = null;
+});
+$("#missing-value-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const pending = state.pendingMissingValue;
+  const config = EDITABLE_DETAIL_FIELDS[pending?.field];
+  const rawValue = $("#missing-value-input").value.trim();
+  const value = config?.kind === "number" ? Number(rawValue) : rawValue;
+  const ingredient = (state.snapshot?.ingredients || [])
+    .find((item) => item.key === pending?.itemKey);
+  const valid = ingredient
+    && config
+    && (config.kind === "number"
+      ? Number.isFinite(value)
+        && value >= 0
+        && (pending.field !== "fruit_vegetable_legume_percent" || value <= 100)
+      : Boolean(value));
+  if (!valid) {
+    $("#missing-value-error").textContent = t(state.language, "invalid_missing_value");
+    return;
+  }
+  const updated = structuredClone(ingredient);
+  updated[pending.field] = pending.field === "category" ? normalizedCategory(value) : value;
+  if (pending.field !== "source") updated.source = $("#missing-value-source").value.trim();
+  if (pending.field !== "url") updated.url = $("#missing-value-url").value.trim();
+  closeMissingValueDialog();
+  send("replace-ingredient", { ingredient: updated });
+});
 $("#grocery-details-edit").addEventListener("click", (event) => {
   const button = event.currentTarget;
   if (!button.dataset.itemKey || !button.dataset.itemKind) return;

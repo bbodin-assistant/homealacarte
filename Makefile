@@ -35,11 +35,13 @@ test-domain:
 test-web:
 	node --check www/app.js
 	node --check www/storage.js
+	node --check www/stock-availability.js
 	node --check www/translations.js
 	node --check www/worker.js
 	node tests/menu_rows.mjs
 	node tests/food_rules.mjs
 	node tests/profile_rules.mjs
+	node tests/stock_availability.mjs
 
 test-browser-startup: web-build
 	bash tests/browser_startup.sh

@@ -49,6 +49,22 @@ export function combinedPriceHistory(items) {
       || left.description.localeCompare(right.description));
 }
 
+export function latestPriceTrend(items) {
+  const history = combinedPriceHistory(items);
+  if (history.length < 2) return null;
+  const previous = history.at(-2).price;
+  const latest = history.at(-1).price;
+  const delta = latest - previous;
+  if (Math.abs(delta) < 0.000001) return null;
+  return {
+    direction: delta > 0 ? "up" : "down",
+    previous,
+    latest,
+    delta,
+    percent: previous > 0 ? delta / previous * 100 : null,
+  };
+}
+
 export function menuUsageContext(row, people) {
   const peopleNames = new Map(
     (people || []).map((person) => [person.key, person.name]),

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
+  latestPriceTrend,
   priceChartGeometry,
 } from "../www/item-details.js";
 
@@ -50,6 +51,20 @@ const history = combinedPriceHistory([apple, {
 }]);
 assert.equal(history.length, 3);
 assert.equal(history[2].price, 3.5);
+assert.deepEqual(latestPriceTrend([apple]), {
+  direction: "up",
+  previous: 2.8,
+  latest: 3.2,
+  delta: 0.40000000000000036,
+  percent: 14.285714285714299,
+});
+assert.equal(latestPriceTrend([soap]), null);
+assert.equal(latestPriceTrend([{
+  price_history: [
+    { date: "2026-01-01", price: 4, description: "Earlier" },
+    { date: "2026-02-01", price: 3, description: "Latest" },
+  ],
+}]).direction, "down");
 
 const chart = priceChartGeometry(history, 640, 220);
 assert.equal(chart.points.length, 3);
@@ -77,7 +92,7 @@ assert.match(app, /data-stock-field="notes"/);
 assert.match(app, /data-custom-field="notes"/);
 for (const source of [app, index]) {
   for (const input of source.matchAll(/<input\b[^>]*\btype="number"[^>]*>/g)) {
-    assert.match(input[0], /\bstep="any"/);
+    assert.match(input[0], /\bstep="(?:any|\d+(?:\.\d+)?)"/);
   }
   assert.doesNotMatch(source, /<input\b[^>]*\btype="(?:date|url)"/);
 }

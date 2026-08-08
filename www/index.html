@@ -6,7 +6,7 @@
     <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
     <title>Home à la Carte</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./style.css?v=homealacarte-72">
+    <link rel="stylesheet" href="./style.css?v=homealacarte-75">
   </head>
   <body>
     <header class="topbar">
@@ -70,7 +70,7 @@
           </button>
         </nav>
         <div class="sidebar-footer">
-          <small class="app-version" aria-label="Version de l’application">v72</small>
+          <small class="app-version" aria-label="Version de l’application">v75</small>
           <button id="about-open" class="secondary-action" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
             <span data-i18n="about">À propos</span>
@@ -173,9 +173,15 @@
               <section class="panel auto-menu-section">
                 <div class="auto-menu-section-heading">
                   <div><h2 data-i18n="eligible_dishes">Plats autorisés</h2><p data-i18n="eligible_dishes_intro">Les plats déjà présents dans le menu sont automatiquement exclus.</p></div>
-                  <div class="auto-menu-inline-actions">
-                    <button id="auto-dishes-all" class="button ghost compact" type="button" data-i18n="select_all">Tout sélectionner</button>
-                    <button id="auto-dishes-none" class="button ghost compact" type="button" data-i18n="select_none">Tout désélectionner</button>
+                  <div class="auto-menu-dish-controls">
+                    <label class="search standalone auto-menu-dish-search">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                      <input id="auto-dish-search" type="search" data-i18n-placeholder="filter_eligible_dishes" placeholder="Filtrer les plats autorisés…">
+                    </label>
+                    <div class="auto-menu-inline-actions">
+                      <button id="auto-dishes-all" class="button ghost compact" type="button" data-i18n="select_all">Tout sélectionner</button>
+                      <button id="auto-dishes-none" class="button ghost compact" type="button" data-i18n="select_none">Tout désélectionner</button>
+                    </div>
                   </div>
                 </div>
                 <div id="auto-menu-dishes" class="auto-menu-dishes"></div>
@@ -234,6 +240,10 @@
                 <h1 data-i18n="stock_title">Stock disponible</h1>
               </div>
               <div class="page-actions">
+                <label class="section-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                  <input id="stock-search" type="search" data-i18n-placeholder="filter_stock" placeholder="Filtrer le stock par nom…">
+                </label>
                 <button id="empty-stock" class="button danger" type="button" data-i18n="empty_stock">Vider le stock</button>
               </div>
             </div>
@@ -271,23 +281,18 @@
                 <h1 data-i18n="extra_needs">Besoins supplémentaires</h1>
               </div>
               <div class="page-actions">
+                <label class="section-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                  <input id="needs-search" type="search" data-i18n-placeholder="filter_needs" placeholder="Filtrer les besoins par nom…">
+                </label>
                 <button id="empty-extra-needs" class="button danger" type="button" data-i18n="empty_extra_needs">Vider la liste</button>
               </div>
             </div>
             <div class="panel household-plan-panel">
               <form id="custom-add-form" class="custom-add household-add">
-                <fieldset class="extra-add-mode">
-                  <legend data-i18n="add_need_mode">Type d’article</legend>
-                  <label><input type="radio" name="extra-add-mode" value="existing" checked><span data-i18n="existing_item">Depuis le catalogue</span></label>
-                  <label><input type="radio" name="extra-add-mode" value="custom"><span data-i18n="custom_item">Article personnalisé</span></label>
-                </fieldset>
                 <label id="custom-existing-field">
-                  <span data-i18n="existing_item">Depuis le catalogue</span>
-                  <select id="custom-add-existing"></select>
-                </label>
-                <label id="custom-name-field" hidden>
                   <span data-i18n="name">Nom</span>
-                  <input id="custom-add-name">
+                  <select id="custom-add-existing"></select>
                 </label>
                 <label id="custom-category-field">
                   <span data-i18n="category">Catégorie</span>
@@ -357,6 +362,7 @@
                 <label class="metric-c"><input type="checkbox" value="C" data-dish-nutri-score="C"><span>C</span></label>
                 <label class="metric-d"><input type="checkbox" value="D" data-dish-nutri-score="D"><span>D</span></label>
                 <label class="metric-e"><input type="checkbox" value="E" data-dish-nutri-score="E"><span>E</span></label>
+                <label class="metric-unknown"><input type="checkbox" value="UNKNOWN" data-dish-nutri-score="UNKNOWN"><span aria-label="Nutri-Score non renseigné">?</span></label>
               </div>
             </fieldset>
             <button id="dish-clear-filters" class="button ghost" type="button" data-i18n="clear_filters">Effacer</button>
@@ -374,7 +380,7 @@
             </div>
             <button id="add-catalogue-item" class="button primary" type="button">
               <span aria-hidden="true">+</span>
-              <span id="add-catalogue-item-label" data-i18n="add_catalogue_item">Ajouter un article</span>
+              <span id="add-catalogue-item-label" data-i18n="short_add">Ajouter</span>
             </button>
           </div>
           <div id="item-filter-panel" class="item-filter-panel panel">
@@ -1064,6 +1070,41 @@
       </div>
     </dialog>
 
+    <dialog id="missing-value-dialog" class="menu-item-dialog missing-value-dialog" aria-labelledby="missing-value-title">
+      <form id="missing-value-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p id="missing-value-eyebrow" class="eyebrow" data-i18n="item_information_value">Information de l’article</p>
+            <h2 id="missing-value-title" data-i18n="missing_value_title">Renseigner une valeur</h2>
+            <p id="missing-value-context"></p>
+          </div>
+          <button id="missing-value-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span id="missing-value-label"></span>
+            <input id="missing-value-input" required>
+            <small id="missing-value-reference" class="dialog-field-help"></small>
+          </label>
+          <label id="missing-value-source-field" class="dialog-field">
+            <span data-i18n="source">Source</span>
+            <input id="missing-value-source">
+          </label>
+          <label id="missing-value-url-field" class="dialog-field">
+            <span data-i18n="source_url">Lien de la source</span>
+            <input id="missing-value-url" type="text" inputmode="url" placeholder="https://…">
+          </label>
+          <p id="missing-value-error" class="field-error dialog-field-wide" role="alert"></p>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="missing-value-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button class="button primary" type="submit" data-i18n="save_value">Enregistrer la valeur</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="confirm-dialog" class="menu-item-dialog confirm-dialog" aria-labelledby="confirm-dialog-title">
       <div>
         <div class="menu-dialog-heading">
@@ -1154,6 +1195,6 @@
       </div>
     </dialog>
 
-    <script type="module" src="./app.js?v=homealacarte-72"></script>
+    <script type="module" src="./app.js?v=homealacarte-75"></script>
   </body>
 </html>

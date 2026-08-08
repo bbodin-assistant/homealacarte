@@ -24,12 +24,12 @@ assert.ok(snapshot.planner.length > 0, "reset demo should restore the menu");
 const index = await readFile(new URL("index.html", distUrl), "utf8");
 const app = await readFile(new URL("app.js", distUrl), "utf8");
 const worker = await readFile(new URL("worker.js", distUrl), "utf8");
-assert.match(index, /app\.js\?v=homealacarte-72/);
-assert.match(index, /class="app-version"[^>]*>v72<\/small>/);
+assert.match(index, /app\.js\?v=homealacarte-75/);
+assert.match(index, /class="app-version"[^>]*>v75<\/small>/);
 assert.match(app, /manifestUrl: "\.\/demo-data-manifest\.json"/);
-assert.match(worker, /homealacarte_web_bg\.wasm\?v=homealacarte-72/);
+assert.match(worker, /homealacarte_web_bg\.wasm\?v=homealacarte-75/);
 const buildMeta = JSON.parse(await readFile(new URL("build-meta.json", distUrl), "utf8"));
-assert.equal(buildMeta.version, "72");
+assert.equal(buildMeta.version, "75");
 
 console.log(
   `Reset demo loaded from ${fileURLToPath(wasmUrl)}: `
