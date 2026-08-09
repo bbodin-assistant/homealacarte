@@ -20,7 +20,7 @@ pub use personal_data::{
 pub use pdf::generate_grocery_pdf;
 pub use snapshot::build_snapshot;
 
-use loader::MenuInput;
+pub use loader::MenuInput;
 use wasm_bindgen::prelude::*;
 
 #[derive(serde::Deserialize)]

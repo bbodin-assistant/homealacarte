@@ -24,40 +24,28 @@ Line count is not the only design signal. The first objective is to separate rea
 
 ## Progress
 
-The first implementation batches are complete and validated:
+The restructuring is complete and validated:
 
-- browser foundations now live in `www/core/` (state, formatting, downloads, theme, searchable selects, and worker transport);
-- stock, extra needs, grocery, item details, catalogue list/editors, family/food rules, the dish library/editor, both menu workflows, and data/account/privacy workflows now live in `www/features/` with their event handlers and focused tests;
-- the browser shell, saved-state bootstrap/migrations, worker transport, and worker-response orchestration have explicit controllers with focused tests;
-- IndexedDB transactions and local-state reconciliation live in `www/storage/local-store.js`; Supabase configuration, sessions, authentication, REST transport, and remote-state CRUD live in `www/storage/remote-client.js`; `www/storage.js` now coordinates synchronization and conflicts;
-- the former 1,347-line stylesheet is split into six explicitly ordered layers under `www/styles/`, with responsive overrides last and every stylesheet below 500 lines;
-- `www/index.html` is now a 105-line composition template; six page partials and one shared-dialog partial are assembled deterministically by `scripts/build.py`, and the source-only partials are excluded from `dist`;
-- the former 1,006-line `tests/domain.rs` suite is split into loading, grocery/export, dishes, catalogue, stock, and family integration targets sharing one synthetic fixture;
-- `scripts/check_source_boundaries.py` enforces source-size limits, rejects stale exceptions, and prevents `www/core/` from importing features; it runs in `test-web` and `release-check`;
-- Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
-- loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
-- full Rust tests, web tests, focused UI tests, source-boundary enforcement, the optimized Wasm build, the release scan, and Chromium startup pass.
+- browser foundations live in `www/core/`, including DOM access/escaping, state, formatting, downloads, theme, searchable selects, nutrition presentation, bootstrap, and worker transport/response handling;
+- feature-owned rendering, events, payload construction, and validation live in `www/features/`; controller construction and mounting moved to `www/app/feature-composition.js`, leaving `www/app.js` as the 213-line bootstrap and worker-wiring entrypoint;
+- IndexedDB transactions and local reconciliation live in `www/storage/local-store.js`; Supabase sessions and remote CRUD live in `www/storage/remote-client.js`; the 400-line `www/storage.js` coordinates synchronization and conflicts;
+- the former 1,347-line stylesheet is split into eleven explicitly ordered files under `www/styles/`: tokens, base, layout, components, family, menu, grocery, catalogue, data/account, dishes, and responsive overrides;
+- `www/index.html` is a 105-line composition template; six page partials and one shared-dialog partial are assembled deterministically by `scripts/build.py`;
+- the Rust facade is organized under `src/engine/` by family, menu, stock, catalogue, and export ownership; snapshot nutrition/views, loader inputs/localization/menu/dishes/prices, and optimizer requirements/rules/candidates/solver/result are separate modules;
+- domain integration coverage lives under `tests/domain/` behind a small Cargo-discoverable `tests/domain.rs` harness, with focused loading, family, menu, stock, grocery, catalogue, dishes, and export modules;
+- `scripts/check_source_boundaries.py` enforces entrypoint/source limits, rejects stale exceptions, and prevents `www/core/` from importing features; it runs in web and release checks.
 
-After these batches, `www/app.js` is 532 lines, `src/engine.rs` is 575,
-`src/optimizer.rs` is 447, and `src/loader.rs` is 518. No tracked source file
-exceeds 700 lines. `app.js` primarily composes controllers and retains a few
-shared scheduling and persistence callbacks.
+Current coordinator sizes are `www/app.js` 213 lines, `www/storage.js`
+400, `src/engine/mod.rs` 57, `src/snapshot/mod.rs` 4,
+`src/loader/mod.rs` 361, and `src/optimizer/mod.rs` 118. The largest
+remaining application source is the focused 609-line menu feature; no tracked
+source exceeds 700 lines.
 
 ### Delivery status
 
-All planned restructuring checkpoints are complete. The final CI-equivalent
-release check and Chromium startup validation pass.
-
-Two intentional size exceptions remain in the automated boundary check:
-
-- `www/app.js` may reach 550 lines because it is the explicit composition root
-  for feature dependencies (currently 532 lines);
-- `www/storage.js` may reach 425 lines because it owns synchronization and
-  conflict policy (currently 401 lines).
-
-Both exceptions fail if their files grow beyond those limits, and the check also
-fails when an exception becomes unnecessary so it can be removed rather than
-silently retained.
+All planned restructuring checkpoints are complete. There are no source-size
+exceptions. Full Rust and web tests, the optimized Wasm build, the release scan,
+and Chromium startup validation pass.
 
 ## Architectural rules
 
@@ -70,29 +58,40 @@ silently retained.
 7. Move code before redesigning it. Behavior changes and structural changes belong in separate commits.
 8. Avoid re-export barrels until stable module boundaries exist; direct imports make dependencies easier to audit.
 
-## Target structure
+## Implemented structure
 
 ```text
 www/
-  app.js                         # bootstrap only
+  app.js                         # bootstrap, worker wiring, top-level status/errors
+  app/
+    feature-composition.js       # feature construction, mounting, shared callbacks
   core/
-    app-state.js                 # state creation and state-wide invariants
-    dom.js                       # $, $$, escaping, dialog helpers
-    format.js                    # number, money, date and category formatting
-    worker-client.js             # request IDs, send, responses, busy/error state
-    downloads.js                 # text, bytes and ZIP generation
+    app-state.js
+    bootstrap.js
+    dom.js
+    downloads.js
+    format.js
+    nutrition.js
     searchable-select.js
+    theme.js
+    worker-client.js
+    worker-responses.js
   features/
+    shell.js
     family.js
     menu.js
     auto-menu.js
     dishes.js
+    dish-editor.js
     catalogue.js
     item-details.js
     grocery.js
     stock.js
     extra-needs.js
     data-account.js
+  storage/
+    local-store.js
+    remote-client.js
   styles/
     tokens.css
     base.css
@@ -103,8 +102,9 @@ www/
     grocery.css
     catalogue.css
     data-account.css
+    dishes.css
     responsive.css
-  views/                         # introduced only after build composition exists
+  views/
     family.html
     menu.html
     grocery.html
@@ -115,7 +115,7 @@ www/
 
 src/
   engine/
-    mod.rs                       # Engine state and public coordination API
+    mod.rs
     family.rs
     menu.rs
     stock.rs
@@ -125,25 +125,30 @@ src/
     mod.rs
     nutrition.rs
     views.rs
-  grocery.rs
   loader/
-    mod.rs                       # load_dataset orchestration
-    inputs.rs                    # serialized input-only types
+    mod.rs
+    inputs.rs
     localization.rs
-    menu.rs                      # menu/rule normalization
-    dishes.rs                    # component resolution and flattening
+    menu.rs
+    dishes.rs
     prices.rs
   optimizer/
-    mod.rs                       # public generate_menu orchestration
+    mod.rs
     requirements.rs
     rules.rs
     candidates.rs
     solver.rs
     result.rs
-  model.rs                       # split later only if domains become clear
+    tests.rs
+  grocery.rs
+  menu_math.rs
+  model.rs
+  price_history.rs
 
 tests/
+  domain.rs                      # Cargo integration-test harness
   domain/
+    support.rs
     loading.rs
     family.rs
     menu.rs
@@ -154,7 +159,9 @@ tests/
     export.rs
 ```
 
-Names may be adjusted during extraction, but dependency direction and ownership should remain as described.
+The extra composition, shell, dish-editor, nutrition, optimizer-test, and
+dish-style files make ownership explicit beyond the original sketch; they do
+not change the dependency direction described below.
 
 ## Delivery phases
 

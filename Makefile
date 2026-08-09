@@ -30,11 +30,12 @@ test:
 	cargo test
 
 test-domain:
-	cargo test --test loading --test grocery --test dishes --test catalogue --test stock --test family
+	cargo test --test domain
 
 test-web:
 	python3 scripts/check_source_boundaries.py
 	node --check www/app.js
+	node --check www/app/feature-composition.js
 	node --check www/storage.js
 	node --check www/stock-availability.js
 	node --check www/translations.js
@@ -112,7 +113,7 @@ test-add-to-needs-button:
 	node tests/add_to_needs_button.mjs
 
 test-catalogue-add:
-	cargo test --test catalogue the_item_catalogue_edits_general_items_and_deletes_safely
+	cargo test --test domain catalogue::the_item_catalogue_edits_general_items_and_deletes_safely
 	node tests/catalogue_add.mjs
 	node --check www/app.js
 

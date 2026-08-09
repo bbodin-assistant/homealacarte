@@ -6,7 +6,6 @@ import {
   writeLocalState,
 } from "./storage/local-store.js?v=homealacarte-77";
 import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-77";
-
 let remoteRevision = null;
 let pendingRemoteValue = null;
 let remoteDrain = null;
