@@ -29,6 +29,7 @@ The first implementation batches are complete and validated:
 - browser foundations now live in `www/core/` (state, formatting, downloads, theme, searchable selects, and worker transport);
 - stock, extra needs, grocery, item details, catalogue list/editors, family/food rules, the dish library/editor, both menu workflows, and data/account/privacy workflows now live in `www/features/` with their event handlers and focused tests;
 - the browser shell, saved-state bootstrap/migrations, worker transport, and worker-response orchestration have explicit controllers with focused tests;
+- IndexedDB transactions and local-state reconciliation now live in `www/storage/local-store.js`, separated from authentication and remote synchronization policy;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
@@ -41,12 +42,12 @@ scheduling and persistence callbacks.
 
 ### Remaining delivery estimate
 
-Six implementation checkpoints remain after the application-coordinator split.
-Some may
+Six implementation checkpoints remain; the storage checkpoint is underway after
+the local persistence extraction. Some may
 become two commits when that keeps review size reasonable, but the architectural
 checkpoints are:
 
-1. local storage/authentication versus remote synchronization;
+1. remote authentication/client versus synchronization-policy separation;
 2. CSS layers and feature stylesheets;
 3. deterministic HTML partial composition;
 4. domain integration-test ownership;
