@@ -36,8 +36,8 @@ assert.throws(() => buildScheduledDishRow({
   quantityUnit: "portion",
 }), /positive/);
 
-const [app, editor, index] = await Promise.all([
-  readFile(new URL("../www/app.js", import.meta.url), "utf8"),
+const [menu, editor, index] = await Promise.all([
+  readFile(new URL("../www/features/menu.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/dish-editor.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
 ]);
@@ -45,8 +45,8 @@ assert.match(index, /id="dish-details-schedule"/);
 assert.match(index, /id="dish-details-schedule-cancel"/);
 assert.match(index, /id="dish-menu-notes"/);
 assert.match(index, /id="new-dish-notes-list"/);
-assert.match(app, /openDishScheduleEditor/);
-assert.match(app, /state\.draft\.push\(scheduledRow\)/);
+assert.match(menu, /openDishScheduleEditor/);
+assert.match(menu, /state\.draft\.push\(scheduledRow\)/);
 assert.match(editor, /source_notes: dishSourceNotesPayload\(\)/);
 assert.match(editor, /data-component-source-quantity/);
 assert.match(editor, /source_quantity: row\.querySelector\("\[data-component-source-quantity\]"\)/);

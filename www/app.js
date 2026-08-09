@@ -15,7 +15,6 @@ import {
   synchronizePrivateState,
 } from "./storage.js?v=homealacarte-77";
 import { t, translations } from "./translations.js?v=homealacarte-77";
-import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-77";
 import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-77";
 import {
   loadBundledDefaults,
@@ -33,6 +32,7 @@ import { createItemDetailsFeature } from "./features/item-details.js?v=homealaca
 import { createDishEditorFeature } from "./features/dish-editor.js?v=homealacarte-77";
 import { createCatalogueFeature } from "./features/catalogue.js?v=homealacarte-77";
 import { createFamilyFeature } from "./features/family.js?v=homealacarte-77";
+import { createMenuFeature } from "./features/menu.js?v=homealacarte-77";
 import {
   createFormatters,
   displayCategory,
@@ -403,42 +403,6 @@ function renderSummary() {
   ).join("");
 }
 
-function itemOptions(selected, excluded = "") {
-  const groups = [
-    ["dish", t(state.language, "dishes")],
-    ["ingredient", t(state.language, "ingredients")],
-  ];
-  return groups.map(([kind, label]) => {
-    const rows = state.snapshot.item_options
-      .filter((item) => item.kind === kind && item.key !== excluded)
-      .map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === selected ? "selected" : ""}>${escapeHtml(item.name)}</option>`)
-      .join("");
-    return `<optgroup label="${escapeHtml(label)}">${rows}</optgroup>`;
-  }).join("");
-}
-
-function peopleEditor(row) {
-  const names = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
-  const selected = new Set(row.people);
-  const chips = row.people.map((key) => `
-    <span class="person-chip">
-      ${escapeHtml(names.get(key) || key)}
-      <button type="button" class="remove-person" data-person-key="${escapeHtml(key)}" ${row.people.length === 1 ? "disabled" : ""} aria-label="${escapeHtml(t(state.language, "remove_person"))}">×</button>
-    </span>
-  `).join("");
-  const remaining = state.snapshot.people.filter((person) => !selected.has(person.key));
-  const add = remaining.length ? `
-    <label class="person-add" title="${escapeHtml(t(state.language, "add_person"))}">
-      <span>+</span>
-      <select class="person-add-select" aria-label="${escapeHtml(t(state.language, "add_person"))}">
-        <option value="">+</option>
-        ${remaining.map((person) => `<option value="${escapeHtml(person.key)}">${escapeHtml(person.name)}</option>`).join("")}
-      </select>
-    </label>
-  ` : "";
-  return `<div class="people-editor">${chips}${add}</div>`;
-}
-
 function openConfirmation({ title, message, confirmLabel, action }) {
   state.pendingConfirmation = action;
   $("#confirm-dialog-title").textContent = title;
@@ -453,346 +417,6 @@ function openConfirmation({ title, message, confirmLabel, action }) {
 function closeConfirmation() {
   state.pendingConfirmation = null;
   const dialog = $("#confirm-dialog");
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-}
-
-function openMealReplacement(index) {
-  const row = state.draft[index];
-  if (!row) return;
-  const current = state.snapshot.item_options.find((item) => item.key === row.item_key);
-  state.pendingReplacementIndex = index;
-  $("#meal-replace-context").textContent =
-    `${current?.name || row.item_key} · ${row.day} · ${row.meal}`;
-  $("#meal-replace-select").innerHTML = itemOptions("", row.item_key);
-  const search = enhanceSearchableSelect(
-    $("#meal-replace-select"),
-    t(state.language, "search_items"),
-  );
-  const dialog = $("#meal-replace-dialog");
-  if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
-  search?.focus();
-}
-
-function closeMealReplacement() {
-  state.pendingReplacementIndex = null;
-  const dialog = $("#meal-replace-dialog");
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-}
-
-function renderMenu() {
-  state.draft = mergeCompatibleMenuRows(state.draft);
-  const profileSelect = $("#profile-select");
-  const peopleNames = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
-  const itemNames = new Map(state.snapshot.item_options.map((item) => [item.key, item.name]));
-  const dishes = new Map(state.snapshot.dishes.map((dish) => [dish.key, dish]));
-  profileSelect.innerHTML = state.snapshot.people
-    .filter((person) => person.kcal_target != null)
-    .map((person) => `<option value="${escapeHtml(person.key)}" ${person.key === state.snapshot.profile ? "selected" : ""}>${escapeHtml(person.name)}</option>`)
-    .join("");
-  $("#show-selected-only").checked = state.menuSelectedOnly;
-  $("#empty-menu").disabled = state.draft.length === 0;
-  const cells = new Map();
-  state.draft.forEach((row, index) => {
-    if (
-      state.menuSelectedOnly
-      && state.snapshot.profile
-      && !row.people.includes(state.snapshot.profile)
-    ) return;
-    const key = `${row.meal}|${row.day}`;
-    if (!cells.has(key)) cells.set(key, []);
-    cells.get(key).push({ row, index });
-  });
-  const nutrition = new Map(state.snapshot.daily_nutrition.map((row) => [row.day, row.nutrients]));
-  let html = `<thead><tr><th>${t(state.language, "meal")}</th>${state.snapshot.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("")}</tr></thead><tbody>`;
-  for (const meal of state.snapshot.meals) {
-    html += `<tr><td>${escapeHtml(meal)}</td>`;
-    for (const day of state.snapshot.days) {
-      const entries = cells.get(`${meal}|${day}`) || [];
-      html += `<td data-menu-drop-day="${escapeHtml(day)}" data-menu-drop-meal="${escapeHtml(meal)}"><div class="menu-cell">
-        <div class="menu-cell-entries">${entries.map(({ row, index }) => {
-          const name = itemNames.get(row.item_key) || row.item_key;
-          const dish = dishes.get(row.item_key);
-          const detailsKey = dish?.key || row.item_key;
-          const title = `<button type="button" class="menu-entry-dish" data-dish-key="${escapeHtml(encodeURIComponent(detailsKey))}" data-menu-index="${index}">${escapeHtml(name)}</button>`;
-          return `<div class="menu-entry" draggable="true" data-menu-drag-index="${index}" title="${escapeHtml(t(state.language, "drag_to_move"))}">
-              <button type="button" class="menu-entry-delete" data-index="${index}" title="${escapeHtml(t(state.language, "remove_menu_item"))}" aria-label="${escapeHtml(t(state.language, "remove_menu_item"))}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-              </button>
-              <div>
-                ${title}
-                <span>${formatNumber(row.quantity)} ${escapeHtml(row.quantity_unit)} · ${escapeHtml(row.people.map((key) => peopleNames.get(key) || key).join(", "))}</span>
-              </div>
-            </div>`;
-        }).join("")}</div>
-        <div class="menu-drop-placeholder" aria-hidden="true">${escapeHtml(t(state.language, "drop_here"))}</div>
-        <button type="button" class="menu-cell-add" data-day="${escapeHtml(day)}" data-meal="${escapeHtml(meal)}" aria-label="${escapeHtml(t(state.language, "add_menu_item"))}">
-          <span aria-hidden="true">+</span>
-        </button>
-      </div></td>`;
-    }
-    html += "</tr>";
-  }
-  html += `<tr class="nutrition-row"><td>${t(state.language, "total_person")}</td>`;
-  for (const day of state.snapshot.days) {
-    const value = nutrition.get(day) || {};
-    html += `<td><strong>${formatNumber(value.kcal, 0)} kcal</strong><span>${formatNumber(value.protein_g)} g P · ${formatNumber(value.carbs_g)} g G<br>${formatNumber(value.fat_g)} g L · ${formatNumber(value.fiber_g)} g F</span></td>`;
-  }
-  html += "</tr></tbody>";
-  $("#weekly-menu").innerHTML = html;
-}
-
-function openDishDetails(dishKey, menuIndex) {
-  const dish = state.snapshot.dishes.find((candidate) => candidate.key === dishKey);
-  const row = Number.isInteger(menuIndex) ? state.draft[menuIndex] : null;
-  const item = state.snapshot.item_options.find((candidate) => candidate.key === dishKey);
-  if (!dish && !row) return;
-  state.dishDetailsMenuIndex = row ? menuIndex : null;
-  state.dishDetailsDishKey = dish?.key || null;
-  state.dishDetailsOriginal = null;
-  state.dishDetailsItemUnit = item?.measure_unit || "unit";
-  state.dishDetailsScheduling = false;
-  const peopleNames = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
-  const context = row
-    ? [
-      `${row.day} · ${row.meal}`,
-      `${formatNumber(row.quantity)} ${row.quantity_unit}`,
-      row.people.map((key) => peopleNames.get(key) || key).join(", "),
-    ].filter(Boolean).join(" · ")
-    : "";
-
-  $("#dish-details-title").textContent = dish?.name || item?.name || dishKey;
-  $("#dish-details-context").textContent = context;
-  $("#dish-details-menu-note").textContent = row?.notes || "";
-  $("#dish-details-menu-note").hidden = !row?.notes;
-  $("#dish-menu-editor").hidden = !row;
-  $("#dish-details-save").hidden = !row;
-  $("#dish-details-schedule-cancel").hidden = true;
-  $("#dish-details-schedule").hidden = Boolean(row) || !dish;
-  $("#dish-details-edit").hidden = Boolean(row) || !dish;
-  if (row) {
-    $("#dish-menu-editor-title").textContent = t(state.language, "edit_menu_item");
-    $("#dish-menu-editor-intro").textContent = t(state.language, "edit_menu_intro");
-    $("#dish-details-save").textContent = t(state.language, "save_changes");
-    $("#dish-menu-day").innerHTML = state.snapshot.days
-      .map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
-      .join("");
-    $("#dish-menu-day").value = row.day;
-    $("#dish-menu-meal").innerHTML = state.snapshot.meals
-      .map((meal) => `<option value="${escapeHtml(meal)}">${escapeHtml(meal)}</option>`)
-      .join("");
-    $("#dish-menu-meal").value = row.meal;
-    $("#dish-menu-quantity").value = formatInputNumber(row.quantity);
-    $("#dish-menu-notes").value = row.notes || "";
-    $("#dish-menu-unit").value = ["portion", "g", "unit"].includes(row.quantity_unit)
-      ? row.quantity_unit
-      : "portion";
-    updateDishMenuUnitValue();
-    $("#dish-menu-people").innerHTML = state.snapshot.people.map((person) => `
-      <label class="dialog-person">
-        <input type="checkbox" value="${escapeHtml(person.key)}" ${row.people.includes(person.key) ? "checked" : ""}>
-        <span>${escapeHtml(person.name)}</span>
-      </label>
-    `).join("");
-    $("#dish-menu-people-error").hidden = true;
-    state.dishDetailsOriginal = dishMenuEditorSignature();
-    updateDishMenuSaveState();
-  }
-  $("#dish-details-metrics").hidden = !dish;
-  $("#dish-details-ingredients-section").hidden = !dish;
-  if (dish) {
-    const nutrients = dish.per_serving;
-    const metrics = [
-      [formatNumber(dish.servings), t(state.language, "servings")],
-      [formatNumber(nutrients.kcal, 0), `kcal · ${t(state.language, "per_serving")}`],
-      [`${formatNumber(nutrients.grams, 0)} g`, t(state.language, "per_serving")],
-      [`${formatNumber(nutrients.protein_g)} g`, t(state.language, "protein")],
-      [`${formatNumber(nutrients.carbs_g)} g`, t(state.language, "carbs")],
-      [`${formatNumber(nutrients.fat_g)} g`, t(state.language, "fat")],
-      [`${formatNumber(nutrients.fiber_g)} g`, t(state.language, "fiber")],
-      [formatMoney(nutrients.cost), `${t(state.language, "cost")} · ${t(state.language, "per_serving")}`],
-    ];
-    if (dish.nutri_score) {
-      metrics.splice(2, 0, [
-        dish.nutri_score,
-        "Nutri-Score",
-      ]);
-    }
-    $("#dish-details-metrics").innerHTML = metrics.map(([value, label]) => `
-      <div><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>
-    `).join("");
-    $("#dish-details-nutri-status").textContent = dishNutriScoreDetail(dish);
-    $("#dish-details-ingredients").innerHTML = dish.components.map((component) => `
-      <li>
-        <button class="dish-details-ingredient" type="button" data-dish-ingredient-details="${escapeHtml(encodeURIComponent(component.key))}">
-          <span>
-            <strong>${escapeHtml(component.name)}</strong>
-            ${component.source_quantity ? `<small>${escapeHtml(component.source_quantity)}</small>` : ""}
-          </span>
-          <span>${formatNumber(component.quantity)} ${escapeHtml(component.quantity_unit)} · ${escapeHtml(t(state.language, "per_serving"))}</span>
-        </button>
-      </li>
-    `).join("");
-  }
-  $("#dish-details-nutri-status").hidden = !dish;
-
-  const sourceSection = $("#dish-details-source-section");
-  const sourceNotes = dish?.source_notes || [];
-  sourceSection.hidden = !dish || (!dish.source && !sourceNotes.length);
-  $("#dish-details-source").textContent = dish?.source || "";
-  $("#dish-details-source").hidden = !dish?.source;
-  $("#dish-details-notes").innerHTML = sourceNotes
-    .map((note) => `<p>${escapeHtml(note)}</p>`)
-    .join("");
-
-  const recipeUrl = externalHttpUrl(dish?.recipe_url);
-  $("#dish-details-recipe").hidden = !dish;
-  const recipeLink = $("#dish-details-recipe-link");
-  const recipeUrlLabel = $("#dish-details-url");
-  recipeLink.hidden = !recipeUrl;
-  recipeUrlLabel.hidden = !recipeUrl;
-  if (recipeUrl) {
-    recipeLink.href = recipeUrl;
-    recipeUrlLabel.textContent = recipeUrl.length > 58 ? `${recipeUrl.slice(0, 58)}…` : recipeUrl;
-    recipeUrlLabel.title = recipeUrl;
-  } else {
-    recipeLink.removeAttribute("href");
-    recipeUrlLabel.textContent = "";
-    recipeUrlLabel.removeAttribute("title");
-  }
-  $("#dish-details-no-link").hidden = !dish || Boolean(recipeUrl);
-
-  const dialog = $("#dish-details-dialog");
-  if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
-  $("#dish-details-close").focus();
-}
-
-function dishMenuEditorSignature() {
-  return JSON.stringify({
-    day: $("#dish-menu-day").value,
-    meal: $("#dish-menu-meal").value,
-    quantity: Number($("#dish-menu-quantity").value),
-    unit: $("#dish-menu-unit").value,
-    people: [...$("#dish-menu-people").querySelectorAll("input:checked")]
-      .map((input) => input.value)
-      .sort(),
-    notes: $("#dish-menu-notes").value.trim(),
-  });
-}
-
-function updateDishMenuSaveState() {
-  const button = $("#dish-details-save");
-  if (button.hidden) return;
-  button.disabled = state.dishDetailsScheduling
-    ? false
-    : !state.dishDetailsOriginal || dishMenuEditorSignature() === state.dishDetailsOriginal;
-}
-
-function updateDishMenuUnitValue() {
-  const label = $("#dish-menu-unit-value");
-  const show = !$("#dish-menu-editor").hidden && $("#dish-menu-unit").value === "unit";
-  label.hidden = !show;
-  label.textContent = show
-    ? translatedTemplate("selected_unit", {
-      unit: state.dishDetailsItemUnit === "unit"
-        ? t(state.language, "units")
-        : state.dishDetailsItemUnit,
-    })
-    : "";
-}
-
-function closeDishDetails() {
-  state.dishDetailsMenuIndex = null;
-  state.dishDetailsDishKey = null;
-  state.dishDetailsOriginal = null;
-  state.dishDetailsScheduling = false;
-  const dialog = $("#dish-details-dialog");
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-}
-
-function openDishScheduleEditor() {
-  const dish = state.snapshot.dishes
-    .find((candidate) => candidate.key === state.dishDetailsDishKey);
-  if (!dish) return;
-  state.dishDetailsScheduling = true;
-  $("#dish-menu-editor").hidden = false;
-  $("#dish-menu-editor-title").textContent = t(state.language, "schedule_dish");
-  $("#dish-menu-editor-intro").textContent = t(state.language, "schedule_dish_intro");
-  $("#dish-menu-day").innerHTML = state.snapshot.days
-    .map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
-    .join("");
-  $("#dish-menu-meal").innerHTML = state.snapshot.meals
-    .map((meal) => `<option value="${escapeHtml(meal)}">${escapeHtml(meal)}</option>`)
-    .join("");
-  $("#dish-menu-quantity").value = "1";
-  $("#dish-menu-notes").value = "";
-  $("#dish-menu-unit").value = "portion";
-  $("#dish-menu-people").innerHTML = state.snapshot.people.map((person, index) => {
-    const selected = person.key === state.snapshot.profile
-      || (!state.snapshot.profile && index === 0);
-    return `
-      <label class="dialog-person">
-        <input type="checkbox" value="${escapeHtml(person.key)}" ${selected ? "checked" : ""}>
-        <span>${escapeHtml(person.name)}</span>
-      </label>`;
-  }).join("");
-  $("#dish-menu-people-error").hidden = true;
-  $("#dish-details-schedule").hidden = true;
-  $("#dish-details-schedule-cancel").hidden = false;
-  $("#dish-details-save").hidden = false;
-  $("#dish-details-save").disabled = false;
-  $("#dish-details-save").textContent = t(state.language, "add_to_menu");
-  updateDishMenuUnitValue();
-  $("#dish-menu-editor").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  $("#dish-menu-day").focus();
-}
-
-function closeDishScheduleEditor() {
-  state.dishDetailsScheduling = false;
-  $("#dish-menu-editor").hidden = true;
-  $("#dish-details-save").hidden = true;
-  $("#dish-details-schedule-cancel").hidden = true;
-  $("#dish-details-schedule").hidden = false;
-}
-
-function setMenuItemUnit() {
-  const selected = state.snapshot.item_options.find((item) => item.key === $("#menu-item-select").value);
-  $("#menu-item-unit").value = selected?.kind === "dish" ? "portion" : "g";
-}
-
-function openMenuItemDialog(day, meal) {
-  state.menuCellDraft = { day, meal };
-  $("#menu-item-context").textContent = `${day} · ${meal}`;
-  $("#menu-item-select").innerHTML = itemOptions("");
-  const firstDish = state.snapshot.item_options.find((item) => item.kind === "dish");
-  $("#menu-item-select").value = firstDish?.key || state.snapshot.item_options[0]?.key || "";
-  const search = enhanceSearchableSelect(
-    $("#menu-item-select"),
-    t(state.language, "search_items"),
-  );
-  $("#menu-item-quantity").value = "1";
-  $("#menu-item-notes").value = "";
-  $("#menu-item-people-error").hidden = true;
-  $("#menu-item-people").innerHTML = state.snapshot.people.map((person) => `
-    <label class="dialog-person">
-      <input type="checkbox" value="${escapeHtml(person.key)}" ${person.key === state.snapshot.profile ? "checked" : ""}>
-      <span>${escapeHtml(person.name)}</span>
-    </label>
-  `).join("");
-  setMenuItemUnit();
-  const dialog = $("#menu-item-dialog");
-  if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
-  search?.focus();
-}
-
-function closeMenuItemDialog() {
-  state.menuCellDraft = null;
-  const dialog = $("#menu-item-dialog");
   if (typeof dialog.close === "function") dialog.close();
   else dialog.removeAttribute("open");
 }
@@ -890,9 +514,9 @@ const itemDetailsFeature = createItemDetailsFeature({
   renderStock,
   scheduleStockUpdate,
   openConfirmation,
-  openMealReplacement,
-  renderMenu,
-  scheduleMenuUpdate,
+  openMealReplacement: (...args) => menuFeature.openMealReplacement(...args),
+  renderMenu: (...args) => menuFeature.render(...args),
+  scheduleMenuUpdate: (...args) => scheduleMenuUpdate(...args),
   send,
   switchTab,
   renderItemsCatalogue: (...args) => catalogueFeature.render(...args),
@@ -928,7 +552,7 @@ const dishesFeature = createDishesFeature({
   translatedTemplate,
   ingredientNutriScoreMissing,
   dishNutriScoreDetail,
-  openDetails: openDishDetails,
+  openDetails: (...args) => menuFeature.openDishDetails(...args),
 });
 const configureDishRanges = dishesFeature.configureRanges;
 const renderDishes = dishesFeature.render;
@@ -948,6 +572,34 @@ const dishEditorFeature = createDishEditorFeature({
 });
 const closeNewDishDialog = dishEditorFeature.close;
 const openDishForm = dishEditorFeature.open;
+
+const menuFeature = createMenuFeature({
+  state,
+  select: $,
+  selectAll: $$,
+  storage: localStorage,
+  translate: (key) => t(state.language, key),
+  translatedTemplate,
+  escapeHtml,
+  externalHttpUrl,
+  formatInputNumber,
+  formatMoney,
+  formatNumber,
+  enhanceSearchableSelect,
+  dishNutriScoreDetail,
+  openConfirmation,
+  openCatalogueItemDetails: (...args) => itemDetailsFeature.openCatalogue(...args),
+  openDishForm,
+  scheduleMenuUpdate: (...args) => scheduleMenuUpdate(...args),
+  send,
+  setMenuMode,
+});
+const closeDishDetails = menuFeature.closeDishDetails;
+const closeMealReplacement = menuFeature.closeMealReplacement;
+const closeMenuItemDialog = menuFeature.closeMenuItemDialog;
+const openDishDetails = menuFeature.openDishDetails;
+const openMealReplacement = menuFeature.openMealReplacement;
+const renderMenu = menuFeature.render;
 
 const autoMenuFeature = createAutoMenuFeature({
   state,
@@ -1254,158 +906,6 @@ document.addEventListener("click", (event) => {
   }
 });
 $("#color-my-life").addEventListener("click", randomizeColorTheme);
-$$('[data-menu-mode]').forEach((button) => button.addEventListener("click", () => {
-  setMenuMode(button.dataset.menuMode);
-}));
-$("#profile-select").addEventListener("change", (event) => send("set-profile", { profile: event.target.value }));
-$("#show-selected-only").addEventListener("change", (event) => {
-  state.menuSelectedOnly = event.target.checked;
-  localStorage.setItem("homealacarte-menu-selected-only", String(state.menuSelectedOnly));
-  renderMenu();
-});
-$("#empty-menu").addEventListener("click", () => {
-  if (!state.draft.length) return;
-  openConfirmation({
-    title: t(state.language, "empty_menu_confirm_title"),
-    message: t(state.language, "empty_menu_confirm_message"),
-    confirmLabel: t(state.language, "empty_menu"),
-    action: () => {
-      state.draft = [];
-      renderMenu();
-      scheduleMenuUpdate();
-    },
-  });
-});
-$("#weekly-menu").addEventListener("click", (event) => {
-  const deleteButton = event.target.closest(".menu-entry-delete");
-  if (deleteButton) {
-    state.draft.splice(Number(deleteButton.dataset.index), 1);
-    renderMenu();
-    scheduleMenuUpdate();
-    return;
-  }
-  const dishButton = event.target.closest(".menu-entry-dish");
-  if (dishButton) {
-    openDishDetails(
-      decodeURIComponent(dishButton.dataset.dishKey),
-      Number(dishButton.dataset.menuIndex),
-    );
-    return;
-  }
-  const addButton = event.target.closest(".menu-cell-add");
-  if (addButton) openMenuItemDialog(addButton.dataset.day, addButton.dataset.meal);
-});
-$("#weekly-menu").addEventListener("dragstart", (event) => {
-  const entry = event.target.closest("[data-menu-drag-index]");
-  if (!entry) return;
-  state.draggedMenuIndex = Number(entry.dataset.menuDragIndex);
-  entry.classList.add("dragging");
-  event.dataTransfer.effectAllowed = "move";
-  event.dataTransfer.setData("text/plain", entry.dataset.menuDragIndex);
-});
-$("#weekly-menu").addEventListener("dragend", (event) => {
-  event.target.closest("[data-menu-drag-index]")?.classList.remove("dragging");
-  $$("#weekly-menu td.menu-drop-target").forEach((cell) => cell.classList.remove("menu-drop-target"));
-  state.draggedMenuIndex = null;
-});
-$("#weekly-menu").addEventListener("dragover", (event) => {
-  const cell = event.target.closest("[data-menu-drop-day]");
-  if (!cell || state.draggedMenuIndex == null) return;
-  event.preventDefault();
-  event.dataTransfer.dropEffect = "move";
-  $$("#weekly-menu td.menu-drop-target").forEach((candidate) => {
-    candidate.classList.remove("menu-drop-target");
-  });
-  cell.classList.add("menu-drop-target");
-});
-$("#weekly-menu").addEventListener("drop", (event) => {
-  const cell = event.target.closest("[data-menu-drop-day]");
-  const index = state.draggedMenuIndex ?? Number(event.dataTransfer.getData("text/plain"));
-  const row = state.draft[index];
-  if (!cell || !row) return;
-  event.preventDefault();
-  row.day = cell.dataset.menuDropDay;
-  row.meal = cell.dataset.menuDropMeal;
-  state.draggedMenuIndex = null;
-  renderMenu();
-  scheduleMenuUpdate();
-});
-$("#dish-details-close").addEventListener("click", closeDishDetails);
-$("#dish-details-done").addEventListener("click", closeDishDetails);
-$("#dish-details-ingredients").addEventListener("click", (event) => {
-  const ingredient = event.target.closest("[data-dish-ingredient-details]");
-  if (!ingredient) return;
-  const key = decodeURIComponent(ingredient.dataset.dishIngredientDetails);
-  closeDishDetails();
-  openCatalogueItemDetails(key, "food");
-});
-$("#dish-details-dialog").addEventListener("close", () => {
-  state.dishDetailsMenuIndex = null;
-  state.dishDetailsDishKey = null;
-  state.dishDetailsOriginal = null;
-  state.dishDetailsScheduling = false;
-});
-$("#dish-menu-editor").addEventListener("input", updateDishMenuSaveState);
-$("#dish-menu-editor").addEventListener("change", () => {
-  updateDishMenuUnitValue();
-  updateDishMenuSaveState();
-});
-$("#dish-details-edit").addEventListener("click", () => {
-  const dish = state.snapshot.dishes.find((candidate) => candidate.key === state.dishDetailsDishKey);
-  if (!dish) return;
-  const dishCopy = structuredClone(dish);
-  closeDishDetails();
-  openDishForm(dishCopy);
-});
-$("#dish-details-schedule").addEventListener("click", openDishScheduleEditor);
-$("#dish-details-schedule-cancel").addEventListener("click", closeDishScheduleEditor);
-$("#dish-details-save").addEventListener("click", () => {
-  const people = [...$("#dish-menu-people").querySelectorAll("input:checked")]
-    .map((input) => input.value);
-  const quantity = Number($("#dish-menu-quantity").value);
-  if (!people.length) {
-    $("#dish-menu-people-error").hidden = false;
-    $("#dish-menu-people input").focus();
-    return;
-  }
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    $("#dish-menu-quantity").focus();
-    return;
-  }
-  if (state.dishDetailsScheduling) {
-    const scheduledRow = buildScheduledDishRow({
-      dishKey: state.dishDetailsDishKey,
-      day: $("#dish-menu-day").value,
-      meal: $("#dish-menu-meal").value,
-      people,
-      quantity,
-      quantityUnit: $("#dish-menu-unit").value,
-      notes: $("#dish-menu-notes").value.trim(),
-    });
-    state.draft.push(scheduledRow);
-    closeDishDetails();
-    renderMenu();
-    scheduleMenuUpdate();
-    return;
-  }
-  const row = state.draft[state.dishDetailsMenuIndex];
-  if (!row) return;
-  row.people = people;
-  row.day = $("#dish-menu-day").value;
-  row.meal = $("#dish-menu-meal").value;
-  row.quantity = quantity;
-  row.quantity_unit = $("#dish-menu-unit").value;
-  row.notes = $("#dish-menu-notes").value.trim();
-  closeDishDetails();
-  renderMenu();
-  scheduleMenuUpdate();
-});
-$("#menu-item-select").addEventListener("change", setMenuItemUnit);
-$("#menu-item-close").addEventListener("click", closeMenuItemDialog);
-$("#menu-item-cancel").addEventListener("click", closeMenuItemDialog);
-$("#menu-item-dialog").addEventListener("close", () => {
-  state.menuCellDraft = null;
-});
 $("#confirm-dialog-close").addEventListener("click", closeConfirmation);
 $("#confirm-dialog-cancel").addEventListener("click", closeConfirmation);
 $("#confirm-dialog").addEventListener("close", () => {
@@ -1421,51 +921,6 @@ $("#confirm-dialog-accept").addEventListener("click", async () => {
     showError(error?.message || String(error));
   }
 });
-$("#meal-replace-close").addEventListener("click", closeMealReplacement);
-$("#meal-replace-cancel").addEventListener("click", closeMealReplacement);
-$("#meal-replace-dialog").addEventListener("close", () => {
-  state.pendingReplacementIndex = null;
-});
-$("#meal-replace-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const index = state.pendingReplacementIndex;
-  const row = state.draft[index];
-  const replacementKey = $("#meal-replace-select").value;
-  const current = state.snapshot.item_options.find((item) => item.key === row?.item_key);
-  const replacement = state.snapshot.item_options.find((item) => item.key === replacementKey);
-  if (!row || !replacement) return;
-  row.item_key = replacement.key;
-  if (current?.kind !== replacement.kind) {
-    row.quantity = 1;
-    row.quantity_unit = replacement.kind === "dish" ? "portion" : "g";
-  }
-  closeMealReplacement();
-  renderMenu();
-  scheduleMenuUpdate();
-});
-$("#menu-item-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (!state.menuCellDraft) return;
-  const people = [...$("#menu-item-people").querySelectorAll("input:checked")].map((input) => input.value);
-  if (!people.length) {
-    $("#menu-item-people-error").hidden = false;
-    $("#menu-item-people input").focus();
-    return;
-  }
-  state.draft.push({
-    day: state.menuCellDraft.day,
-    meal: state.menuCellDraft.meal,
-    item_key: $("#menu-item-select").value,
-    people,
-    quantity: Number($("#menu-item-quantity").value),
-    quantity_unit: $("#menu-item-unit").value,
-    notes: $("#menu-item-notes").value.trim(),
-  });
-  closeMenuItemDialog();
-  renderMenu();
-  scheduleMenuUpdate();
-});
-
 function selectLanguage(language) {
   if (!translations[language] || language === state.language) return;
   state.language = language;
@@ -1767,6 +1222,7 @@ dishEditorFeature.mount();
 catalogueFeature.mount();
 familyFeature.mount();
 itemDetailsFeature.mount();
+menuFeature.mount();
 async function bootstrap() {
   applyColorTheme(state.colorTheme);
   applyTranslations();
