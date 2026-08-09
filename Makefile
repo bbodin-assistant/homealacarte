@@ -45,7 +45,9 @@ test-web:
 	node tests/downloads.mjs
 	node tests/theme.mjs
 	node tests/app_state.mjs
+	node tests/bootstrap.mjs
 	node tests/worker_client.mjs
+	node tests/worker_responses.mjs
 	node tests/stock_availability.mjs
 	node tests/stock_feature.mjs
 	node tests/extra_needs_feature.mjs
@@ -55,6 +57,7 @@ test-web:
 	node tests/auto_menu_feature.mjs
 	node tests/menu_feature.mjs
 	node tests/data_account_feature.mjs
+	node tests/shell_feature.mjs
 
 test-browser-startup: web-build
 	bash tests/browser_startup.sh

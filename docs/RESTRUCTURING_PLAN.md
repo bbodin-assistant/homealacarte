@@ -28,29 +28,30 @@ The first implementation batches are complete and validated:
 
 - browser foundations now live in `www/core/` (state, formatting, downloads, theme, searchable selects, and worker transport);
 - stock, extra needs, grocery, item details, catalogue list/editors, family/food rules, the dish library/editor, both menu workflows, and data/account/privacy workflows now live in `www/features/` with their event handlers and focused tests;
+- the browser shell, saved-state bootstrap/migrations, worker transport, and worker-response orchestration have explicit controllers with focused tests;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
 
-After these batches, `www/app.js` is 828 lines, `src/engine.rs` is 575,
+After these batches, `www/app.js` is 532 lines, `src/engine.rs` is 575,
 `src/optimizer.rs` is 447, and `src/loader.rs` is 518. The remaining oversized
-entrypoint is therefore the next priority; CSS, HTML, and integration-test splits
-remain deliberately later phases.
+browser files are now the planned CSS and HTML sources rather than the JavaScript
+entrypoint. `app.js` primarily composes controllers and retains a few shared
+scheduling and persistence callbacks.
 
 ### Remaining delivery estimate
 
-Seven implementation checkpoints remain; the first is partly complete after the
-data/account extraction. Some may
+Six implementation checkpoints remain after the application-coordinator split.
+Some may
 become two commits when that keeps review size reasonable, but the architectural
 checkpoints are:
 
-1. remaining application coordinator and bootstrap cleanup;
-2. local storage/authentication versus remote synchronization;
-3. CSS layers and feature stylesheets;
-4. deterministic HTML partial composition;
-5. domain integration-test ownership;
-6. source-size and dependency-boundary enforcement;
-7. full release validation and final cleanup.
+1. local storage/authentication versus remote synchronization;
+2. CSS layers and feature stylesheets;
+3. deterministic HTML partial composition;
+4. domain integration-test ownership;
+5. source-size and dependency-boundary enforcement;
+6. full release validation and final cleanup.
 
 This is an engineering estimate rather than a promise that every checkpoint maps
 to exactly one commit. The definition of done below remains the completion gate.

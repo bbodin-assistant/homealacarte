@@ -16,13 +16,6 @@ import {
 } from "./storage.js?v=homealacarte-77";
 import { t, translations } from "./translations.js?v=homealacarte-77";
 import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-77";
-import {
-  loadBundledDefaults,
-  mergeBundledDishClassifications,
-  mergeBundledIngredientNutrition,
-  mergeDuplicateIngredient,
-  mergeBundledFoodRules,
-} from "./profile-rules.js?v=homealacarte-77";
 import { createStockFeature } from "./features/stock.js?v=homealacarte-77";
 import { createExtraNeedsFeature } from "./features/extra-needs.js?v=homealacarte-77";
 import { createGroceryFeature } from "./features/grocery.js?v=homealacarte-77";
@@ -48,14 +41,14 @@ import { buildZip, downloadBytes, downloadText } from "./core/downloads.js?v=hom
 import { createThemeController } from "./core/theme.js?v=homealacarte-77";
 import { createAppState } from "./core/app-state.js?v=homealacarte-77";
 import { createWorkerClient } from "./core/worker-client.js?v=homealacarte-77";
+import { createWorkerResponseHandler } from "./core/worker-responses.js?v=homealacarte-77";
+import { bootstrapApplication } from "./core/bootstrap.js?v=homealacarte-77";
+import { createShellFeature } from "./features/shell.js?v=homealacarte-77";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
 const DATA_SCHEMA_VERSION = 10;
-const FOOD_RULE_MIGRATION_VERSIONS = [6, 7];
-const INGREDIENT_MIGRATION_VERSIONS = [6, 7, 8];
-const NUTRITION_MIGRATION_VERSIONS = [6, 7, 8, 9];
 const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   items: [],
   dishes: [],
@@ -176,131 +169,24 @@ function clearError() {
   renderStorageStatus(state.storageStatus);
 }
 
-async function handleWorkerMessage(data) {
-  if (typeof data.serializedData === "string") state.serializedData = data.serializedData;
-  if (data.type === "status") {
-    setBusy(true, data.code ? t(state.language, data.code) : data.message);
-    return;
-  }
-  if (data.type === "error") {
-    if (state.pendingDataAction?.requestId === data.requestId) state.pendingDataAction = null;
-    showError(data.message, data.code);
-    return;
-  }
-  if (data.type === "export-ready") {
-    downloadText(data.filename, data.content);
-    if (data.snapshot) {
-      state.snapshot = data.snapshot;
-      state.familyDraft = structuredClone(data.snapshot.people);
-      state.draft = structuredClone(data.snapshot.planner);
-      state.stockDraft = structuredClone(data.snapshot.stock);
-      state.customDraft = structuredClone(data.snapshot.custom_grocery);
-      persistDraft();
-      render();
-    }
-    setBusy(false);
-    return;
-  }
-  if (data.type === "folder-export-ready") {
-    try {
-      downloadBytes(
-        "homealacarte_data.zip",
-        buildZip(data.files),
-        "application/zip",
-      );
-      if (data.snapshot) {
-        state.snapshot = data.snapshot;
-        state.familyDraft = structuredClone(data.snapshot.people);
-        state.draft = structuredClone(data.snapshot.planner);
-        state.stockDraft = structuredClone(data.snapshot.stock);
-        state.customDraft = structuredClone(data.snapshot.custom_grocery);
-        persistDraft();
-        render();
-      }
-      setBusy(false, t(state.language, "folder_exported"));
-    } catch (error) {
-      showError(error?.message || String(error));
-    }
-    return;
-  }
-  if (data.type === "pdf-ready") {
-    const url = URL.createObjectURL(new Blob([data.bytes], { type: "application/pdf" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = data.filename;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    if (data.snapshot) {
-      state.snapshot = data.snapshot;
-      state.familyDraft = structuredClone(data.snapshot.people);
-      state.draft = structuredClone(data.snapshot.planner);
-      state.stockDraft = structuredClone(data.snapshot.stock);
-      state.customDraft = structuredClone(data.snapshot.custom_grocery);
-      persistDraft();
-      render();
-    }
-    setBusy(false);
-    return;
-  }
-  if (data.type === "menu-generated") {
-    clearError();
-    state.autoMenuProposal = data.proposal;
-    renderAutoMenuResult();
-    setBusy(false);
-    return;
-  }
-  if (data.snapshot) {
-    clearError();
-    state.snapshot = data.snapshot;
-    state.language = data.snapshot.language;
-    state.familyDraft = structuredClone(data.snapshot.people);
-    state.draft = structuredClone(data.snapshot.planner);
-    state.stockDraft = structuredClone(data.snapshot.stock);
-    state.customDraft = structuredClone(data.snapshot.custom_grocery);
-    if (data.source) state.source = data.source;
-    if (state.restorePeople) {
-      const bundledPeople = new Map(
-        state.snapshot.people.map((person) => [person.key, person]),
-      );
-      const rows = state.restorePeople.map((person) => ({
-        ...person,
-        description: person.description
-          || bundledPeople.get(person.key)?.description
-          || "",
-      }));
-      state.restorePeople = null;
-      send("replace-people", { rows });
-      return;
-    }
-    if (state.restoreMenu) {
-      const rows = state.restoreMenu;
-      state.restoreMenu = null;
-      send("replace-menu", { rows });
-      return;
-    }
-    if (state.restoreStock) {
-      const rows = state.restoreStock;
-      state.restoreStock = null;
-      send("replace-stock", { rows });
-      return;
-    }
-    if (state.restoreCustom) {
-      const rows = state.restoreCustom;
-      state.restoreCustom = null;
-      send("replace-custom-grocery", { rows });
-      return;
-    }
-    persistDraft();
-    render();
-    setBusy(false);
-    if (state.pendingDataAction?.requestId === data.requestId) {
-      const message = $("#data-action-message");
-      message.classList.remove("warning");
-      message.textContent = t(state.language, state.pendingDataAction.messageKey);
-      state.pendingDataAction = null;
-    }
-  }
-}
+const handleWorkerMessage = createWorkerResponseHandler({
+  state,
+  select: $,
+  translate: (key) => t(state.language, key),
+  setBusy,
+  showError,
+  clearError,
+  downloadText,
+  downloadBytes,
+  buildZip,
+  documentRef: document,
+  urlApi: URL,
+  BlobClass: Blob,
+  persistDraft: (...args) => persistDraft(...args),
+  render: (...args) => render(...args),
+  renderAutoMenuResult: (...args) => renderAutoMenuResult(...args),
+  send: (...args) => workerClient.send(...args),
+});
 
 const workerClient = createWorkerClient({
   worker,
@@ -311,116 +197,46 @@ const workerClient = createWorkerClient({
 });
 const send = workerClient.send;
 
-function applyTranslations() {
-  document.documentElement.lang = state.language;
-  $("#language-select").value = state.language;
-  $$("[data-i18n]").forEach((node) => {
-    node.textContent = t(state.language, node.dataset.i18n);
-  });
-  $$("[data-i18n-placeholder]").forEach((node) => {
-    node.placeholder = t(state.language, node.dataset.i18nPlaceholder);
-  });
-  $$("[data-i18n-title]").forEach((node) => {
-    node.title = t(state.language, node.dataset.i18nTitle);
-  });
-  renderStorageStatus(state.storageStatus);
-}
-
-function setGroceryMode(mode) {
-  const safeMode = ["list", "stock", "needs"].includes(mode) ? mode : "list";
-  state.groceryMode = safeMode;
-  $$("[data-grocery-mode]").forEach((button) => {
-    const active = button.dataset.groceryMode === safeMode;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", String(active));
-  });
-  $$("[data-grocery-panel]").forEach((panel) => {
-    const active = panel.dataset.groceryPanel === safeMode;
-    panel.classList.toggle("active", active);
-    panel.hidden = !active;
-  });
-}
-
-function setMenuMode(mode) {
-  const safeMode = mode === "automatic" ? "automatic" : "manual";
-  state.menuMode = safeMode;
-  localStorage.setItem("homealacarte-menu-mode", safeMode);
-  $$('[data-menu-mode]').forEach((button) => {
-    const active = button.dataset.menuMode === safeMode;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", String(active));
-  });
-  $$('[data-menu-panel]').forEach((panel) => {
-    const active = panel.dataset.menuPanel === safeMode;
-    panel.classList.toggle("active", active);
-    panel.hidden = !active;
-  });
-}
-
-function render() {
-  if (!state.snapshot) return;
-  applyTranslations();
-  setMenuMode(state.menuMode);
-  setGroceryMode(state.groceryMode);
-  renderFamily();
-  renderMenu();
-  renderAutoMenu();
-  renderGrocery();
-  renderCustomGrocery();
-  renderStock();
-  renderGroceryModeCounts();
-  configureDishRanges();
-  renderDishes();
-  renderItemsCatalogue();
-  if (state.activeTab === "data") renderDataOverview();
-}
-
-function setCountBadge(selector, count) {
-  const badge = $(selector);
-  badge.textContent = String(count);
-  badge.hidden = count === 0;
-}
-
-function renderGroceryModeCounts() {
-  const remaining = state.snapshot.grocery_plan.items
-    .filter((item) => !item.stock_sufficient).length;
-  $("#grocery-count").textContent = String(remaining);
-  $("#grocery-count").hidden = remaining === 0;
-  setCountBadge("#grocery-tab-count", remaining);
-  setCountBadge("#stock-tab-count", state.stockDraft.length);
-  setCountBadge("#needs-tab-count", state.customDraft.length);
-}
-
-function renderSummary() {
-  const { counts, grocery_plan: grocery } = state.snapshot;
-  const cards = [
-    [counts.ingredients, t(state.language, "ingredients")],
-    [counts.dishes, t(state.language, "dishes")],
-    [counts.menu, t(state.language, "meals")],
-    [grocery.items.length, t(state.language, "grocery_items")],
-  ];
-  $("#summary-cards").innerHTML = cards.map(([value, label]) =>
-    `<div class="summary-card"><strong>${value}</strong><span>${label}</span></div>`,
-  ).join("");
-}
-
-function openConfirmation({ title, message, confirmLabel, action }) {
-  state.pendingConfirmation = action;
-  $("#confirm-dialog-title").textContent = title;
-  $("#confirm-dialog-message").textContent = message;
-  $("#confirm-dialog-accept").textContent = confirmLabel;
-  const dialog = $("#confirm-dialog");
-  if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
-  $("#confirm-dialog-cancel").focus();
-}
-
-function closeConfirmation() {
-  state.pendingConfirmation = null;
-  const dialog = $("#confirm-dialog");
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-}
+const shellFeature = createShellFeature({
+  state,
+  select: $,
+  selectAll: $$,
+  documentRef: document,
+  historyRef: history,
+  storage: localStorage,
+  translate: (key) => t(state.language, key),
+  hasLanguage: (language) => Boolean(translations[language]),
+  randomizeColorTheme,
+  renderStorageStatus: (...args) => dataAccountFeature.renderStorageStatus(...args),
+  renderDataOverview: (...args) => dataAccountFeature.renderDataOverview(...args),
+  configureDishRanges: (...args) => dishesFeature.configureRanges(...args),
+  renderFamily: (...args) => familyFeature.render(...args),
+  renderMenu: (...args) => menuFeature.render(...args),
+  renderAutoMenu: (...args) => autoMenuFeature.render(...args),
+  renderGrocery: (...args) => groceryFeature.render(...args),
+  renderStock: (...args) => stockFeature.render(...args),
+  renderCustomGrocery: (...args) => extraNeedsFeature.render(...args),
+  renderDishes: (...args) => dishesFeature.render(...args),
+  renderItemsCatalogue: (...args) => catalogueFeature.render(...args),
+  send,
+  showError,
+  dialogClosers: [
+    ["#family-dialog", (...args) => familyFeature.close(...args)],
+    ["#menu-item-dialog", (...args) => menuFeature.closeMenuItemDialog(...args)],
+    ["#dish-details-dialog", (...args) => menuFeature.closeDishDetails(...args)],
+    ["#new-dish-dialog", (...args) => dishEditorFeature.close(...args)],
+    ["#grocery-details-dialog", (...args) => itemDetailsFeature.close(...args)],
+    ["#confirm-dialog", (...args) => shellFeature.closeConfirmation(...args)],
+    ["#meal-replace-dialog", (...args) => menuFeature.closeMealReplacement(...args)],
+    ["#about-dialog", (...args) => dataAccountFeature.closeAboutDialog(...args)],
+  ],
+});
+const applyTranslations = shellFeature.applyTranslations;
+const openConfirmation = shellFeature.openConfirmation;
+const render = shellFeature.render;
+const setCountBadge = shellFeature.setCountBadge;
+const setMenuMode = shellFeature.setMenuMode;
+const switchTab = shellFeature.switchTab;
 
 const extraNeedsFeature = createExtraNeedsFeature({
   state,
@@ -472,7 +288,6 @@ const familyFeature = createFamilyFeature({
   openConfirmation,
   send,
 });
-const closeFamilyDialog = familyFeature.close;
 const renderFamily = familyFeature.render;
 
 const catalogueFeature = createCatalogueFeature({
@@ -495,7 +310,6 @@ const catalogueFeature = createCatalogueFeature({
   openDetails: (...args) => itemDetailsFeature.openCatalogue(...args),
   send,
 });
-const closeItemEditor = catalogueFeature.closeEditor;
 const openItemEditor = catalogueFeature.openEditor;
 const renderItemsCatalogue = catalogueFeature.render;
 
@@ -523,7 +337,6 @@ const itemDetailsFeature = createItemDetailsFeature({
   renderItemsCatalogue: (...args) => catalogueFeature.render(...args),
   openItemEditor: (...args) => catalogueFeature.openEditor(...args),
 });
-const closeGroceryDetails = itemDetailsFeature.close;
 const openCatalogueItemDetails = itemDetailsFeature.openCatalogue;
 const openGroceryDetails = itemDetailsFeature.openGrocery;
 
@@ -571,7 +384,6 @@ const dishEditorFeature = createDishEditorFeature({
   dishNutriScoreDetail,
   send,
 });
-const closeNewDishDialog = dishEditorFeature.close;
 const openDishForm = dishEditorFeature.open;
 
 const menuFeature = createMenuFeature({
@@ -663,7 +475,6 @@ const dataAccountFeature = createDataAccountFeature({
   emptyDatabaseContent: EMPTY_DATABASE_CONTENT,
 });
 const closeAboutDialog = dataAccountFeature.closeAboutDialog;
-const openAccountSection = dataAccountFeature.openAccountSection;
 const renderDataOverview = dataAccountFeature.renderDataOverview;
 const renderHeaderStatus = dataAccountFeature.renderHeaderStatus;
 const renderStorageStatus = dataAccountFeature.renderStorageStatus;
@@ -698,78 +509,6 @@ function persistDraft() {
   }).catch((error) => console.warn("Unable to persist private state", error));
 }
 
-function enableBackdropDismissal(selector, closeDialog) {
-  const dialog = $(selector);
-  dialog.addEventListener("click", (event) => {
-    if (event.target !== dialog) return;
-    const bounds = dialog.getBoundingClientRect();
-    const clickedOutsideWindow = event.clientX < bounds.left
-      || event.clientX > bounds.right
-      || event.clientY < bounds.top
-      || event.clientY > bounds.bottom;
-    if (clickedOutsideWindow) closeDialog();
-  });
-}
-
-function switchTab(tab) {
-  state.activeTab = tab;
-  $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
-  $$(".view").forEach((view) => view.classList.toggle("active", view.dataset.view === tab));
-  history.replaceState(null, "", `#${tab}`);
-  if (tab === "data") renderDataOverview();
-}
-
-document.addEventListener("click", (event) => {
-  const nav = event.target.closest("[data-tab]");
-  if (nav) {
-    event.preventDefault();
-    switchTab(nav.dataset.tab);
-  }
-  const groceryMode = event.target.closest("[data-grocery-mode]");
-  if (groceryMode) {
-    setGroceryMode(groceryMode.dataset.groceryMode);
-    localStorage.setItem("homealacarte-grocery-mode", state.groceryMode);
-  }
-});
-$("#color-my-life").addEventListener("click", randomizeColorTheme);
-$("#confirm-dialog-close").addEventListener("click", closeConfirmation);
-$("#confirm-dialog-cancel").addEventListener("click", closeConfirmation);
-$("#confirm-dialog").addEventListener("close", () => {
-  state.pendingConfirmation = null;
-});
-$("#confirm-dialog-accept").addEventListener("click", async () => {
-  const action = state.pendingConfirmation;
-  closeConfirmation();
-  if (!action) return;
-  try {
-    await action();
-  } catch (error) {
-    showError(error?.message || String(error));
-  }
-});
-function selectLanguage(language) {
-  if (!translations[language] || language === state.language) return;
-  state.language = language;
-  localStorage.setItem("homealacarte-language", state.language);
-  if (state.snapshot) render();
-  else applyTranslations();
-  if (state.lastError) showError(state.lastError.message, state.lastError.code);
-  send("set-language", { language: state.language });
-}
-
-const languageSelect = $("#language-select");
-languageSelect.addEventListener("input", (event) => selectLanguage(event.target.value));
-languageSelect.addEventListener("change", (event) => selectLanguage(event.target.value));
-[
-  ["#family-dialog", closeFamilyDialog],
-  ["#menu-item-dialog", closeMenuItemDialog],
-  ["#dish-details-dialog", closeDishDetails],
-  ["#new-dish-dialog", closeNewDishDialog],
-  ["#grocery-details-dialog", closeGroceryDetails],
-  ["#confirm-dialog", closeConfirmation],
-  ["#meal-replace-dialog", closeMealReplacement],
-  ["#about-dialog", closeAboutDialog],
-].forEach(([selector, closeDialog]) => enableBackdropDismissal(selector, closeDialog));
 stockFeature.mount();
 extraNeedsFeature.mount();
 groceryFeature.mount();
@@ -779,50 +518,15 @@ familyFeature.mount();
 itemDetailsFeature.mount();
 menuFeature.mount();
 dataAccountFeature.mount();
-async function bootstrap() {
-  applyColorTheme(state.colorTheme);
-  applyTranslations();
-  const requestedTab = location.hash.slice(1);
-  if (["family", "menu", "grocery", "dishes", "items", "data"].includes(requestedTab)) switchTab(requestedTab);
-  const saved = await loadPrivateState().catch(() => null);
-  if ([...NUTRITION_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION].includes(saved?.version)) {
-    state.language = saved.language || state.language;
-    state.importedSources = saved.sources || null;
-    state.restorePeople = saved.version >= 4 ? (saved.people || null) : null;
-    state.restoreMenu = saved.menu || null;
-    state.restoreStock = saved.version >= 2 ? (saved.stock || null) : null;
-    state.restoreCustom = saved.version >= 3 ? (saved.customGrocery || null) : null;
-    const needsBundledDefaults = FOOD_RULE_MIGRATION_VERSIONS.includes(saved.version)
-      || NUTRITION_MIGRATION_VERSIONS.includes(saved.version);
-    const bundled = needsBundledDefaults
-      ? await loadBundledDefaults().catch(() => ({ people: [], dishes: [], items: [] }))
-      : { people: [], dishes: [], items: [] };
-    if (FOOD_RULE_MIGRATION_VERSIONS.includes(saved.version)) {
-      if (state.restorePeople) {
-        state.restorePeople = mergeBundledFoodRules(state.restorePeople, bundled.people);
-      }
-      state.importedSources = mergeBundledDishClassifications(
-        state.importedSources || [],
-        bundled.dishes,
-      );
-    }
-    if (INGREDIENT_MIGRATION_VERSIONS.includes(saved.version)) {
-      state.importedSources = mergeDuplicateIngredient(state.importedSources || []);
-    }
-    if (NUTRITION_MIGRATION_VERSIONS.includes(saved.version)) {
-      state.importedSources = mergeBundledIngredientNutrition(
-        state.importedSources || [],
-        bundled.items,
-      );
-    }
-    applyTranslations();
-  }
-  if (state.importedSources?.length) {
-    send("load-files", { files: state.importedSources, language: state.language, source: "saved" });
-  } else {
-    send("load-bundled", { manifestUrl: "./data-manifest.json", language: state.language });
-  }
-}
+shellFeature.mount();
 
 onStorageStatus(renderStorageStatus);
-bootstrap();
+bootstrapApplication({
+  state,
+  requestedTab: location.hash.slice(1),
+  loadPrivateState,
+  applyColorTheme,
+  applyTranslations,
+  switchTab,
+  send,
+});
