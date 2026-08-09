@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   NUTRI_SCORES,
   matchesSelectedNutriScores,
-} from "../www/dish-filters.js";
+} from "../www/features/dishes/filters.js";
 
 const dishes = [
   { key: "a", nutri_score: "A" },

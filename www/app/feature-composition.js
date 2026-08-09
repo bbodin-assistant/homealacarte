@@ -1,4 +1,4 @@
-import { mergeCompatibleMenuRows } from "../menu-rows.js?v=homealacarte-77";
+import { mergeCompatibleMenuRows } from "../features/menu/rows.js?v=homealacarte-77";
 import { createSearchableSelect } from "../core/searchable-select.js?v=homealacarte-77";
 import { createStockFeature } from "../features/stock.js?v=homealacarte-77";
 import { createExtraNeedsFeature } from "../features/extra-needs.js?v=homealacarte-77";

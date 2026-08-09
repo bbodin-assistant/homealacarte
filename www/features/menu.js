@@ -1,5 +1,5 @@
-import { buildScheduledDishRow } from "../dish-scheduling.js?v=homealacarte-77";
-import { mergeCompatibleMenuRows } from "../menu-rows.js?v=homealacarte-77";
+import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-77";
+import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-77";
 
 export function createMenuFeature({
   state,

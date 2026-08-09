@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mergeCompatibleMenuRows } from "../www/menu-rows.js";
+import { mergeCompatibleMenuRows } from "../www/features/menu/rows.js";
 
 const common = {
   day: "Monday",

@@ -3,7 +3,7 @@ import {
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "../item-details.js?v=homealacarte-77";
+} from "../core/item-details.js?v=homealacarte-77";
 
 const EDITABLE_DETAIL_FIELDS = {
   sugars_g: { label: "sugars_grams", kind: "number", reference: "nutrition" },

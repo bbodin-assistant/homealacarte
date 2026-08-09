@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { menuUsageContext } from "../www/item-details.js";
+import { menuUsageContext } from "../www/core/item-details.js";
 
 const people = [
   { key: "alice", name: "Alice" },

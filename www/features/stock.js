@@ -1,4 +1,4 @@
-import { estimatedStockValue } from "../stock-availability.js?v=homealacarte-77";
+import { estimatedStockValue } from "../core/stock-availability.js?v=homealacarte-77";
 
 export function stockPayload(rows = []) {
   return rows.map(({ item_key, quantity, quantity_unit, notes, household }) => ({

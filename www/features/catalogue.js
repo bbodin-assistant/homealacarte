@@ -1,8 +1,8 @@
-import { latestPriceTrend } from "../item-details.js?v=homealacarte-77";
+import { latestPriceTrend } from "../core/item-details.js?v=homealacarte-77";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "../catalogue-filters.js?v=homealacarte-77";
+} from "./catalogue/filters.js?v=homealacarte-77";
 
 export function createCatalogueFeature({
   state,

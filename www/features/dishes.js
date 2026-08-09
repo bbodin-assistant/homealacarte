@@ -1,5 +1,5 @@
-import { matchesSelectedNutriScores } from "../dish-filters.js?v=homealacarte-77";
-import { dishStockAvailability } from "../stock-availability.js?v=homealacarte-77";
+import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
+import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
 
 export function dishRangeMaximums(dishes) {
   return {

@@ -5,7 +5,7 @@ import {
   combinedPriceHistory,
   latestPriceTrend,
   priceChartGeometry,
-} from "../www/item-details.js";
+} from "../www/core/item-details.js";
 
 const apple = {
   key: "apple",

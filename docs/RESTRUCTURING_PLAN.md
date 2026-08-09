@@ -71,8 +71,11 @@ www/
     dom.js
     downloads.js
     format.js
+    item-details.js
     nutrition.js
+    profile-rules.js
     searchable-select.js
+    stock-availability.js
     theme.js
     worker-client.js
     worker-responses.js
@@ -80,10 +83,17 @@ www/
     shell.js
     family.js
     menu.js
+    menu/
+      rows.js
+      scheduling.js
     auto-menu.js
     dishes.js
+    dishes/
+      filters.js
     dish-editor.js
     catalogue.js
+    catalogue/
+      filters.js
     item-details.js
     grocery.js
     stock.js

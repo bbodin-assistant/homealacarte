@@ -5,7 +5,7 @@ import {
   mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "../www/profile-rules.js";
+} from "../www/core/profile-rules.js";
 
 const description = "Keep this original description.";
 const saved = [{ key: "Harry", description, food_rules: [] }, { key: "Visitor" }];

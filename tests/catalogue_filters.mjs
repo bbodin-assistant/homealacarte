@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   catalogueCategories,
   filterCatalogueItems,
-} from "../www/catalogue-filters.js";
+} from "../www/features/catalogue/filters.js";
 
 const foods = [
   { name: "Green apple", category: "Produce::Fruit" },

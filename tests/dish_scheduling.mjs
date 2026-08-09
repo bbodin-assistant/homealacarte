@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { buildScheduledDishRow } from "../www/dish-scheduling.js";
+import { buildScheduledDishRow } from "../www/features/menu/scheduling.js";
 
 assert.deepEqual(buildScheduledDishRow({
   dishKey: "vegetable_curry",

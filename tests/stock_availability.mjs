@@ -3,7 +3,7 @@ import {
   dishStockAvailability,
   estimatedStockValue,
   stockGramsByKey,
-} from "../www/stock-availability.js";
+} from "../www/core/stock-availability.js";
 
 const stock = [
   { item_key: "rice", quantity: 2, quantity_unit: "unit", grams_per_measure_unit: 500 },

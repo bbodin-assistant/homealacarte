@@ -37,7 +37,7 @@ test-web:
 	node --check www/app.js
 	node --check www/app/feature-composition.js
 	node --check www/storage.js
-	node --check www/stock-availability.js
+	node --check www/core/stock-availability.js
 	node --check www/translations.js
 	node --check www/worker.js
 	node tests/menu_rows.mjs

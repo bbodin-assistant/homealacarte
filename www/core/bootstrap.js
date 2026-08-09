@@ -4,7 +4,7 @@ import {
   mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "../profile-rules.js?v=homealacarte-77";
+} from "./profile-rules.js?v=homealacarte-77";
 
 const DATA_SCHEMA_VERSION = 10;
 const FOOD_RULE_MIGRATION_VERSIONS = [6, 7];
