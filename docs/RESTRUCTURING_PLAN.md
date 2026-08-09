@@ -31,6 +31,7 @@ The first implementation batches are complete and validated:
 - the browser shell, saved-state bootstrap/migrations, worker transport, and worker-response orchestration have explicit controllers with focused tests;
 - IndexedDB transactions and local-state reconciliation live in `www/storage/local-store.js`; Supabase configuration, sessions, authentication, REST transport, and remote-state CRUD live in `www/storage/remote-client.js`; `www/storage.js` now coordinates synchronization and conflicts;
 - the former 1,347-line stylesheet is split into six explicitly ordered layers under `www/styles/`, with responsive overrides last and every stylesheet below 500 lines;
+- `www/index.html` is now a 105-line composition template; six page partials and one shared-dialog partial are assembled deterministically by `scripts/build.py`, and the source-only partials are excluded from `dist`;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
@@ -43,14 +44,13 @@ scheduling and persistence callbacks.
 
 ### Remaining delivery estimate
 
-Four implementation checkpoints remain after the CSS split. Some may
+Three implementation checkpoints remain after the HTML split. Some may
 become two commits when that keeps review size reasonable, but the architectural
 checkpoints are:
 
-1. deterministic HTML partial composition;
-2. domain integration-test ownership;
-3. source-size and dependency-boundary enforcement;
-4. full release validation and final cleanup.
+1. domain integration-test ownership;
+2. source-size and dependency-boundary enforcement;
+3. full release validation and final cleanup.
 
 This is an engineering estimate rather than a promise that every checkpoint maps
 to exactly one commit. The definition of done below remains the completion gate.

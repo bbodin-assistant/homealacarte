@@ -1,0 +1,237 @@
+        <section id="items-view" class="view" data-view="items">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" data-i18n="items_eyebrow">Alimentation et foyer</p>
+              <h1 data-i18n="items_title">Catalogue</h1>
+              <p data-i18n="items_intro">Aliments, ingrédients et produits du foyer disponibles dans l’application.</p>
+            </div>
+            <button id="add-catalogue-item" class="button primary" type="button">
+              <span aria-hidden="true">+</span>
+              <span id="add-catalogue-item-label" data-i18n="short_add">Ajouter</span>
+            </button>
+          </div>
+          <div id="item-filter-panel" class="item-filter-panel panel">
+            <label class="search standalone">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+              <input id="item-search" type="search" data-i18n-placeholder="search_items" placeholder="Rechercher un article par nom…">
+            </label>
+            <label class="item-category-filter">
+              <span data-i18n="category">Catégorie</span>
+              <select id="item-category-filter"></select>
+            </label>
+            <button id="item-clear-filters" class="button ghost" type="button" data-i18n="clear_filters">Effacer</button>
+          </div>
+          <div id="item-catalogue" class="item-catalogue panel"></div>
+          <form id="ingredient-form" class="ingredient-editor panel" hidden>
+            <div class="ingredient-editor-heading">
+              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour au catalogue</button>
+              <strong id="ingredient-editor-name"></strong>
+              <span id="ingredient-completeness" class="ingredient-completeness"></span>
+              <button id="ingredient-delete" class="button danger" type="button" data-i18n="delete">Supprimer</button>
+            </div>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_identity_title">Identité et unités</h2>
+                <p data-i18n="ingredient_identity_intro">Le nom, le rayon et les unités utilisées dans les recettes.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field">
+                  <span data-i18n="name">Nom</span>
+                  <input id="ingredient-name" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="category">Catégorie</span>
+                  <input id="ingredient-category">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="measure_unit_name">Nom de l’unité de mesure</span>
+                  <input id="ingredient-measure-unit" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="grams_per_unit">Grammes par unité</span>
+                  <input id="ingredient-grams-per-unit" type="number" min="0.000000001" step="any" required>
+                </label>
+              </div>
+            </section>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_nutrition_title">Nutrition</h2>
+                <p data-i18n="ingredient_nutrition_intro">Valeurs correspondant à la quantité de référence indiquée.</p>
+              </div>
+              <div class="ingredient-editor-grid ingredient-nutrition-grid">
+                <label class="dialog-field">
+                  <span data-i18n="nutrition_reference_grams">Référence nutritionnelle (g)</span>
+                  <input id="ingredient-grams" type="number" min="0.000000001" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="kcal_for_reference">Kcal pour cette référence</span>
+                  <input id="ingredient-kcal" type="number" min="0" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="protein_grams">Protéines (g)</span>
+                  <input id="ingredient-protein" type="number" min="0" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="carbs_grams">Glucides (g)</span>
+                  <input id="ingredient-carbs" type="number" min="0" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="fat_grams">Lipides (g)</span>
+                  <input id="ingredient-fat" type="number" min="0" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="fiber_grams">Fibres (g)</span>
+                  <input id="ingredient-fiber" type="number" min="0" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="sugars_grams">Sucres (g)</span>
+                  <input id="ingredient-sugars" type="number" min="0" step="any">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="saturated_fat_grams">Acides gras saturés (g)</span>
+                  <input id="ingredient-saturated-fat" type="number" min="0" step="any">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="salt_grams">Sel (g)</span>
+                  <input id="ingredient-salt" type="number" min="0" step="any">
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="fruit_vegetable_legume_percent">Fruits, légumes et légumineuses (%)</span>
+                  <input id="ingredient-fvl-percent" type="number" min="0" max="100" step="any">
+                </label>
+              </div>
+              <p class="nutri-score-field-help" data-i18n="nutri_score_field_help">Ces quatre valeurs sont nécessaires au calcul automatique du Nutri-Score 2023 pour les aliments généraux.</p>
+            </section>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_sources_title">Sources nutritionnelles</h2>
+                <p data-i18n="ingredient_sources_intro">Origine des valeurs nutritionnelles et lien de référence.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field">
+                  <span data-i18n="source">Source</span>
+                  <input id="ingredient-source">
+                </label>
+                <label class="dialog-field dialog-field-wide">
+                  <span data-i18n="source_url">Lien de la source</span>
+                  <input id="ingredient-url" type="text" inputmode="url" placeholder="https://…">
+                </label>
+              </div>
+            </section>
+            <section class="ingredient-editor-section ingredient-purchase-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_purchase_title">Prix et dernier achat</h2>
+                <p data-i18n="ingredient_purchase_intro">Conditionnement, prix observé et informations du dernier ticket de caisse.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field">
+                  <span data-i18n="price_per_kg">Prix au kg</span>
+                  <input id="ingredient-price" type="number" min="0" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="estimated_purchase_price">Prix calculé du conditionnement</span>
+                  <input id="ingredient-purchase-price" readonly>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="purchase_unit">Unité d’achat</span>
+                  <input id="ingredient-purchase-unit" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="purchase_quantity_grams">Poids d’une unité d’achat (g)</span>
+                  <input id="ingredient-purchase-grams" type="number" min="0.000000001" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="price_checked_at">Date du prix / dernier achat</span>
+                  <input id="ingredient-price-checked-at" type="text" inputmode="numeric" data-i18n-placeholder="date_format_hint" placeholder="AAAA-MM-JJ">
+                </label>
+                <label class="dialog-field dialog-field-wide ingredient-price-source-field">
+                  <span data-i18n="price_source">Source du prix / détail du dernier achat</span>
+                  <textarea id="ingredient-price-source" rows="3"></textarea>
+                </label>
+              </div>
+              <div class="item-price-history-editor">
+                <div class="item-price-history-heading">
+                  <div>
+                    <h3 data-i18n="price_history">Historique des prix</h3>
+                    <p data-i18n="price_history_edit_intro">Modifiez les observations enregistrées. Le prix courant, sa date et son détail seront ajoutés à l’historique s’ils forment une nouvelle observation.</p>
+                  </div>
+                  <button id="ingredient-price-history-add" class="button ghost compact" type="button">
+                    <span aria-hidden="true">+</span>
+                    <span data-i18n="add_price_observation">Ajouter un prix</span>
+                  </button>
+                </div>
+                <div class="item-price-history-head" aria-hidden="true">
+                  <span data-i18n="observation_date">Date</span>
+                  <span data-i18n="price_per_kg">Prix au kg</span>
+                  <span data-i18n="observation_description">Description / source</span>
+                  <span></span>
+                </div>
+                <div id="ingredient-price-history-list" class="item-price-history-list"></div>
+              </div>
+            </section>
+            <label class="ingredient-incomplete-control">
+              <input id="ingredient-incomplete" type="checkbox">
+              <span data-i18n="ingredient_still_incomplete">La description de cet ingrédient est encore incomplète</span>
+            </label>
+            <div class="ingredient-editor-actions">
+              <p id="ingredient-form-message" class="field-error" role="alert"></p>
+              <button id="ingredient-save" class="button primary" type="submit" data-i18n="save_changes" disabled>Enregistrer</button>
+            </div>
+          </form>
+          <form id="household-item-form" class="ingredient-editor panel" hidden>
+            <div class="ingredient-editor-heading">
+              <button class="button ghost item-editor-back" type="button" data-i18n="back_to_items">Retour au catalogue</button>
+              <strong id="household-item-editor-name"></strong>
+              <span class="item-type-badge" data-i18n="general_item">Item général</span>
+              <button id="household-item-delete" class="button danger" type="button" data-i18n="delete">Supprimer</button>
+            </div>
+            <section class="ingredient-editor-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="item_identity_title">Identité et unités</h2>
+                <p data-i18n="general_item_intro">Produit sans informations nutritionnelles, utilisable dans le stock et les besoins.</p>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field"><span data-i18n="name">Nom</span><input id="household-item-name" required></label>
+                <label class="dialog-field"><span data-i18n="category">Catégorie</span><input id="household-item-category" required></label>
+                <label class="dialog-field"><span data-i18n="measure_unit_name">Nom de l’unité de mesure</span><input id="household-item-measure-unit" required></label>
+                <label class="dialog-field"><span data-i18n="purchase_unit">Unité d’achat</span><input id="household-item-purchase-unit" required></label>
+                <label class="dialog-field"><span data-i18n="purchase_quantity">Quantité par achat</span><input id="household-item-purchase-quantity" type="number" min="0.000000001" step="any" required></label>
+              </div>
+            </section>
+            <section class="ingredient-editor-section ingredient-purchase-section">
+              <div class="ingredient-editor-section-heading">
+                <h2 data-i18n="ingredient_purchase_title">Prix et dernier achat</h2>
+              </div>
+              <div class="ingredient-editor-grid">
+                <label class="dialog-field"><span data-i18n="unit_price">Prix unitaire</span><input id="household-item-price" type="number" min="0" step="any" required></label>
+                <label class="dialog-field"><span data-i18n="last_bought_at">Dernier achat</span><input id="household-item-last-bought" type="text" inputmode="numeric" data-i18n-placeholder="date_format_hint" placeholder="AAAA-MM-JJ"></label>
+                <label class="dialog-field"><span data-i18n="lasting_days">Durée estimée (jours)</span><input id="household-item-lasting-days" type="number" min="0.000000001" step="any"></label>
+                <label class="dialog-field dialog-field-wide"><span data-i18n="notes">Notes</span><textarea id="household-item-notes" rows="3"></textarea></label>
+              </div>
+              <div class="item-price-history-editor">
+                <div class="item-price-history-heading">
+                  <div>
+                    <h3 data-i18n="price_history">Historique des prix</h3>
+                    <p data-i18n="price_history_edit_intro">Modifiez les observations enregistrées. Le prix courant, sa date et son détail seront ajoutés à l’historique s’ils forment une nouvelle observation.</p>
+                  </div>
+                  <button id="household-item-price-history-add" class="button ghost compact" type="button">
+                    <span aria-hidden="true">+</span>
+                    <span data-i18n="add_price_observation">Ajouter un prix</span>
+                  </button>
+                </div>
+                <div class="item-price-history-head" aria-hidden="true">
+                  <span data-i18n="observation_date">Date</span>
+                  <span data-i18n="unit_price">Prix unitaire</span>
+                  <span data-i18n="observation_description">Description / source</span>
+                  <span></span>
+                </div>
+                <div id="household-item-price-history-list" class="item-price-history-list"></div>
+              </div>
+            </section>
+            <div class="ingredient-editor-actions">
+              <p id="household-item-form-message" class="field-error" role="alert"></p>
+              <button id="household-item-save" class="button primary" type="submit" data-i18n="save_changes" disabled>Enregistrer</button>
+            </div>
+          </form>
+        </section>
+

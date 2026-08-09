@@ -34,7 +34,7 @@ assert.equal(filterCatalogueItems(foods).length, foods.length);
 
 const [feature, index] = await Promise.all([
   readFile(new URL("../www/features/catalogue.js", import.meta.url), "utf8"),
-  readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/views/catalogue.html", import.meta.url), "utf8"),
 ]);
 assert.match(index, /id="item-search"/);
 assert.match(index, /id="item-category-filter"/);

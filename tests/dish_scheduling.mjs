@@ -39,7 +39,7 @@ assert.throws(() => buildScheduledDishRow({
 const [menu, editor, index] = await Promise.all([
   readFile(new URL("../www/features/menu.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/dish-editor.js", import.meta.url), "utf8"),
-  readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/views/dialogs.html", import.meta.url), "utf8"),
 ]);
 assert.match(index, /id="dish-details-schedule"/);
 assert.match(index, /id="dish-details-schedule-cancel"/);

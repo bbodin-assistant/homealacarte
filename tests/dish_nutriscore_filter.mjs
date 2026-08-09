@@ -30,7 +30,7 @@ assert.deepEqual(
 
 const [feature, index] = await Promise.all([
   readFile(new URL("../www/features/dishes.js", import.meta.url), "utf8"),
-  readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/views/dishes.html", import.meta.url), "utf8"),
 ]);
 assert.match(feature, /nutriScores/);
 assert.match(feature, /matchesSelectedNutriScores/);

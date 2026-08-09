@@ -1,0 +1,426 @@
+    <dialog id="family-dialog" class="menu-item-dialog family-dialog" aria-labelledby="family-dialog-title">
+      <form id="family-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p id="family-dialog-eyebrow" class="eyebrow" data-i18n="new_family_member">Nouveau membre</p>
+            <h2 id="family-dialog-title" data-i18n="add_family_member">Ajouter une personne</h2>
+            <p id="family-dialog-intro" data-i18n="family_dialog_intro">Choisissez un profil simple pour personnaliser le planning.</p>
+          </div>
+          <button id="family-dialog-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields family-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="family_name">Prénom</span>
+            <input id="family-member-name" autocomplete="off" required>
+          </label>
+          <fieldset class="family-role-picker dialog-field-wide">
+            <legend data-i18n="choose_member_type">Adulte ou enfant ?</legend>
+            <div class="family-role-options">
+              <label>
+                <input id="family-member-adult" type="radio" name="family-kind" value="adult" checked>
+                <span>
+                  <i class="role-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="12" r="8"/><path d="M10 43V30c0-9 6-14 14-14s14 5 14 14v13M18 43V29M30 43V29"/></svg></i>
+                  <strong data-i18n="adult">Adulte</strong>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="family-kind" value="child">
+                <span>
+                  <i class="role-icon child-role" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="14" r="7"/><path d="M12 43V32c0-8 5-12 12-12s12 4 12 12v11M19 43V32M29 43V32"/></svg></i>
+                  <strong data-i18n="child">Enfant</strong>
+                </span>
+              </label>
+            </div>
+          </fieldset>
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="calorie_target">Objectif calorique (facultatif)</span>
+            <input id="family-member-kcal" type="number" min="0.000000001" step="any" inputmode="decimal" placeholder="2000">
+          </label>
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="meal_habits">Habitudes alimentaires</span>
+            <textarea
+              id="family-member-description"
+              rows="4"
+              data-i18n-placeholder="meal_habits_optional"
+              placeholder="Préférences, boissons, habitudes et jours de présence (facultatif)"
+            ></textarea>
+          </label>
+          <section class="family-food-rules dialog-field-wide" aria-labelledby="family-food-rules-title">
+            <div class="family-food-rules-heading">
+              <div>
+                <strong id="family-food-rules-title" data-i18n="optimizer_food_rules">Règles pour le générateur</strong>
+                <p data-i18n="optimizer_food_rules_intro">Ajoutez les routines quotidiennes et les aliments à ne jamais proposer.</p>
+              </div>
+              <button id="family-food-rule-add" class="button ghost compact" type="button" data-i18n="add_food_rule">Ajouter une règle</button>
+            </div>
+            <div id="family-food-rules-list" class="family-food-rules-list"></div>
+          </section>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="family-dialog-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button id="family-dialog-submit" class="button primary" type="submit" data-i18n="validate">Valider</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="menu-item-dialog" class="menu-item-dialog" aria-labelledby="menu-item-dialog-title">
+      <form id="menu-item-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="add_menu_item">Ajouter au menu</p>
+            <h2 id="menu-item-dialog-title" data-i18n="new_menu_item">Nouvel élément</h2>
+            <p id="menu-item-context"></p>
+          </div>
+          <button id="menu-item-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="item">Aliment ou plat</span>
+            <select id="menu-item-select" required></select>
+          </label>
+          <label class="dialog-field">
+            <span data-i18n="quantity">Quantité</span>
+            <input id="menu-item-quantity" type="number" min="0.000000001" step="any" value="1" required>
+          </label>
+          <label class="dialog-field">
+            <span data-i18n="unit">Unité</span>
+            <select id="menu-item-unit" required>
+              <option value="portion">portion</option>
+              <option value="g">g</option>
+              <option value="unit" data-i18n="units">unités</option>
+            </select>
+          </label>
+          <fieldset class="dialog-people dialog-field-wide">
+            <legend data-i18n="people">Personnes</legend>
+            <div id="menu-item-people"></div>
+            <p id="menu-item-people-error" class="field-error" data-i18n="select_person" hidden>Sélectionnez au moins une personne.</p>
+          </fieldset>
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="notes">Notes</span>
+            <input id="menu-item-notes">
+          </label>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="menu-item-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button class="button primary" type="submit" data-i18n="validate">Valider</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dish-details-dialog" class="menu-item-dialog dish-details-dialog" aria-labelledby="dish-details-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="dish_details">Détail du plat</p>
+            <h2 id="dish-details-title"></h2>
+            <p id="dish-details-context"></p>
+            <div id="dish-details-recipe" class="dish-details-recipe">
+              <span id="dish-details-no-link" data-i18n="no_recipe_link">Aucun lien de recette disponible</span>
+              <span id="dish-details-url" class="dish-details-url" hidden></span>
+              <a id="dish-details-recipe-link" class="button primary" target="_blank" rel="noopener noreferrer" data-i18n="open_recipe">Ouvrir la recette en ligne</a>
+            </div>
+          </div>
+          <button id="dish-details-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="dish-details-content">
+          <p id="dish-details-menu-note" class="dish-details-menu-note" hidden></p>
+          <div id="dish-details-metrics" class="dish-details-metrics"></div>
+          <p id="dish-details-nutri-status" class="nutri-score-detail"></p>
+          <section id="dish-details-ingredients-section">
+            <h3 data-i18n="recipe_ingredients">Ingrédients de la recette</h3>
+            <ul id="dish-details-ingredients" class="dish-details-ingredients"></ul>
+          </section>
+          <section id="dish-details-source-section">
+            <h3 data-i18n="recipe_notes">Source et notes de la recette</h3>
+            <strong id="dish-details-source" class="dish-details-source"></strong>
+            <div id="dish-details-notes" class="dish-details-notes"></div>
+          </section>
+          <section id="dish-menu-editor" class="dish-menu-editor" hidden>
+            <h3 id="dish-menu-editor-title" data-i18n="edit_menu_item">Modifier ce repas</h3>
+            <p id="dish-menu-editor-intro" data-i18n="edit_menu_intro">Modifiez les personnes et choisissez une valeur en portions, grammes ou unités.</p>
+            <div class="dish-menu-editor-grid">
+              <label class="dialog-field">
+                <span data-i18n="day">Jour</span>
+                <select id="dish-menu-day"></select>
+              </label>
+              <label class="dialog-field">
+                <span data-i18n="meal">Repas</span>
+                <select id="dish-menu-meal"></select>
+              </label>
+              <label class="dialog-field">
+                <span data-i18n="quantity_value">Valeur</span>
+                <input id="dish-menu-quantity" type="number" min="0.000000001" step="any">
+              </label>
+              <label class="dialog-field">
+                <span data-i18n="quantity_type">Type de quantité</span>
+                <select id="dish-menu-unit">
+                  <option value="portion" data-i18n="portions">Portions</option>
+                  <option value="g" data-i18n="quantity_grams">Quantité en grammes</option>
+                  <option value="unit" data-i18n="quantity_units">Quantité en unités</option>
+                </select>
+                <small id="dish-menu-unit-value" class="dish-menu-unit-value" hidden></small>
+              </label>
+              <fieldset class="dialog-people dish-menu-people-field">
+                <legend data-i18n="people">Personnes</legend>
+                <div id="dish-menu-people"></div>
+                <p id="dish-menu-people-error" class="field-error" data-i18n="select_person" hidden>Sélectionnez au moins une personne.</p>
+              </fieldset>
+              <label class="dialog-field dish-menu-notes-field">
+                <span data-i18n="notes">Notes</span>
+                <textarea id="dish-menu-notes" rows="3"></textarea>
+              </label>
+            </div>
+            <div class="dish-menu-editor-actions">
+              <button id="dish-details-schedule-cancel" class="button ghost" type="button" data-i18n="cancel" hidden>Annuler</button>
+              <button id="dish-details-save" class="button primary" type="button" data-i18n="save_changes" hidden>Enregistrer</button>
+            </div>
+          </section>
+        </div>
+        <div class="menu-dialog-actions dish-details-actions">
+          <button id="dish-details-schedule" class="button primary" type="button" data-i18n="schedule_dish" hidden>Planifier ce plat</button>
+          <button id="dish-details-edit" class="button ghost" type="button" data-i18n="edit_dish" hidden>Modifier le plat</button>
+          <button id="dish-details-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="new-dish-dialog" class="menu-item-dialog new-dish-dialog" aria-labelledby="new-dish-title">
+      <form id="new-dish-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="recipes_eyebrow">Bibliothèque</p>
+            <h2 id="new-dish-title">Nouveau plat</h2>
+            <p id="new-dish-intro">Décrivez la recette et ajoutez au moins un ingrédient.</p>
+          </div>
+          <button id="new-dish-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="new-dish-content">
+          <div class="new-dish-fields">
+            <label class="dialog-field">
+              <span data-i18n="dish_name">Nom du plat</span>
+              <input id="new-dish-name" required>
+            </label>
+            <label class="dialog-field">
+              <span data-i18n="recipe_servings">Nombre de portions</span>
+              <input id="new-dish-servings" type="number" min="0.000000001" step="any" value="4" required>
+            </label>
+            <label class="dialog-field dialog-field-wide">
+              <span data-i18n="recipe_url">Lien de la recette</span>
+              <input id="new-dish-url" type="text" inputmode="url" placeholder="https://…">
+            </label>
+            <label class="dialog-field">
+              <span data-i18n="source">Source</span>
+              <input id="new-dish-source">
+            </label>
+            <label class="dialog-field">
+              <span data-i18n="manual_nutri_score">Nutri-Score manuel (secours)</span>
+              <select id="new-dish-nutri-score">
+                <option value="" data-i18n="not_available">Non renseigné</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+                <option value="D">D</option>
+                <option value="E">E</option>
+              </select>
+              <small id="new-dish-nutri-status" class="field-hint"></small>
+            </label>
+            <label class="dialog-field dialog-field-wide show-only-control">
+              <input id="new-dish-auto-menu-main" type="checkbox" checked>
+              <span data-i18n="auto_menu_main_dish">Peut être proposé comme déjeuner ou dîner</span>
+            </label>
+            <div class="dialog-field dialog-field-wide dish-source-notes-field">
+              <div class="dish-source-notes-heading">
+                <span data-i18n="recipe_notes">Source et notes de la recette</span>
+                <button id="new-dish-add-note" class="button ghost compact" type="button">
+                  <span aria-hidden="true">+</span>
+                  <span data-i18n="add_recipe_note">Ajouter une note</span>
+                </button>
+              </div>
+              <div id="new-dish-notes-list" class="dish-source-notes-list"></div>
+            </div>
+          </div>
+          <section class="new-dish-components">
+            <div class="new-dish-components-heading">
+              <h3 data-i18n="recipe_ingredients">Ingrédients de la recette</h3>
+              <button id="new-dish-add-component" class="icon-button new-dish-add-component" type="button" data-i18n-title="add_ingredient" aria-label="Ajouter un ingrédient">+</button>
+            </div>
+            <div class="new-dish-component-head" aria-hidden="true">
+              <span data-i18n="ingredient">Ingrédient</span>
+              <span data-i18n="custom_item">Personnalisé</span>
+              <span data-i18n="quantity">Quantité</span>
+              <span data-i18n="unit">Unité</span>
+              <span></span>
+            </div>
+            <div id="new-dish-component-list"></div>
+            <p id="new-dish-error" class="field-error" role="alert"></p>
+          </section>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="new-dish-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button id="new-dish-save" class="button primary" type="submit" data-i18n="save_dish">Enregistrer le plat</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="grocery-details-dialog" class="menu-item-dialog grocery-details-dialog" aria-labelledby="grocery-details-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="item_details">Détail de l’article</p>
+            <h2 id="grocery-details-title"></h2>
+            <p data-i18n="item_known_information">Toutes les informations connues sur cet article</p>
+          </div>
+          <button id="grocery-details-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="grocery-details-content">
+          <div id="grocery-details-information" class="grocery-details-information"></div>
+          <section id="grocery-details-usages">
+            <h3 data-i18n="ingredient_used_by">Plats du menu utilisant cet ingrédient</h3>
+            <div id="grocery-details-list" class="grocery-details-list"></div>
+          </section>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="grocery-details-edit" class="button primary" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.2-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.2 16 4 20ZM14.5 6.7l3 3"/></svg>
+            <span data-i18n="edit_item">Modifier l’article</span>
+          </button>
+          <button id="grocery-details-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="missing-value-dialog" class="menu-item-dialog missing-value-dialog" aria-labelledby="missing-value-title">
+      <form id="missing-value-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p id="missing-value-eyebrow" class="eyebrow" data-i18n="item_information_value">Information de l’article</p>
+            <h2 id="missing-value-title" data-i18n="missing_value_title">Renseigner une valeur</h2>
+            <p id="missing-value-context"></p>
+          </div>
+          <button id="missing-value-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span id="missing-value-label"></span>
+            <input id="missing-value-input" required>
+            <small id="missing-value-reference" class="dialog-field-help"></small>
+          </label>
+          <label id="missing-value-source-field" class="dialog-field">
+            <span data-i18n="source">Source</span>
+            <input id="missing-value-source">
+          </label>
+          <label id="missing-value-url-field" class="dialog-field">
+            <span data-i18n="source_url">Lien de la source</span>
+            <input id="missing-value-url" type="text" inputmode="url" placeholder="https://…">
+          </label>
+          <p id="missing-value-error" class="field-error dialog-field-wide" role="alert"></p>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="missing-value-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button class="button primary" type="submit" data-i18n="save_value">Enregistrer la valeur</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="confirm-dialog" class="menu-item-dialog confirm-dialog" aria-labelledby="confirm-dialog-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="confirmation">Confirmation</p>
+            <h2 id="confirm-dialog-title"></h2>
+            <p id="confirm-dialog-message"></p>
+          </div>
+          <button id="confirm-dialog-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="confirm-dialog-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button id="confirm-dialog-accept" class="button danger" type="button" data-i18n="delete">Supprimer</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="meal-replace-dialog" class="menu-item-dialog meal-replace-dialog" aria-labelledby="meal-replace-title">
+      <form id="meal-replace-form">
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="replace_meal">Remplacer le repas</p>
+            <h2 id="meal-replace-title" data-i18n="replace_meal_title">Choisir un autre plat</h2>
+            <p id="meal-replace-context"></p>
+          </div>
+          <button id="meal-replace-close" class="dialog-close" type="button" aria-label="Annuler">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="menu-dialog-fields">
+          <label class="dialog-field dialog-field-wide">
+            <span data-i18n="replace_with">Remplacer par</span>
+            <select id="meal-replace-select" required></select>
+          </label>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="meal-replace-cancel" class="button ghost" type="button" data-i18n="cancel">Annuler</button>
+          <button class="button primary" type="submit" data-i18n="validate">Valider</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="about-dialog" class="menu-item-dialog about-dialog" aria-labelledby="about-dialog-title">
+      <div>
+        <div class="menu-dialog-heading">
+          <div>
+            <p class="eyebrow" data-i18n="about_eyebrow">Le projet</p>
+            <h2 id="about-dialog-title" data-i18n="about_title">À propos de Home à la Carte</h2>
+            <p data-i18n="about_intro">Un planificateur local-first et open source pour organiser le foyer, les menus, le stock et les courses.</p>
+          </div>
+          <button id="about-close" class="dialog-close" type="button" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="about-content">
+          <section>
+            <h3 data-i18n="about_technology_title">Technologie et partage</h3>
+            <p data-i18n="about_technology">L’application est un site statique sans Node ni serveur applicatif : HTML, CSS et JavaScript pour l’interface, Rust/WebAssembly pour les calculs et le PDF, IndexedDB pour la copie locale, et Supabase en option pour la synchronisation.</p>
+            <p data-i18n="about_license">Le code est partagé sous licence MIT : chacun peut l’utiliser, le modifier et l’héberger, en conservant la notice de licence.</p>
+            <p><a href="https://github.com/bbodin/homealacarte" target="_blank" rel="noopener noreferrer" data-i18n="about_source_code">Voir le code source et contribuer sur GitHub</a></p>
+          </section>
+          <section class="about-privacy">
+            <h3 data-i18n="about_privacy_title">Données personnelles et RGPD</h3>
+            <p><span data-i18n="about_privacy_controller">Responsable du traitement de cette instance :</span> <a id="about-controller-contact" target="_blank" rel="noopener noreferrer" data-i18n="not_configured">Non renseigné</a>. <span data-i18n="about_privacy_email_use">L’adresse e-mail sert uniquement à créer le compte et à synchroniser les données choisies par l’utilisateur.</span></p>
+            <p data-i18n="about_privacy_local">Finalité : fournir l’organisation du foyer, des repas, des besoins, du stock et des courses. Les données peuvent inclure l’adresse e-mail, les noms ou pseudonymes, les habitudes alimentaires, les objectifs nutritionnels, les menus, le stock et les achats saisis. La base légale du compte est l’exécution du service demandé ; un consentement explicite est demandé pour les informations pouvant révéler la santé. Le titulaire confirme avoir informé les autres personnes et obtenu les autorisations nécessaires.</p>
+            <p data-i18n="about_privacy_storage">Une copie nécessaire au fonctionnement hors ligne est conservée dans IndexedDB sur l’appareil. Avec un compte, le document et les éventuelles demandes privées sont aussi envoyés au projet Supabase hébergé dans la région Europe. Des sous-traitants Supabase peuvent traiter des données hors EEE selon son DPA et ses clauses contractuelles types. Il n’y a ni publicité, ni analyse d’audience, ni vente de données.</p>
+            <p data-i18n="about_privacy_retention">Un compte contenant des données est destiné à être supprimé après un an sans activité ; un compte vide après une semaine. Sur le plan gratuit, cette purge d’inactivité reprend lorsque le projet est actif car Supabase peut le mettre en pause. Supprimer mes données efface immédiatement le document, les demandes privées, le compte en ligne et la copie de cet appareil. L’exploitant ne crée aucune sauvegarde ; les copies ou journaux techniques éventuels du fournisseur suivent ses propres conditions.</p>
+            <p data-i18n="about_privacy_controls">Mes données permet l’accès et la portabilité par téléchargement JSON, la rectification dans les écrans, l’effacement immédiat et l’envoi d’une demande privée au responsable. Une réponse est normalement fournie sous un mois. Une réclamation peut être adressée à la CNIL. Aucun profilage commercial ni décision produisant un effet juridique n’est réalisé.</p>
+            <div class="privacy-actions">
+              <button id="about-download-data" class="button ghost" type="button" data-i18n="privacy_download">Accéder et télécharger mes données</button>
+              <button id="about-edit-data" class="button ghost" type="button" data-i18n="privacy_correct">Rectifier les données du foyer</button>
+              <button id="about-request-erasure" class="button danger" type="button" data-i18n="reset_data">Supprimer mon compte et mes données</button>
+            </div>
+            <div class="about-links">
+              <a href="https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre3" target="_blank" rel="noopener noreferrer" data-i18n="about_link_rights">Droits d’accès, rectification, effacement et portabilité</a>
+              <a href="https://commission.europa.eu/law/law-topic/data-protection/information-business-and-organisations/dealing-requests-individuals_en" target="_blank" rel="noopener noreferrer" data-i18n="about_link_requests">Traiter une demande RGPD</a>
+              <a href="https://commission.europa.eu/law/law-topic/data-protection/rules-business-and-organisations/principles-gdpr/overview-principles/what-data-can-we-process-and-under-which-conditions_en" target="_blank" rel="noopener noreferrer" data-i18n="about_link_gdpr">Principes officiels du RGPD</a>
+              <a href="https://supabase.com/docs/guides/deployment/shared-responsibility-model" target="_blank" rel="noopener noreferrer" data-i18n="about_link_supabase">Responsabilité partagée Supabase</a>
+              <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener noreferrer" data-i18n="about_link_rls">Sécurité RLS Supabase</a>
+            </div>
+          </section>
+        </div>
+        <div class="menu-dialog-actions">
+          <button id="about-done" class="button ghost" type="button" data-i18n="close">Fermer</button>
+        </div>
+      </div>
+    </dialog>
+

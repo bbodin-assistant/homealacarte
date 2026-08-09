@@ -76,7 +76,12 @@ const [app, itemDetailsFeature, catalogueFeature, index, stockFeature, extraNeed
   readFile(new URL("../www/app.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/item-details.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/catalogue.js", import.meta.url), "utf8"),
-  readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  Promise.all([
+    "grocery",
+    "catalogue",
+    "dialogs",
+  ].map((name) => readFile(new URL(`../www/views/${name}.html`, import.meta.url), "utf8")))
+    .then((parts) => parts.join("\n")),
   readFile(new URL("../www/features/stock.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/extra-needs.js", import.meta.url), "utf8"),
 ]);

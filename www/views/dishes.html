@@ -1,0 +1,50 @@
+        <section id="dishes-view" class="view" data-view="dishes">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" data-i18n="recipes_eyebrow">Bibliothèque</p>
+              <h1 data-i18n="dishes_title">Plats et recettes</h1>
+              <p data-i18n="dishes_intro">Valeurs par portion et composition détaillée.</p>
+            </div>
+            <button id="add-dish" class="button primary" type="button">
+              <span aria-hidden="true">+</span>
+              <span data-i18n="add_dish">Ajouter un plat</span>
+            </button>
+          </div>
+          <div class="dish-filter-panel panel">
+            <label class="search standalone">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+              <input id="dish-search" type="search" placeholder="Rechercher un plat…">
+            </label>
+            <fieldset class="dish-range-filter">
+              <legend data-i18n="cost_per_portion">Coût par portion</legend>
+              <output id="dish-cost-output">0 € – 15 €</output>
+              <div class="dual-range" data-dual-range="cost">
+                <input id="dish-cost-min" type="range" min="0" max="15" step="0.01" value="0" aria-label="Coût minimum par portion">
+                <input id="dish-cost-max" type="range" min="0" max="15" step="0.01" value="15" aria-label="Coût maximum par portion">
+              </div>
+            </fieldset>
+            <fieldset class="dish-range-filter">
+              <legend data-i18n="kcal_per_portion">Kcal par portion</legend>
+              <output id="dish-kcal-output">0 – 1 500 kcal</output>
+              <div class="dual-range" data-dual-range="kcal">
+                <input id="dish-kcal-min" type="range" min="0" max="1500" step="1" value="0" aria-label="Kcal minimum par portion">
+                <input id="dish-kcal-max" type="range" min="0" max="1500" step="1" value="1500" aria-label="Kcal maximum par portion">
+              </div>
+            </fieldset>
+            <fieldset class="dish-nutri-filter">
+              <legend data-i18n="nutri_score_filter">Filtrer par Nutri-Score</legend>
+              <div class="dish-nutri-options">
+                <label class="metric-a"><input type="checkbox" value="A" data-dish-nutri-score="A"><span>A</span></label>
+                <label class="metric-b"><input type="checkbox" value="B" data-dish-nutri-score="B"><span>B</span></label>
+                <label class="metric-c"><input type="checkbox" value="C" data-dish-nutri-score="C"><span>C</span></label>
+                <label class="metric-d"><input type="checkbox" value="D" data-dish-nutri-score="D"><span>D</span></label>
+                <label class="metric-e"><input type="checkbox" value="E" data-dish-nutri-score="E"><span>E</span></label>
+                <label class="metric-unknown"><input type="checkbox" value="UNKNOWN" data-dish-nutri-score="UNKNOWN"><span aria-label="Nutri-Score non renseigné">?</span></label>
+              </div>
+            </fieldset>
+            <button id="dish-clear-filters" class="button ghost" type="button" data-i18n="clear_filters">Effacer</button>
+          </div>
+          <div id="nutri-score-audit" class="nutri-score-audit panel"></div>
+          <div id="dish-grid" class="dish-grid"></div>
+        </section>
+

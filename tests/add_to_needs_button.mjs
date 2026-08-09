@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const [index, style] = await Promise.all([
-  readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/views/grocery.html", import.meta.url), "utf8"),
   readFile(new URL("../www/styles/grocery-catalogue.css", import.meta.url), "utf8"),
 ]);
 

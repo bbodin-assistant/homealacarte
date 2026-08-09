@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const [feature, index, worker] = await Promise.all([
   readFile(new URL("../www/features/catalogue.js", import.meta.url), "utf8"),
-  readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/views/catalogue.html", import.meta.url), "utf8"),
   readFile(new URL("../www/worker.js", import.meta.url), "utf8"),
 ]);
 

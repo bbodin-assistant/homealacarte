@@ -1,0 +1,131 @@
+        <section id="grocery-view" class="view" data-view="grocery">
+          <div class="planner-mode-switch grocery-mode-switch" role="tablist" aria-label="Vue des courses">
+            <button class="active" type="button" data-grocery-mode="list"><span data-i18n="grocery_list">Courses</span><span id="grocery-tab-count" class="mode-count">0</span></button>
+            <button type="button" data-grocery-mode="stock"><span data-i18n="stock_title">Stock disponible</span><span id="stock-tab-count" class="mode-count">0</span></button>
+            <button type="button" data-grocery-mode="needs"><span data-i18n="extra_needs">Besoins supplémentaires</span><span id="needs-tab-count" class="mode-count">0</span></button>
+          </div>
+
+          <div class="grocery-subview active" data-grocery-panel="list">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="grocery_eyebrow">Prête pour le magasin</p>
+                <h1 data-i18n="grocery_title">Liste de courses</h1>
+              </div>
+              <div class="page-actions">
+                <label class="grocery-filter-control">
+                  <input id="grocery-hide-stocked" type="checkbox">
+                  <span data-i18n="hide_stocked_items">Masquer les articles avec un stock suffisant</span>
+                </label>
+                <button id="download-pdf" class="button primary">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 11l4 4 4-4M4 20h16"/></svg>
+                  <span data-i18n="download_pdf">Télécharger le PDF</span>
+                </button>
+              </div>
+            </div>
+            <div class="grocery-summary">
+              <div>
+                <span data-i18n="estimated_total">Total estimé</span>
+                <strong id="grocery-total">—</strong>
+              </div>
+              <div class="grocery-progress">
+                <span id="grocery-progress-label">0 / 0</span>
+                <div><i id="grocery-progress-bar"></i></div>
+              </div>
+            </div>
+            <div id="grocery-grid" class="grocery-grid"></div>
+          </div>
+
+          <div class="grocery-subview" data-grocery-panel="stock">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="stock_eyebrow">Dans les placards</p>
+                <h1 data-i18n="stock_title">Stock disponible</h1>
+              </div>
+              <div class="page-actions">
+                <label class="section-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                  <input id="stock-search" type="search" data-i18n-placeholder="filter_stock" placeholder="Filtrer le stock par nom…">
+                </label>
+                <button id="empty-stock" class="button danger" type="button" data-i18n="empty_stock">Vider le stock</button>
+              </div>
+            </div>
+            <div class="grocery-summary stock-value-summary">
+              <div>
+                <span data-i18n="estimated_stock_value">Valeur totale estimée du stock</span>
+                <strong id="stock-total">—</strong>
+              </div>
+            </div>
+            <div class="stock-panel panel standalone-stock-panel">
+              <form id="stock-add-form" class="stock-add household-add">
+                <label>
+                  <span data-i18n="catalog_item">Article</span>
+                  <select id="stock-add-item" required></select>
+                </label>
+                <label>
+                  <span data-i18n="quantity">Quantité</span>
+                  <input id="stock-add-quantity" type="number" min="0.000000001" step="any" required>
+                </label>
+                <label>
+                  <span data-i18n="unit">Unité</span>
+                  <select id="stock-add-unit">
+                    <option value="g">g</option>
+                    <option value="unit" data-i18n="units">unités</option>
+                  </select>
+                </label>
+                <label class="stock-add-notes-field">
+                  <span data-i18n="notes">Notes</span>
+                  <input id="stock-add-notes" data-i18n-placeholder="stock_notes_placeholder" placeholder="Origine, emplacement ou détail facultatif">
+                </label>
+                <button class="button ghost" type="submit" data-i18n="add_stock">Ajouter au stock</button>
+              </form>
+              <div id="stock-list" class="stock-list"></div>
+            </div>
+          </div>
+
+          <div class="grocery-subview" data-grocery-panel="needs">
+            <div class="page-heading">
+              <div>
+                <p class="eyebrow" data-i18n="extra_needs_eyebrow">En plus du menu</p>
+                <h1 data-i18n="extra_needs">Besoins supplémentaires</h1>
+              </div>
+              <div class="page-actions">
+                <label class="section-search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                  <input id="needs-search" type="search" data-i18n-placeholder="filter_needs" placeholder="Filtrer les besoins par nom…">
+                </label>
+                <button id="empty-extra-needs" class="button danger" type="button" data-i18n="empty_extra_needs">Vider la liste</button>
+              </div>
+            </div>
+            <div class="panel household-plan-panel">
+              <form id="custom-add-form" class="custom-add household-add">
+                <label id="custom-existing-field">
+                  <span data-i18n="name">Nom</span>
+                  <select id="custom-add-existing"></select>
+                </label>
+                <label id="custom-category-field">
+                  <span data-i18n="category">Catégorie</span>
+                  <input id="custom-add-category" value="Autres" readonly required>
+                </label>
+                <label>
+                  <span data-i18n="needed_quantity">Quantité nécessaire</span>
+                  <input id="custom-add-quantity" type="number" min="0.000000001" step="any" value="1" required>
+                </label>
+                <label>
+                  <span data-i18n="unit">Unité</span>
+                  <input id="custom-add-measure-unit" value="unités" readonly required>
+                </label>
+                <label>
+                  <span data-i18n="unit_price">Prix unitaire</span>
+                  <input id="custom-add-price" type="number" min="0" step="any" value="0" readonly required>
+                </label>
+                <label class="custom-add-notes-field">
+                  <span data-i18n="notes">Notes</span>
+                  <input id="custom-add-notes" data-i18n-placeholder="need_notes_placeholder" placeholder="Contexte ou détail facultatif">
+                </label>
+                <button class="button ghost add-extra-need-button" type="submit" data-i18n="add_extra_need">Ajouter aux besoins</button>
+              </form>
+              <div id="custom-list" class="custom-list"></div>
+            </div>
+          </div>
+        </section>
+
