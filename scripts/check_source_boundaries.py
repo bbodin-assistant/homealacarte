@@ -15,7 +15,6 @@ IGNORED_PARTS = {"dist", "pkg", "target", "__pycache__"}
 # These coordinators intentionally keep their direct dependencies visible.
 # New exceptions require an architectural rationale here and code review.
 SIZE_EXCEPTIONS = {
-    "www/app.js": (550, "composition root with explicit feature dependencies"),
     "www/storage.js": (425, "synchronization and conflict-policy coordinator"),
 }
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const [app, feature] = await Promise.all([
-  readFile(new URL("../www/app.js", import.meta.url), "utf8"),
+  readFile(new URL("../www/app/feature-composition.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/data-account.js", import.meta.url), "utf8"),
 ]);
 

@@ -1,8 +1,6 @@
-export function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]);
-}
+import { escapeHtml } from "./dom.js?v=homealacarte-77";
+
+export { escapeHtml } from "./dom.js?v=homealacarte-77";
 
 export function externalHttpUrl(value) {
   try {
