@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { dishStockAvailability, stockGramsByKey } from "../www/stock-availability.js";
+import {
+  dishStockAvailability,
+  estimatedStockValue,
+  stockGramsByKey,
+} from "../www/stock-availability.js";
 
 const stock = [
   { item_key: "rice", quantity: 2, quantity_unit: "unit", grams_per_measure_unit: 500 },
@@ -9,6 +13,15 @@ const stock = [
 ];
 
 assert.deepEqual([...stockGramsByKey(stock)], [["rice", 1100], ["sauce", 300]]);
+
+assert.equal(estimatedStockValue(
+  stock,
+  [
+    { key: "rice", price_per_kg: 4 },
+    { key: "sauce", price_per_kg: 3 },
+  ],
+  [{ key: "soap", purchase_quantity: 2, estimated_price: 5 }],
+), 15.3);
 
 const availability = dishStockAvailability({
   components: [

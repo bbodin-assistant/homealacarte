@@ -36,7 +36,10 @@ import {
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
 } from "./profile-rules.js?v=homealacarte-77";
-import { dishStockAvailability } from "./stock-availability.js?v=homealacarte-77";
+import {
+  dishStockAvailability,
+  estimatedStockValue,
+} from "./stock-availability.js?v=homealacarte-77";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -2866,6 +2869,7 @@ function addStockQuantity(itemKey, quantity, quantityUnit, notes = "") {
 }
 
 function renderStock() {
+  updateStockValue();
   setCountBadge("#stock-tab-count", state.stockDraft.length);
   $("#empty-stock").disabled = state.stockDraft.length === 0;
   const query = $("#stock-search").value.trim().toLocaleLowerCase(state.language);
@@ -2902,6 +2906,15 @@ function renderStock() {
   );
   setStockAddUnit();
   $("#stock-add-form").querySelector("button").disabled = !$("#stock-add-item").value;
+}
+
+function updateStockValue() {
+  const total = estimatedStockValue(
+    state.stockDraft,
+    state.snapshot?.ingredients,
+    state.snapshot?.household_items,
+  );
+  $("#stock-total").textContent = formatMoney(total);
 }
 
 function setStockAddUnit() {
@@ -4399,6 +4412,7 @@ $("#stock-list").addEventListener("input", (event) => {
   } else {
     target.notes = control.value;
   }
+  updateStockValue();
   scheduleStockUpdate();
 });
 

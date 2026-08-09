@@ -909,6 +909,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round
   box-shadow: var(--shadow);
 }
 .standalone-stock-panel { margin-bottom: 0; }
+.stock-value-summary { justify-content: flex-start; }
 
 .data-overview { margin-bottom: 18px; padding: 22px; }
 .data-overview-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
