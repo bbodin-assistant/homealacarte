@@ -8,6 +8,7 @@ const [app, feature] = await Promise.all([
 
 assert.match(app, /createDishEditorFeature/);
 assert.match(app, /dishEditorFeature\.mount\(\)/);
+assert.doesNotMatch(app, /selectAll: \$,/);
 assert.doesNotMatch(app, /#new-dish-form.*addEventListener/);
 assert.match(feature, /#new-dish-form.*addEventListener/);
 assert.match(feature, /send\("save-dish"/);

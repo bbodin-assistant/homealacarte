@@ -15,13 +15,8 @@ import {
   synchronizePrivateState,
 } from "./storage.js?v=homealacarte-77";
 import { t, translations } from "./translations.js?v=homealacarte-77";
-import { latestPriceTrend } from "./item-details.js?v=homealacarte-77";
 import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-77";
 import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-77";
-import {
-  catalogueCategories,
-  filterCatalogueItems,
-} from "./catalogue-filters.js?v=homealacarte-77";
 import {
   loadBundledDefaults,
   mergeBundledDishClassifications,
@@ -36,6 +31,7 @@ import { createDishesFeature } from "./features/dishes.js?v=homealacarte-77";
 import { createAutoMenuFeature } from "./features/auto-menu.js?v=homealacarte-77";
 import { createItemDetailsFeature } from "./features/item-details.js?v=homealacarte-77";
 import { createDishEditorFeature } from "./features/dish-editor.js?v=homealacarte-77";
+import { createCatalogueFeature } from "./features/catalogue.js?v=homealacarte-77";
 import {
   createFormatters,
   displayCategory,
@@ -391,461 +387,6 @@ function renderGroceryModeCounts() {
   setCountBadge("#grocery-tab-count", remaining);
   setCountBadge("#stock-tab-count", state.stockDraft.length);
   setCountBadge("#needs-tab-count", state.customDraft.length);
-}
-
-function priceHistoryFormPayload(selector) {
-  return [...$(selector).querySelectorAll(".item-price-history-row")].map((row) => {
-    const priceInput = row.querySelector("[data-price-observation-price]");
-    return {
-      date: row.querySelector("[data-price-observation-date]").value,
-      price: priceInput.value === "" ? Number.NaN : Number(priceInput.value),
-      description: row.querySelector("[data-price-observation-description]").value.trim(),
-    };
-  });
-}
-
-function priceHistoryFormIsValid(history) {
-  return history.every((observation) =>
-    Number.isFinite(observation.price) && observation.price >= 0);
-}
-
-function priceHistoryRowMarkup(observation = {}) {
-  return `
-    <div class="item-price-history-row">
-      <label class="item-price-history-date">
-        <span class="sr-only">${escapeHtml(t(state.language, "observation_date"))}</span>
-        <input type="text" inputmode="numeric" placeholder="${escapeHtml(t(state.language, "date_format_hint"))}" value="${escapeHtml(observation.date || "")}" data-price-observation-date>
-      </label>
-      <label class="item-price-history-price">
-        <span class="sr-only">${escapeHtml(t(state.language, "observed_price"))}</span>
-        <input type="number" min="0" step="any" value="${escapeHtml(observation.price ?? "")}" data-price-observation-price required>
-      </label>
-      <label class="item-price-history-description">
-        <span class="sr-only">${escapeHtml(t(state.language, "observation_description"))}</span>
-        <input value="${escapeHtml(observation.description || "")}" data-price-observation-description>
-      </label>
-      <button class="icon-button remove-price-observation" type="button" aria-label="${escapeHtml(t(state.language, "remove_price_observation"))}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-      </button>
-    </div>`;
-}
-
-function updatePriceHistoryEmptyState(selector) {
-  const list = $(selector);
-  const empty = list.querySelector(".item-price-history-empty");
-  if (list.querySelector(".item-price-history-row")) {
-    empty?.remove();
-  } else if (!empty) {
-    list.innerHTML = `<p class="item-price-history-empty">${escapeHtml(t(state.language, "no_price_observations"))}</p>`;
-  }
-}
-
-function renderPriceHistoryForm(selector, history = []) {
-  $(selector).innerHTML = history.map(priceHistoryRowMarkup).join("");
-  updatePriceHistoryEmptyState(selector);
-}
-
-function addPriceHistoryFormRow(selector) {
-  const list = $(selector);
-  list.querySelector(".item-price-history-empty")?.remove();
-  list.insertAdjacentHTML("beforeend", priceHistoryRowMarkup());
-  list.querySelector(".item-price-history-row:last-child [data-price-observation-date]").focus();
-}
-
-function ingredientFormPayload() {
-  const existing = state.snapshot.ingredients
-    .find((ingredient) => ingredient.key === state.ingredientSelectedKey);
-  if (!existing && !state.itemEditorCreating) return null;
-  const name = $("#ingredient-name").value.trim();
-  return {
-    key: existing?.key || customIngredientKey(name),
-    name,
-    custom: existing ? Boolean(existing.custom) : true,
-    incomplete: $("#ingredient-incomplete").checked,
-    grams: Number($("#ingredient-grams").value),
-    kcal: Number($("#ingredient-kcal").value),
-    protein_g: Number($("#ingredient-protein").value),
-    carbs_g: Number($("#ingredient-carbs").value),
-    fat_g: Number($("#ingredient-fat").value),
-    fiber_g: Number($("#ingredient-fiber").value),
-    sugars_g: optionalInputNumber("#ingredient-sugars"),
-    saturated_fat_g: optionalInputNumber("#ingredient-saturated-fat"),
-    salt_g: optionalInputNumber("#ingredient-salt"),
-    fruit_vegetable_legume_percent: optionalInputNumber("#ingredient-fvl-percent"),
-    category: normalizedCategory($("#ingredient-category").value.trim()),
-    source: $("#ingredient-source").value.trim(),
-    url: $("#ingredient-url").value.trim(),
-    price_per_kg: Number($("#ingredient-price").value),
-    price_source: $("#ingredient-price-source").value.trim(),
-    price_checked_at: $("#ingredient-price-checked-at").value,
-    measure_unit: $("#ingredient-measure-unit").value.trim(),
-    grams_per_measure_unit: Number($("#ingredient-grams-per-unit").value),
-    purchase_unit: $("#ingredient-purchase-unit").value.trim(),
-    purchase_quantity_grams: Number($("#ingredient-purchase-grams").value),
-    price_history: priceHistoryFormPayload("#ingredient-price-history-list"),
-  };
-}
-
-function ingredientFormSignature() {
-  return JSON.stringify(ingredientFormPayload());
-}
-
-function ingredientFormIsValid(ingredient) {
-  if (!ingredient
-    || !ingredient.name
-    || !ingredient.measure_unit
-    || !ingredient.purchase_unit
-    || (!ingredient.incomplete && !ingredient.category)) return false;
-  return [
-    ingredient.grams,
-    ingredient.grams_per_measure_unit,
-    ingredient.purchase_quantity_grams,
-  ].every((value) => Number.isFinite(value) && value > 0)
-    && [
-      ingredient.kcal,
-      ingredient.protein_g,
-      ingredient.carbs_g,
-      ingredient.fat_g,
-      ingredient.fiber_g,
-      ingredient.price_per_kg,
-    ].every((value) => Number.isFinite(value) && value >= 0)
-    && [
-      ingredient.sugars_g,
-      ingredient.saturated_fat_g,
-      ingredient.salt_g,
-    ].every((value) => value == null || (Number.isFinite(value) && value >= 0))
-    && priceHistoryFormIsValid(ingredient.price_history)
-    && (ingredient.fruit_vegetable_legume_percent == null
-      || (Number.isFinite(ingredient.fruit_vegetable_legume_percent)
-        && ingredient.fruit_vegetable_legume_percent >= 0
-        && ingredient.fruit_vegetable_legume_percent <= 100));
-}
-
-function updateIngredientSaveState() {
-  updateIngredientPurchasePrice();
-  const payload = ingredientFormPayload();
-  $("#ingredient-save").disabled = !ingredientFormIsValid(payload)
-    || ingredientFormSignature() === state.ingredientOriginal;
-}
-
-function updateIngredientPurchasePrice() {
-  const pricePerKg = Number($("#ingredient-price").value);
-  const purchaseGrams = Number($("#ingredient-purchase-grams").value);
-  const calculated = pricePerKg * purchaseGrams / 1000;
-  $("#ingredient-purchase-price").value = Number.isFinite(calculated)
-    ? formatMoney(calculated)
-    : "";
-}
-
-function populateIngredientForm(key) {
-  const ingredient = state.snapshot.ingredients.find((item) => item.key === key);
-  if (!ingredient) return;
-  state.ingredientSelectedKey = ingredient.key;
-  state.itemEditorCreating = false;
-  $("#ingredient-delete").hidden = false;
-  $("#ingredient-save").textContent = t(state.language, "save_changes");
-  $("#ingredient-editor-name").textContent = ingredient.name;
-  $("#ingredient-name").value = ingredient.name;
-  $("#ingredient-category").value = displayCategory(ingredient.category);
-  $("#ingredient-measure-unit").value = ingredient.measure_unit;
-  $("#ingredient-grams-per-unit").value = formatInputNumber(ingredient.grams_per_measure_unit);
-  $("#ingredient-grams").value = formatInputNumber(ingredient.grams);
-  $("#ingredient-kcal").value = formatInputNumber(ingredient.kcal);
-  $("#ingredient-protein").value = formatInputNumber(ingredient.protein_g);
-  $("#ingredient-carbs").value = formatInputNumber(ingredient.carbs_g);
-  $("#ingredient-fat").value = formatInputNumber(ingredient.fat_g);
-  $("#ingredient-fiber").value = formatInputNumber(ingredient.fiber_g);
-  $("#ingredient-sugars").value = ingredient.sugars_g == null ? "" : formatInputNumber(ingredient.sugars_g);
-  $("#ingredient-saturated-fat").value = ingredient.saturated_fat_g == null ? "" : formatInputNumber(ingredient.saturated_fat_g);
-  $("#ingredient-salt").value = ingredient.salt_g == null ? "" : formatInputNumber(ingredient.salt_g);
-  $("#ingredient-fvl-percent").value = ingredient.fruit_vegetable_legume_percent == null
-    ? ""
-    : formatInputNumber(ingredient.fruit_vegetable_legume_percent);
-  $("#ingredient-price").value = formatInputNumber(ingredient.price_per_kg);
-  $("#ingredient-price-source").value = ingredient.price_source || "";
-  $("#ingredient-price-checked-at").value = ingredient.price_checked_at || "";
-  $("#ingredient-purchase-unit").value = ingredient.purchase_unit;
-  $("#ingredient-purchase-grams").value = formatInputNumber(ingredient.purchase_quantity_grams);
-  $("#ingredient-source").value = ingredient.source;
-  $("#ingredient-url").value = ingredient.url;
-  $("#ingredient-incomplete").checked = Boolean(ingredient.incomplete);
-  renderPriceHistoryForm("#ingredient-price-history-list", ingredient.price_history);
-  updateIngredientPurchasePrice();
-  const status = $("#ingredient-completeness");
-  status.className = `ingredient-completeness ${ingredient.incomplete ? "incomplete" : "complete"}`;
-  status.textContent = t(
-    state.language,
-    ingredient.incomplete ? "ingredient_incomplete" : "ingredient_complete",
-  );
-  $("#ingredient-form-message").textContent = "";
-  state.ingredientOriginal = ingredientFormSignature();
-  updateIngredientSaveState();
-}
-
-function householdItemFormPayload() {
-  const existing = (state.snapshot.household_items || [])
-    .find((item) => item.key === state.ingredientSelectedKey);
-  if (!existing && !state.itemEditorCreating) return null;
-  const name = $("#household-item-name").value.trim();
-  const lastingDays = $("#household-item-lasting-days").value;
-  return {
-    key: existing?.key || customIngredientKey(name),
-    name,
-    category: normalizedCategory($("#household-item-category").value.trim()),
-    purchase_unit: $("#household-item-purchase-unit").value.trim(),
-    purchase_quantity: Number($("#household-item-purchase-quantity").value),
-    estimated_price: Number($("#household-item-price").value),
-    measure_unit: $("#household-item-measure-unit").value.trim(),
-    last_bought_at: $("#household-item-last-bought").value,
-    lasting_days: lastingDays === "" ? null : Number(lastingDays),
-    notes: $("#household-item-notes").value.trim(),
-    custom: existing ? Boolean(existing.custom) : true,
-    price_history: priceHistoryFormPayload("#household-item-price-history-list"),
-  };
-}
-
-function householdItemFormSignature() {
-  return JSON.stringify(householdItemFormPayload());
-}
-
-function householdItemFormIsValid(item) {
-  return Boolean(item
-    && item.name
-    && item.category
-    && item.purchase_unit
-    && item.measure_unit
-    && Number.isFinite(item.purchase_quantity)
-    && item.purchase_quantity > 0
-    && Number.isFinite(item.estimated_price)
-    && item.estimated_price >= 0
-    && priceHistoryFormIsValid(item.price_history)
-    && (item.lasting_days == null
-      || (Number.isFinite(item.lasting_days) && item.lasting_days > 0)));
-}
-
-function updateHouseholdItemSaveState() {
-  const item = householdItemFormPayload();
-  $("#household-item-save").disabled = !householdItemFormIsValid(item)
-    || householdItemFormSignature() === state.householdItemOriginal;
-}
-
-function populateHouseholdItemForm(key) {
-  const item = (state.snapshot.household_items || []).find((candidate) => candidate.key === key);
-  if (!item) return;
-  state.ingredientSelectedKey = item.key;
-  state.itemEditorCreating = false;
-  $("#household-item-delete").hidden = false;
-  $("#household-item-save").textContent = t(state.language, "save_changes");
-  $("#household-item-editor-name").textContent = item.name;
-  $("#household-item-name").value = item.name;
-  $("#household-item-category").value = displayCategory(item.category);
-  $("#household-item-measure-unit").value = item.measure_unit;
-  $("#household-item-purchase-unit").value = item.purchase_unit;
-  $("#household-item-purchase-quantity").value = formatInputNumber(item.purchase_quantity);
-  $("#household-item-price").value = formatInputNumber(item.estimated_price);
-  $("#household-item-last-bought").value = item.last_bought_at || "";
-  $("#household-item-lasting-days").value = item.lasting_days ?? "";
-  $("#household-item-notes").value = item.notes || "";
-  renderPriceHistoryForm("#household-item-price-history-list", item.price_history);
-  $("#household-item-form-message").textContent = "";
-  state.householdItemOriginal = householdItemFormSignature();
-  updateHouseholdItemSaveState();
-}
-
-function closeItemEditor() {
-  state.ingredientSelectedKey = null;
-  state.itemEditorCreating = false;
-  state.ingredientOriginal = "";
-  state.householdItemOriginal = "";
-  $("#ingredient-form").hidden = true;
-  $("#household-item-form").hidden = true;
-  $("#add-catalogue-item").hidden = false;
-  $("#item-filter-panel").hidden = false;
-  $("#item-catalogue").hidden = false;
-}
-
-function openItemEditor(key, kind) {
-  state.itemEditorCreating = false;
-  $("#add-catalogue-item").hidden = true;
-  $("#item-filter-panel").hidden = true;
-  $("#item-catalogue").hidden = true;
-  const food = kind === "food";
-  $("#ingredient-form").hidden = !food;
-  $("#household-item-form").hidden = food;
-  if (food) populateIngredientForm(key);
-  else populateHouseholdItemForm(key);
-}
-
-function openNewCatalogueItem() {
-  state.ingredientSelectedKey = null;
-  state.itemEditorCreating = true;
-  $("#add-catalogue-item").hidden = true;
-  $("#item-filter-panel").hidden = true;
-  $("#item-catalogue").hidden = true;
-  const food = state.itemCatalogueTab === "food";
-  $("#ingredient-form").hidden = !food;
-  $("#household-item-form").hidden = food;
-  const selectedCategory = displayCategory($("#item-category-filter").value);
-  if (food) {
-    $("#ingredient-editor-name").textContent = t(state.language, "new_food_item");
-    $("#ingredient-delete").hidden = true;
-    $("#ingredient-save").textContent = t(state.language, "add_catalogue_item");
-    $("#ingredient-name").value = "";
-    $("#ingredient-category").value = selectedCategory;
-    $("#ingredient-measure-unit").value = "g";
-    $("#ingredient-grams-per-unit").value = "1";
-    $("#ingredient-grams").value = "100";
-    $("#ingredient-kcal").value = "0";
-    $("#ingredient-protein").value = "0";
-    $("#ingredient-carbs").value = "0";
-    $("#ingredient-fat").value = "0";
-    $("#ingredient-fiber").value = "0";
-    $("#ingredient-sugars").value = "";
-    $("#ingredient-saturated-fat").value = "";
-    $("#ingredient-salt").value = "";
-    $("#ingredient-fvl-percent").value = "";
-    $("#ingredient-price").value = "0";
-    $("#ingredient-price-source").value = "";
-    $("#ingredient-price-checked-at").value = "";
-    $("#ingredient-purchase-unit").value = "1 kg";
-    $("#ingredient-purchase-grams").value = "1000";
-    $("#ingredient-source").value = "";
-    $("#ingredient-url").value = "";
-    $("#ingredient-incomplete").checked = true;
-    renderPriceHistoryForm("#ingredient-price-history-list");
-    $("#ingredient-completeness").className = "ingredient-completeness incomplete";
-    $("#ingredient-completeness").textContent = t(state.language, "ingredient_incomplete");
-    $("#ingredient-form-message").textContent = "";
-    state.ingredientOriginal = "";
-    updateIngredientSaveState();
-    $("#ingredient-name").focus();
-    return;
-  }
-  $("#household-item-editor-name").textContent = t(state.language, "new_general_item");
-  $("#household-item-delete").hidden = true;
-  $("#household-item-save").textContent = t(state.language, "add_catalogue_item");
-  $("#household-item-name").value = "";
-  $("#household-item-category").value = selectedCategory || t(state.language, "other");
-  $("#household-item-measure-unit").value = t(state.language, "units");
-  $("#household-item-purchase-unit").value = t(state.language, "units");
-  $("#household-item-purchase-quantity").value = "1";
-  $("#household-item-price").value = "0";
-  $("#household-item-last-bought").value = "";
-  $("#household-item-lasting-days").value = "";
-  $("#household-item-notes").value = "";
-  renderPriceHistoryForm("#household-item-price-history-list");
-  $("#household-item-form-message").textContent = "";
-  state.householdItemOriginal = "";
-  updateHouseholdItemSaveState();
-  $("#household-item-name").focus();
-}
-
-function configureItemCategoryFilter(items) {
-  const select = $("#item-category-filter");
-  const categories = catalogueCategories(items);
-  const selected = categories.includes(select.value) ? select.value : "";
-  select.innerHTML = `
-    <option value="">${escapeHtml(t(state.language, "all_categories"))}</option>
-    ${categories.map((category) =>
-    `<option value="${escapeHtml(category)}">${escapeHtml(displayCategory(category))}</option>`)
-    .join("")}`;
-  select.value = selected;
-  return selected;
-}
-
-function itemPriceTrendMarkup(item) {
-  const trend = latestPriceTrend([item]);
-  if (!trend) return "";
-  const directionKey = trend.direction === "up" ? "price_increased" : "price_decreased";
-  const percent = trend.percent == null
-    ? ""
-    : ` ${formatNumber(Math.abs(trend.percent), 1)} %`;
-  return `<span class="item-price-trend ${trend.direction}" title="${escapeHtml(translatedTemplate(directionKey, {
-    previous: formatMoney(trend.previous),
-    latest: formatMoney(trend.latest),
-  }))}">
-    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8 4l4 4-4 4"/></svg>
-    <small>${escapeHtml(percent.trim())}</small>
-  </span>`;
-}
-
-function renderItemsCatalogue() {
-  const ingredients = state.snapshot.ingredients || [];
-  const householdItems = state.snapshot.household_items || [];
-  const incompleteCount = ingredients.filter((ingredient) => ingredient.incomplete).length;
-  setCountBadge("#ingredient-incomplete-count", incompleteCount);
-  $("#add-catalogue-item-label").textContent = t(state.language, "short_add");
-  const catalogueRows = state.itemCatalogueTab === "food"
-    ? ingredients.map((item) => ({ ...item, item_kind: "food" }))
-    : householdItems.map((item) => ({
-      ...item,
-      item_kind: "general",
-      incomplete: false,
-    }));
-  const selectedCategory = configureItemCategoryFilter(catalogueRows);
-  const rows = filterCatalogueItems(catalogueRows, {
-    name: $("#item-search").value,
-    category: selectedCategory,
-  })
-    .sort((left, right) => left.name.localeCompare(right.name, state.language));
-  $("#item-catalogue").innerHTML = `
-    <div class="item-catalogue-tabs" role="tablist" aria-label="${escapeHtml(t(state.language, "item_type"))}">
-      <button class="item-catalogue-tab${state.itemCatalogueTab === "food" ? " active" : ""}" type="button" role="tab" aria-selected="${state.itemCatalogueTab === "food"}" data-item-catalogue-tab="food">
-        <span>${escapeHtml(t(state.language, "food_items_tab"))}</span>
-        <span class="item-catalogue-tab-count">${ingredients.length}</span>
-      </button>
-      <button class="item-catalogue-tab${state.itemCatalogueTab === "other" ? " active" : ""}" type="button" role="tab" aria-selected="${state.itemCatalogueTab === "other"}" data-item-catalogue-tab="other">
-        <span>${escapeHtml(t(state.language, "other_items_tab"))}</span>
-        <span class="item-catalogue-tab-count">${householdItems.length}</span>
-      </button>
-    </div>
-    <div class="item-catalogue-head">
-      <span>${escapeHtml(t(state.language, "name"))}</span>
-      <span>${escapeHtml(t(state.language, "item_type"))}</span>
-      <span>${escapeHtml(t(state.language, "category"))}</span>
-      <span></span>
-    </div>
-    ${rows.map((item) => `
-      <div class="item-catalogue-row" role="button" tabindex="0" data-item-details="${escapeHtml(encodeURIComponent(item.key))}" data-item-kind="${item.item_kind}" aria-label="${escapeHtml(`${t(state.language, "details")}: ${item.name}`)}">
-        <strong class="item-catalogue-name">
-          <span class="item-catalogue-name-line"><span>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>${item.item_kind === "food" ? itemPriceTrendMarkup(item) : ""}</span>
-          ${item.item_kind === "food" && ingredientNutriScoreMissing(item)
-            ? `<small>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: ingredientNutriScoreMissing(item) }))}</small>`
-            : ""}
-        </strong>
-        <span class="item-type-badge">${escapeHtml(t(state.language, item.item_kind === "food" ? "food_item" : "general_item"))}</span>
-        <span>${escapeHtml(displayCategory(item.category))}</span>
-        <span class="item-catalogue-actions">
-          <button class="button ghost compact" type="button" data-item-edit="${escapeHtml(encodeURIComponent(item.key))}" data-item-kind="${item.item_kind}" aria-label="${escapeHtml(`${t(state.language, "edit")}: ${item.name}`)}">${escapeHtml(t(state.language, "edit"))}</button>
-          <button class="icon-button" type="button" data-item-delete="${escapeHtml(encodeURIComponent(item.key))}" data-item-name="${escapeHtml(item.name)}" aria-label="${escapeHtml(`${t(state.language, "delete")}: ${item.name}`)}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-          </button>
-        </span>
-      </div>
-    `).join("") || `<p class="item-catalogue-empty">${escapeHtml(t(state.language, catalogueRows.length ? "no_matching_items" : state.itemCatalogueTab === "food" ? "no_food_items" : "no_other_items"))}</p>`}
-  `;
-  if (!$("#ingredient-form").hidden && state.ingredientSelectedKey) {
-    const exists = ingredients.some((item) => item.key === state.ingredientSelectedKey);
-    if (exists) populateIngredientForm(state.ingredientSelectedKey);
-    else closeItemEditor();
-  } else if (!$("#household-item-form").hidden && state.ingredientSelectedKey) {
-    const exists = (state.snapshot.household_items || [])
-      .some((item) => item.key === state.ingredientSelectedKey);
-    if (exists) populateHouseholdItemForm(state.ingredientSelectedKey);
-    else closeItemEditor();
-  }
-}
-
-function requestItemDeletion(key, name) {
-  openConfirmation({
-    title: translatedTemplate("delete_item_title", { name }),
-    message: t(state.language, "delete_item_message"),
-    confirmLabel: t(state.language, "delete"),
-    action: () => {
-      closeItemEditor();
-      send("delete-item", { key });
-    },
-  });
 }
 
 function renderSummary() {
@@ -1614,6 +1155,30 @@ const addStockQuantity = stockFeature.addQuantity;
 const renderStock = stockFeature.render;
 const scheduleStockUpdate = stockFeature.scheduleUpdate;
 
+const catalogueFeature = createCatalogueFeature({
+  state,
+  select: $,
+  selectAll: $$,
+  translate: (key) => t(state.language, key),
+  translatedTemplate,
+  escapeHtml,
+  formatInputNumber,
+  formatMoney,
+  formatNumber,
+  displayCategory,
+  normalizedCategory,
+  optionalInputNumber,
+  customIngredientKey: (...args) => dishEditorFeature.customIngredientKey(...args),
+  ingredientNutriScoreMissing,
+  setCountBadge,
+  openConfirmation,
+  openDetails: (...args) => itemDetailsFeature.openCatalogue(...args),
+  send,
+});
+const closeItemEditor = catalogueFeature.closeEditor;
+const openItemEditor = catalogueFeature.openEditor;
+const renderItemsCatalogue = catalogueFeature.render;
+
 const itemDetailsFeature = createItemDetailsFeature({
   state,
   select: $,
@@ -1635,8 +1200,8 @@ const itemDetailsFeature = createItemDetailsFeature({
   scheduleMenuUpdate,
   send,
   switchTab,
-  renderItemsCatalogue,
-  openItemEditor,
+  renderItemsCatalogue: (...args) => catalogueFeature.render(...args),
+  openItemEditor: (...args) => catalogueFeature.openEditor(...args),
 });
 const closeGroceryDetails = itemDetailsFeature.close;
 const openCatalogueItemDetails = itemDetailsFeature.openCatalogue;
@@ -1676,7 +1241,7 @@ const renderDishes = dishesFeature.render;
 const dishEditorFeature = createDishEditorFeature({
   state,
   select: $,
-  selectAll: $,
+  selectAll: $$,
   documentRef: document,
   translate: (key) => t(state.language, key),
   escapeHtml,
@@ -1687,13 +1252,12 @@ const dishEditorFeature = createDishEditorFeature({
   send,
 });
 const closeNewDishDialog = dishEditorFeature.close;
-const customIngredientKey = dishEditorFeature.customIngredientKey;
 const openDishForm = dishEditorFeature.open;
 
 const autoMenuFeature = createAutoMenuFeature({
   state,
   select: $,
-  selectAll: $,
+  selectAll: $$,
   storage: localStorage,
   translate: (key) => t(state.language, key),
   escapeHtml,
@@ -1994,122 +1558,7 @@ document.addEventListener("click", (event) => {
     localStorage.setItem("homealacarte-grocery-mode", state.groceryMode);
   }
 });
-$("#item-filter-panel").addEventListener("input", (event) => {
-  if (event.target.matches("#item-search")) renderItemsCatalogue();
-});
-$("#item-filter-panel").addEventListener("change", (event) => {
-  if (event.target.matches("#item-category-filter")) renderItemsCatalogue();
-});
-$("#item-clear-filters").addEventListener("click", () => {
-  $("#item-search").value = "";
-  $("#item-category-filter").value = "";
-  renderItemsCatalogue();
-  $("#item-search").focus();
-});
 $("#color-my-life").addEventListener("click", randomizeColorTheme);
-$("#add-catalogue-item").addEventListener("click", openNewCatalogueItem);
-$("#item-catalogue").addEventListener("click", (event) => {
-  const tab = event.target.closest("[data-item-catalogue-tab]");
-  if (tab) {
-    state.itemCatalogueTab = tab.dataset.itemCatalogueTab;
-    localStorage.setItem("homealacarte-item-catalogue-tab", state.itemCatalogueTab);
-    renderItemsCatalogue();
-    return;
-  }
-  const edit = event.target.closest("[data-item-edit]");
-  if (edit) {
-    openItemEditor(decodeURIComponent(edit.dataset.itemEdit), edit.dataset.itemKind);
-    return;
-  }
-  const remove = event.target.closest("[data-item-delete]");
-  if (remove) {
-    requestItemDeletion(
-      decodeURIComponent(remove.dataset.itemDelete),
-      remove.dataset.itemName,
-    );
-    return;
-  }
-  const details = event.target.closest("[data-item-details]");
-  if (details) {
-    openCatalogueItemDetails(
-      decodeURIComponent(details.dataset.itemDetails),
-      details.dataset.itemKind,
-    );
-  }
-});
-$("#item-catalogue").addEventListener("keydown", (event) => {
-  if (!["Enter", " "].includes(event.key) || event.target.closest("button")) return;
-  const details = event.target.closest("[data-item-details]");
-  if (!details) return;
-  event.preventDefault();
-  openCatalogueItemDetails(
-    decodeURIComponent(details.dataset.itemDetails),
-    details.dataset.itemKind,
-  );
-});
-$$(".item-editor-back").forEach((button) => button.addEventListener("click", closeItemEditor));
-$("#ingredient-form").addEventListener("input", updateIngredientSaveState);
-$("#ingredient-form").addEventListener("change", updateIngredientSaveState);
-$("#ingredient-price-history-add").addEventListener("click", () => {
-  addPriceHistoryFormRow("#ingredient-price-history-list");
-  updateIngredientSaveState();
-});
-$("#ingredient-price-history-list").addEventListener("click", (event) => {
-  const remove = event.target.closest(".remove-price-observation");
-  if (!remove) return;
-  remove.closest(".item-price-history-row").remove();
-  updatePriceHistoryEmptyState("#ingredient-price-history-list");
-  updateIngredientSaveState();
-});
-$("#ingredient-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const ingredient = ingredientFormPayload();
-  if (!ingredientFormIsValid(ingredient)) {
-    $("#ingredient-form-message").textContent = t(state.language, "ingredient_invalid");
-    return;
-  }
-  const creating = state.itemEditorCreating;
-  if (creating) {
-    state.ingredientSelectedKey = ingredient.key;
-  }
-  send(creating ? "add-ingredient" : "replace-ingredient", { ingredient });
-});
-$("#ingredient-delete").addEventListener("click", () => {
-  const ingredient = state.snapshot.ingredients
-    .find((item) => item.key === state.ingredientSelectedKey);
-  if (ingredient) requestItemDeletion(ingredient.key, ingredient.name);
-});
-$("#household-item-form").addEventListener("input", updateHouseholdItemSaveState);
-$("#household-item-form").addEventListener("change", updateHouseholdItemSaveState);
-$("#household-item-price-history-add").addEventListener("click", () => {
-  addPriceHistoryFormRow("#household-item-price-history-list");
-  updateHouseholdItemSaveState();
-});
-$("#household-item-price-history-list").addEventListener("click", (event) => {
-  const remove = event.target.closest(".remove-price-observation");
-  if (!remove) return;
-  remove.closest(".item-price-history-row").remove();
-  updatePriceHistoryEmptyState("#household-item-price-history-list");
-  updateHouseholdItemSaveState();
-});
-$("#household-item-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const item = householdItemFormPayload();
-  if (!householdItemFormIsValid(item)) {
-    $("#household-item-form-message").textContent = t(state.language, "item_invalid");
-    return;
-  }
-  const creating = state.itemEditorCreating;
-  if (creating) {
-    state.ingredientSelectedKey = item.key;
-  }
-  send(creating ? "add-household-item" : "replace-household-item", { item });
-});
-$("#household-item-delete").addEventListener("click", () => {
-  const item = (state.snapshot.household_items || [])
-    .find((candidate) => candidate.key === state.ingredientSelectedKey);
-  if (item) requestItemDeletion(item.key, item.name);
-});
 $("#family-grid").addEventListener("click", (event) => {
   if (event.target.closest("#family-add-card")) {
     openFamilyDialog();
@@ -2751,6 +2200,7 @@ stockFeature.mount();
 extraNeedsFeature.mount();
 groceryFeature.mount();
 dishEditorFeature.mount();
+catalogueFeature.mount();
 itemDetailsFeature.mount();
 async function bootstrap() {
   applyColorTheme(state.colorTheme);

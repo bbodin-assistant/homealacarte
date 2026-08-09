@@ -27,32 +27,31 @@ Line count is not the only design signal. The first objective is to separate rea
 The first implementation batches are complete and validated:
 
 - browser foundations now live in `www/core/` (state, formatting, downloads, theme, searchable selects, and worker transport);
-- stock, extra needs, grocery, item details, the dish library/editor, and automatic-menu workflows now live in `www/features/` with their event handlers and focused tests;
+- stock, extra needs, grocery, item details, catalogue list/editors, the dish library/editor, and automatic-menu workflows now live in `www/features/` with their event handlers and focused tests;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
 
-After these batches, `www/app.js` is 2,800 lines, `src/engine.rs` is 575,
+After these batches, `www/app.js` is 2,252 lines, `src/engine.rs` is 575,
 `src/optimizer.rs` is 447, and `src/loader.rs` is 518. The remaining oversized
 entrypoint is therefore the next priority; CSS, HTML, and integration-test splits
 remain deliberately later phases.
 
 ### Remaining delivery estimate
 
-Ten implementation batches remain after the dish-loading extraction. Some may
+Nine implementation batches remain after the catalogue extraction. Some may
 become two commits when that keeps review size reasonable, but the architectural
 checkpoints are:
 
-1. catalogue list, ingredient editor, household-item editor, and price-history forms;
-2. family list, member editor, and food-rule editor;
-3. manual menu, dish details, scheduling, and replacement dialogs;
-4. data/account/privacy UI and the remaining application coordinator;
-5. local storage/authentication versus remote synchronization;
-6. CSS layers and feature stylesheets;
-7. deterministic HTML partial composition;
-8. domain integration-test ownership;
-9. source-size and dependency-boundary enforcement;
-10. full release validation and final cleanup.
+1. family list, member editor, and food-rule editor;
+2. manual menu, dish details, scheduling, and replacement dialogs;
+3. data/account/privacy UI and the remaining application coordinator;
+4. local storage/authentication versus remote synchronization;
+5. CSS layers and feature stylesheets;
+6. deterministic HTML partial composition;
+7. domain integration-test ownership;
+8. source-size and dependency-boundary enforcement;
+9. full release validation and final cleanup.
 
 This is an engineering estimate rather than a promise that every checkpoint maps
 to exactly one commit. The definition of done below remains the completion gate.

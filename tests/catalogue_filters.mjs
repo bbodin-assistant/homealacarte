@@ -32,14 +32,14 @@ assert.deepEqual(
 );
 assert.equal(filterCatalogueItems(foods).length, foods.length);
 
-const [app, index] = await Promise.all([
-  readFile(new URL("../www/app.js", import.meta.url), "utf8"),
+const [feature, index] = await Promise.all([
+  readFile(new URL("../www/features/catalogue.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
 ]);
 assert.match(index, /id="item-search"/);
 assert.match(index, /id="item-category-filter"/);
 assert.match(index, /id="item-clear-filters"/);
-assert.match(app, /configureItemCategoryFilter/);
-assert.match(app, /filterCatalogueItems/);
+assert.match(feature, /configureItemCategoryFilter/);
+assert.match(feature, /filterCatalogueItems/);
 
 console.log("Catalogue filters support name and active-tab category filtering.");
