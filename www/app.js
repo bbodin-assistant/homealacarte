@@ -35,6 +35,7 @@ import { createGroceryFeature } from "./features/grocery.js?v=homealacarte-77";
 import { createDishesFeature } from "./features/dishes.js?v=homealacarte-77";
 import { createAutoMenuFeature } from "./features/auto-menu.js?v=homealacarte-77";
 import { createItemDetailsFeature } from "./features/item-details.js?v=homealacarte-77";
+import { createDishEditorFeature } from "./features/dish-editor.js?v=homealacarte-77";
 import {
   createFormatters,
   displayCategory,
@@ -968,246 +969,6 @@ function familyMemberKey(name) {
   return key;
 }
 
-function newDishKey(name) {
-  const base = `dish_${name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "recipe"}`;
-  const existing = new Set(state.snapshot.item_options.map((item) => item.key));
-  let key = base;
-  let suffix = 2;
-  while (existing.has(key)) {
-    key = `${base}_${suffix}`;
-    suffix += 1;
-  }
-  return key;
-}
-
-function customIngredientKey(name, reserved = new Set()) {
-  const base = `item_${name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "custom"}`;
-  const existing = new Set([
-    ...state.snapshot.item_options.map((item) => item.key),
-    ...reserved,
-  ]);
-  let key = base;
-  let suffix = 2;
-  while (existing.has(key)) {
-    key = `${base}_${suffix}`;
-    suffix += 1;
-  }
-  return key;
-}
-
-function ingredientOptions(selectedKey = "") {
-  return state.snapshot.item_options
-    .filter((item) => item.kind === "ingredient")
-    .map((item) => `
-      <option value="${escapeHtml(item.key)}" ${item.key === selectedKey ? "selected" : ""}>
-        ${escapeHtml(item.name)}
-      </option>
-    `).join("");
-}
-
-function setNewDishComponentUnit(row) {
-  if (row.dataset.componentMode === "custom") return;
-  const item = state.snapshot.item_options.find(
-    (option) => option.key === row.querySelector("[data-component-item]").value,
-  );
-  const select = row.querySelector("[data-component-unit]");
-  const current = select.value;
-  const measureUnit = item?.measure_unit || "unit";
-  select.innerHTML = `<option value="g">g</option>${measureUnit === "g"
-    ? ""
-    : `<option value="${escapeHtml(measureUnit)}">${escapeHtml(measureUnit)}</option>`}`;
-  select.value = [...select.options].some((option) => option.value === current)
-    ? current
-    : measureUnit;
-}
-
-function setDishComponentMode(row, mode) {
-  const custom = mode === "custom";
-  row.dataset.componentMode = custom ? "custom" : "catalogue";
-  row.querySelector("[data-component-custom-toggle]").checked = custom;
-  setSearchableSelectHidden(row.querySelector("[data-component-item]"), custom);
-  row.querySelector("[data-component-custom-name]").hidden = !custom;
-  row.querySelector("[data-component-unit]").hidden = custom;
-  row.querySelector("[data-component-custom-unit]").hidden = !custom;
-  if (!custom) setNewDishComponentUnit(row);
-  updateDishFormSaveState();
-}
-
-function dishSourceNoteMarkup(note = "") {
-  return `
-    <div class="dish-source-note-row">
-      <textarea rows="3" data-dish-source-note aria-label="${escapeHtml(t(state.language, "recipe_note"))}">${escapeHtml(note)}</textarea>
-      <button class="icon-button remove-dish-source-note" type="button" aria-label="${escapeHtml(t(state.language, "remove_recipe_note"))}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-      </button>
-    </div>`;
-}
-
-function dishSourceNotesPayload() {
-  return $$("#new-dish-notes-list [data-dish-source-note]")
-    .map((input) => input.value.trim())
-    .filter(Boolean);
-}
-
-function renderDishSourceNotes(notes = []) {
-  const rows = notes.length ? notes : [""];
-  $("#new-dish-notes-list").innerHTML = rows.map(dishSourceNoteMarkup).join("");
-}
-
-function addDishSourceNote() {
-  $("#new-dish-notes-list").insertAdjacentHTML("beforeend", dishSourceNoteMarkup());
-  $("#new-dish-notes-list .dish-source-note-row:last-child textarea").focus();
-}
-
-function addNewDishComponent(component = null, servings = 1) {
-  const first = state.snapshot.item_options.find((item) => item.kind === "ingredient");
-  if (!first) return;
-  const selectedKey = component?.key || first.key;
-  const quantity = component
-    ? Number(component.quantity) * Number(servings)
-    : 1;
-  const row = document.createElement("div");
-  row.className = "new-dish-component-row";
-  row.dataset.componentMode = "catalogue";
-  row.innerHTML = `
-    <div class="dish-component-item-cell">
-      <select data-component-item required aria-label="${escapeHtml(t(state.language, "ingredient"))}">${ingredientOptions(selectedKey)}</select>
-      <input data-component-custom-name aria-label="${escapeHtml(t(state.language, "custom_ingredient_name"))}" placeholder="${escapeHtml(t(state.language, "custom_ingredient_name"))}" autocomplete="off" hidden>
-    </div>
-    <label class="dish-component-custom-toggle">
-      <input data-component-custom-toggle type="checkbox">
-      <span>${escapeHtml(t(state.language, "custom_item"))}</span>
-    </label>
-    <input data-component-quantity type="number" min="0.000000001" step="any" value="${formatInputNumber(quantity)}" required aria-label="${escapeHtml(t(state.language, "quantity"))}">
-    <div class="dish-component-unit-cell">
-      <select data-component-unit required></select>
-      <input data-component-custom-unit placeholder="${escapeHtml(t(state.language, "unit_name"))}" aria-label="${escapeHtml(t(state.language, "unit_name"))}" autocomplete="off" hidden>
-    </div>
-    <button class="icon-button remove-dish-component" type="button" title="${escapeHtml(t(state.language, "remove_ingredient"))}" aria-label="${escapeHtml(t(state.language, "remove_ingredient"))}">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-    </button>
-    <label class="dish-component-source-quantity">
-      <span>${escapeHtml(t(state.language, "component_source_quantity"))}</span>
-      <input data-component-source-quantity value="${escapeHtml(component?.source_quantity || "")}" placeholder="${escapeHtml(t(state.language, "component_source_quantity_placeholder"))}">
-    </label>
-  `;
-  $("#new-dish-component-list").append(row);
-  enhanceSearchableSelect(
-    row.querySelector("[data-component-item]"),
-    t(state.language, "search_items"),
-  );
-  setNewDishComponentUnit(row);
-  if (component?.quantity_unit) {
-    const unit = row.querySelector("[data-component-unit]");
-    if ([...unit.options].some((option) => option.value === component.quantity_unit)) {
-      unit.value = component.quantity_unit;
-    }
-  }
-  updateDishFormSaveState();
-}
-
-function dishFormSignature() {
-  return JSON.stringify({
-    name: $("#new-dish-name").value.trim(),
-    servings: Number($("#new-dish-servings").value),
-    recipe_url: $("#new-dish-url").value.trim(),
-    source: $("#new-dish-source").value.trim(),
-    nutri_score: $("#new-dish-nutri-score").value,
-    auto_menu_main: $("#new-dish-auto-menu-main").checked,
-    source_notes: dishSourceNotesPayload(),
-    components: $$("#new-dish-component-list .new-dish-component-row").map((row) => ({
-      mode: row.dataset.componentMode,
-      item_key: row.querySelector("[data-component-item]").value,
-      custom_name: row.querySelector("[data-component-custom-name]").value.trim(),
-      quantity: Number(row.querySelector("[data-component-quantity]").value),
-      quantity_unit: row.querySelector("[data-component-unit]").value,
-      custom_unit: row.querySelector("[data-component-custom-unit]").value.trim(),
-      source_quantity: row.querySelector("[data-component-source-quantity]").value.trim(),
-    })),
-  });
-}
-
-function dishFormIsValid() {
-  const servings = Number($("#new-dish-servings").value);
-  const rows = $$("#new-dish-component-list .new-dish-component-row");
-  return Boolean($("#new-dish-name").value.trim())
-    && Number.isFinite(servings)
-    && servings > 0
-    && rows.length > 0
-    && rows.every((row) => {
-      const quantity = Number(row.querySelector("[data-component-quantity]").value);
-      const custom = row.dataset.componentMode === "custom";
-      return Boolean(custom
-        ? row.querySelector("[data-component-custom-name]").value.trim()
-          && row.querySelector("[data-component-custom-unit]").value.trim()
-        : row.querySelector("[data-component-item]").value)
-        && Number.isFinite(quantity)
-        && quantity > 0
-        && Boolean(custom || row.querySelector("[data-component-unit]").value);
-    });
-}
-
-function updateDishFormSaveState() {
-  const button = $("#new-dish-save");
-  if (!button) return;
-  const unchanged = Boolean(state.dishFormKey)
-    && dishFormSignature() === state.dishFormOriginal;
-  button.disabled = !dishFormIsValid() || unchanged;
-}
-
-function openDishForm(dish = null) {
-  $("#new-dish-form").reset();
-  state.dishFormKey = dish?.key || null;
-  $("#new-dish-title").textContent = t(state.language, dish ? "edit_dish" : "new_dish");
-  $("#new-dish-intro").textContent = t(
-    state.language,
-    dish ? "edit_dish_intro" : "new_dish_intro",
-  );
-  $("#new-dish-save").textContent = t(state.language, dish ? "save_changes" : "save_dish");
-  $("#new-dish-name").value = dish?.name || "";
-  $("#new-dish-servings").value = formatInputNumber(dish?.servings || 4);
-  $("#new-dish-url").value = dish?.recipe_url || "";
-  $("#new-dish-source").value = dish?.source || "";
-  $("#new-dish-nutri-score").value = dish?.nutri_score_manual || "";
-  $("#new-dish-auto-menu-main").checked = dish?.auto_menu_main !== false;
-  $("#new-dish-nutri-status").textContent = dish
-    ? dishNutriScoreDetail(dish)
-    : t(state.language, "nutri_score_field_help");
-  renderDishSourceNotes(dish?.source_notes || []);
-  $("#new-dish-error").textContent = "";
-  $("#new-dish-component-list").innerHTML = "";
-  if (dish?.components?.length) {
-    dish.components.forEach((component) => addNewDishComponent(component, dish.servings));
-  } else {
-    addNewDishComponent();
-  }
-  state.dishFormOriginal = dishFormSignature();
-  updateDishFormSaveState();
-  const dialog = $("#new-dish-dialog");
-  if (!dialog.open) dialog.showModal();
-  $("#new-dish-name").focus();
-}
-
-function openNewDishDialog() {
-  openDishForm();
-}
-
-function closeNewDishDialog() {
-  state.dishFormKey = null;
-  state.dishFormOriginal = "";
-  $("#new-dish-dialog").close();
-}
-
 const FOOD_RULE_MEAL_CODES = [
   "breakfast",
   "morning_snack",
@@ -1912,6 +1673,23 @@ const dishesFeature = createDishesFeature({
 const configureDishRanges = dishesFeature.configureRanges;
 const renderDishes = dishesFeature.render;
 
+const dishEditorFeature = createDishEditorFeature({
+  state,
+  select: $,
+  selectAll: $,
+  documentRef: document,
+  translate: (key) => t(state.language, key),
+  escapeHtml,
+  formatInputNumber,
+  enhanceSearchableSelect,
+  setSearchableSelectHidden,
+  dishNutriScoreDetail,
+  send,
+});
+const closeNewDishDialog = dishEditorFeature.close;
+const customIngredientKey = dishEditorFeature.customIngredientKey;
+const openDishForm = dishEditorFeature.open;
+
 const autoMenuFeature = createAutoMenuFeature({
   state,
   select: $,
@@ -2229,118 +2007,6 @@ $("#item-clear-filters").addEventListener("click", () => {
   $("#item-search").focus();
 });
 $("#color-my-life").addEventListener("click", randomizeColorTheme);
-$("#add-dish").addEventListener("click", openNewDishDialog);
-$("#new-dish-close").addEventListener("click", closeNewDishDialog);
-$("#new-dish-cancel").addEventListener("click", closeNewDishDialog);
-$("#new-dish-add-component").addEventListener("click", () => addNewDishComponent());
-$("#new-dish-add-note").addEventListener("click", () => {
-  addDishSourceNote();
-  updateDishFormSaveState();
-});
-$("#new-dish-form").addEventListener("input", updateDishFormSaveState);
-$("#new-dish-form").addEventListener("change", updateDishFormSaveState);
-$("#new-dish-component-list").addEventListener("change", (event) => {
-  const row = event.target.closest(".new-dish-component-row");
-  if (row && event.target.matches("[data-component-item]")) setNewDishComponentUnit(row);
-  if (row && event.target.matches("[data-component-custom-toggle]")) {
-    setDishComponentMode(row, event.target.checked ? "custom" : "catalogue");
-  }
-  updateDishFormSaveState();
-});
-$("#new-dish-component-list").addEventListener("click", (event) => {
-  const remove = event.target.closest(".remove-dish-component");
-  if (!remove) return;
-  remove.closest(".new-dish-component-row").remove();
-  updateDishFormSaveState();
-});
-$("#new-dish-notes-list").addEventListener("click", (event) => {
-  const remove = event.target.closest(".remove-dish-source-note");
-  if (!remove) return;
-  remove.closest(".dish-source-note-row").remove();
-  if (!$("#new-dish-notes-list .dish-source-note-row")) renderDishSourceNotes();
-  updateDishFormSaveState();
-});
-$("#new-dish-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const name = $("#new-dish-name").value.trim();
-  const servings = Number($("#new-dish-servings").value);
-  if (!dishFormIsValid()) {
-    $("#new-dish-error").textContent = t(state.language, "new_dish_invalid");
-    return;
-  }
-  const reservedKeys = new Set();
-  const customIngredients = [];
-  const components = $$("#new-dish-component-list .new-dish-component-row").map((row) => {
-    const quantity = Number(row.querySelector("[data-component-quantity]").value);
-    const custom = row.dataset.componentMode === "custom";
-    const customName = row.querySelector("[data-component-custom-name]").value.trim();
-    const quantityUnit = custom
-      ? row.querySelector("[data-component-custom-unit]").value.trim()
-      : row.querySelector("[data-component-unit]").value;
-    const itemKey = custom
-      ? customIngredientKey(customName, reservedKeys)
-      : row.querySelector("[data-component-item]").value;
-    if (custom) {
-      reservedKeys.add(itemKey);
-      customIngredients.push({
-        key: itemKey,
-        name: customName,
-        custom: true,
-        incomplete: true,
-        grams: 100,
-        kcal: 0,
-        protein_g: 0,
-        carbs_g: 0,
-        fat_g: 0,
-        fiber_g: 0,
-        sugars_g: null,
-        saturated_fat_g: null,
-        salt_g: null,
-        fruit_vegetable_legume_percent: null,
-        category: "",
-        source: "",
-        url: "",
-        price_per_kg: 0,
-        price_source: "",
-        price_checked_at: "",
-        measure_unit: quantityUnit,
-        grams_per_measure_unit: 1,
-        purchase_unit: quantityUnit,
-        purchase_quantity_grams: 1,
-      });
-    }
-    return {
-      item_key: itemKey,
-      quantity,
-      quantity_unit: quantityUnit,
-      source_quantity: row.querySelector("[data-component-source-quantity]").value.trim()
-        || `${formatInputNumber(quantity)} ${quantityUnit}`,
-    };
-  });
-  if (!name || !Number.isFinite(servings) || servings <= 0
-    || !components.length
-    || components.some((component) => !Number.isFinite(component.quantity) || component.quantity <= 0)) {
-    $("#new-dish-error").textContent = t(state.language, "new_dish_invalid");
-    return;
-  }
-  const dishKey = state.dishFormKey || newDishKey(name);
-  send("save-dish", {
-    dish: {
-      key: dishKey,
-      name,
-      servings,
-      recipe_url: $("#new-dish-url").value.trim(),
-      source: $("#new-dish-source").value.trim(),
-      nutri_score: $("#new-dish-nutri-score").value,
-      auto_menu_main: $("#new-dish-auto-menu-main").checked,
-      source_notes: dishSourceNotesPayload(),
-      components,
-    },
-    customIngredients,
-    replacing: Boolean(state.dishFormKey),
-  });
-  closeNewDishDialog();
-});
 $("#add-catalogue-item").addEventListener("click", openNewCatalogueItem);
 $("#item-catalogue").addEventListener("click", (event) => {
   const tab = event.target.closest("[data-item-catalogue-tab]");
@@ -3084,6 +2750,7 @@ $("#empty-data").addEventListener("click", confirmHouseholdDataReset);
 stockFeature.mount();
 extraNeedsFeature.mount();
 groceryFeature.mount();
+dishEditorFeature.mount();
 itemDetailsFeature.mount();
 async function bootstrap() {
   applyColorTheme(state.colorTheme);

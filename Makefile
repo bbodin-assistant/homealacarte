@@ -51,6 +51,7 @@ test-web:
 	node tests/extra_needs_feature.mjs
 	node tests/grocery_total.mjs
 	node tests/dishes_feature.mjs
+	node tests/dish_editor_feature.mjs
 	node tests/auto_menu_feature.mjs
 
 test-browser-startup: web-build
