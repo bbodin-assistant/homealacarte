@@ -33,6 +33,7 @@ The first implementation batches are complete and validated:
 - the former 1,347-line stylesheet is split into six explicitly ordered layers under `www/styles/`, with responsive overrides last and every stylesheet below 500 lines;
 - `www/index.html` is now a 105-line composition template; six page partials and one shared-dialog partial are assembled deterministically by `scripts/build.py`, and the source-only partials are excluded from `dist`;
 - the former 1,006-line `tests/domain.rs` suite is split into loading, grocery/export, dishes, catalogue, stock, and family integration targets sharing one synthetic fixture;
+- `scripts/check_source_boundaries.py` enforces source-size limits, rejects stale exceptions, and prevents `www/core/` from importing features; it runs in `test-web` and `release-check`;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
@@ -45,12 +46,9 @@ scheduling and persistence callbacks.
 
 ### Remaining delivery estimate
 
-Two implementation checkpoints remain after the domain-test split. Some may
-become two commits when that keeps review size reasonable, but the architectural
-checkpoints are:
+One implementation checkpoint remains after boundary enforcement:
 
-1. source-size and dependency-boundary enforcement;
-2. full release validation and final cleanup.
+1. full release validation and final cleanup.
 
 This is an engineering estimate rather than a promise that every checkpoint maps
 to exactly one commit. The definition of done below remains the completion gate.

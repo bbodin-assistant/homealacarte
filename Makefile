@@ -7,7 +7,7 @@ PERSONAL_OVERLAY_DIR ?= ./perso-data
 PERSONAL_MERGED_IMPORT ?= ./private-import/homealacarte-merged.json
 PERSONAL_MERGE_AUDIT ?= ./private-import/homealacarte-merge-audit.json
 
-.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-browser-startup test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
+.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-architecture test-browser-startup test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
 
 build: rust-build web-build
 
@@ -33,6 +33,7 @@ test-domain:
 	cargo test --test loading --test grocery --test dishes --test catalogue --test stock --test family
 
 test-web:
+	python3 scripts/check_source_boundaries.py
 	node --check www/app.js
 	node --check www/storage.js
 	node --check www/stock-availability.js
@@ -118,7 +119,10 @@ test-catalogue-add:
 test-price-history-labels:
 	node tests/price_history_labels.mjs
 
-release-check: test build
+test-architecture:
+	python3 scripts/check_source_boundaries.py
+
+release-check: test test-web build
 	python3 scripts/release_check.py
 
 clean:
