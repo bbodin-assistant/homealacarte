@@ -26,13 +26,13 @@ Line count is not the only design signal. The first objective is to separate rea
 
 The first implementation batches are complete and validated:
 
-- browser foundations now live in `www/core/` (state, formatting, downloads, theme, and searchable selects);
-- stock, extra needs, grocery, dishes, and automatic-menu workflows now live in `www/features/` with their event handlers and focused tests;
+- browser foundations now live in `www/core/` (state, formatting, downloads, theme, searchable selects, and worker transport);
+- stock, extra needs, grocery, item details, dishes, and automatic-menu workflows now live in `www/features/` with their event handlers and focused tests;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and optimizer support/solver construction have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
 
-After these batches, `www/app.js` is 3,543 lines, `src/engine.rs` is 575,
+After these batches, `www/app.js` is 3,134 lines, `src/engine.rs` is 575,
 `src/optimizer.rs` is 447, and `src/loader.rs` is 752. The remaining oversized
 entrypoint is therefore the next priority; CSS, HTML, and integration-test splits
 remain deliberately later phases.

@@ -15,13 +15,7 @@ import {
   synchronizePrivateState,
 } from "./storage.js?v=homealacarte-77";
 import { t, translations } from "./translations.js?v=homealacarte-77";
-import {
-  catalogItemsForGrocery,
-  combinedPriceHistory,
-  latestPriceTrend,
-  menuUsageContext,
-  priceChartGeometry,
-} from "./item-details.js?v=homealacarte-77";
+import { latestPriceTrend } from "./item-details.js?v=homealacarte-77";
 import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-77";
 import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-77";
 import {
@@ -40,6 +34,7 @@ import { createExtraNeedsFeature } from "./features/extra-needs.js?v=homealacart
 import { createGroceryFeature } from "./features/grocery.js?v=homealacarte-77";
 import { createDishesFeature } from "./features/dishes.js?v=homealacarte-77";
 import { createAutoMenuFeature } from "./features/auto-menu.js?v=homealacarte-77";
+import { createItemDetailsFeature } from "./features/item-details.js?v=homealacarte-77";
 import {
   createFormatters,
   displayCategory,
@@ -53,6 +48,7 @@ import { createSearchableSelect } from "./core/searchable-select.js?v=homealacar
 import { buildZip, downloadBytes, downloadText } from "./core/downloads.js?v=homealacarte-77";
 import { createThemeController } from "./core/theme.js?v=homealacarte-77";
 import { createAppState } from "./core/app-state.js?v=homealacarte-77";
+import { createWorkerClient } from "./core/worker-client.js?v=homealacarte-77";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -105,26 +101,6 @@ const NUTRI_SCORE_FIELDS = [
   "salt_g",
   "fruit_vegetable_legume_percent",
 ];
-const EDITABLE_DETAIL_FIELDS = {
-  sugars_g: { label: "sugars_grams", kind: "number", reference: "nutrition" },
-  saturated_fat_g: { label: "saturated_fat_grams", kind: "number", reference: "nutrition" },
-  salt_g: { label: "salt_grams", kind: "number", reference: "nutrition" },
-  fruit_vegetable_legume_percent: {
-    label: "fruit_vegetable_legume_percent",
-    kind: "number",
-    reference: "percent",
-  },
-  category: { label: "category", kind: "text" },
-  source: { label: "source", kind: "text" },
-  url: { label: "source_url", kind: "text", inputMode: "url" },
-  price_checked_at: {
-    label: "price_checked_at",
-    kind: "text",
-    inputMode: "numeric",
-    placeholder: "date_format_hint",
-  },
-  price_source: { label: "price_source", kind: "text" },
-};
 const ingredientNutriScoreMissing = (ingredient) =>
   NUTRI_SCORE_FIELDS.filter((field) => ingredient[field] == null).length;
 
@@ -143,14 +119,6 @@ function dishNutriScoreDetail(dish) {
   );
 }
 
-
-function send(type, payload = {}) {
-  const requestId = ++state.requestId;
-  state.latestRequest = requestId;
-  worker.postMessage({ requestId, type, ...payload });
-  setBusy(true);
-  return requestId;
-}
 
 function setBusy(busy, message = "") {
   const status = $("#status");
@@ -209,8 +177,7 @@ function clearError() {
   renderStorageStatus(state.storageStatus);
 }
 
-worker.onmessage = async ({ data }) => {
-  if (data.requestId < state.latestRequest && data.type !== "status") return;
+async function handleWorkerMessage(data) {
   if (typeof data.serializedData === "string") state.serializedData = data.serializedData;
   if (data.type === "status") {
     setBusy(true, data.code ? t(state.language, data.code) : data.message);
@@ -334,16 +301,16 @@ worker.onmessage = async ({ data }) => {
       state.pendingDataAction = null;
     }
   }
-};
+}
 
-worker.onerror = (event) => {
-  event.preventDefault();
-  showError(event.message, "worker_error");
-};
-
-worker.onmessageerror = () => {
-  showError("", "worker_error");
-};
+const workerClient = createWorkerClient({
+  worker,
+  state,
+  setBusy,
+  handleMessage: handleWorkerMessage,
+  handleError: showError,
+});
+const send = workerClient.send;
 
 function applyTranslations() {
   document.documentElement.lang = state.language;
@@ -1847,304 +1814,6 @@ function closeMenuItemDialog() {
   else dialog.removeAttribute("open");
 }
 
-function groceryItemUsage(item) {
-  const dishKeys = new Set(
-    state.snapshot.dishes
-      .filter((dish) => dish.components.some((component) => component.name === item.name))
-      .map((dish) => dish.key),
-  );
-  const directIngredientKeys = new Set(
-    state.snapshot.item_options
-      .filter((option) => option.kind === "ingredient" && option.name === item.name)
-      .map((option) => option.key),
-  );
-  const itemNames = new Map(state.snapshot.item_options.map((option) => [option.key, option.name]));
-  return state.draft
-    .map((row, index) => ({ row, index }))
-    .filter(({ row }) => dishKeys.has(row.item_key) || directIngredientKeys.has(row.item_key))
-    .map(({ row, index }) => ({
-      index,
-      name: itemNames.get(row.item_key) || row.item_key,
-      context: menuUsageContext(row, state.snapshot.people),
-      direct: directIngredientKeys.has(row.item_key),
-    }));
-}
-
-function detailValue(value, suffix = "") {
-  if (value == null || value === "" || !Number.isFinite(Number(value))) return null;
-  return `${formatNumber(value, 2)}${suffix}`;
-}
-
-function detailFields(rows, itemKey = "") {
-  return `<dl class="item-detail-fields">${rows.map(([label, value, raw = false, field = ""]) => `
-    <div>
-      <dt>${escapeHtml(label)}</dt>
-      ${value == null || value === ""
-        ? field && itemKey
-          ? `<dd><button class="item-detail-missing item-detail-missing-button" type="button" data-missing-value-field="${escapeHtml(field)}" data-missing-value-item="${escapeHtml(encodeURIComponent(itemKey))}"><span aria-hidden="true">!</span>${escapeHtml(t(state.language, "not_available"))}<small>${escapeHtml(t(state.language, "click_to_propose"))}</small></button></dd>`
-          : `<dd class="item-detail-missing"><span aria-hidden="true">!</span>${escapeHtml(t(state.language, "not_available"))}</dd>`
-        : `<dd>${raw ? value : escapeHtml(value)}</dd>`}
-    </div>
-  `).join("")}</dl>`;
-}
-
-function ingredientStockPresentation(itemKey) {
-  const option = (state.snapshot?.stock_options || [])
-    .find((item) => item.item_key === itemKey && !item.household);
-  if (!option) return null;
-  const stock = state.stockDraft.find((row) => row.item_key === itemKey && !row.household);
-  const gramsPerUnit = Number(option.grams_per_measure_unit || 1);
-  const grams = stock
-    ? Number(stock.quantity) * (stock.quantity_unit === "unit" ? gramsPerUnit : 1)
-    : 0;
-  return { option, grams, gramsPerUnit };
-}
-
-function ingredientStockDetailMarkup(ingredient) {
-  const presentation = ingredientStockPresentation(ingredient.key);
-  if (!presentation) return "";
-  const { option, grams, gramsPerUnit } = presentation;
-  const equivalent = option.measure_unit !== "g"
-    ? translatedTemplate("stock_unit_equivalent", {
-      quantity: formatNumber(grams / gramsPerUnit, 2),
-      unit: option.measure_unit,
-    })
-    : t(state.language, grams > 0 ? "stock_available" : "stock_empty_for_item");
-  return `<section class="ingredient-detail-stock" data-ingredient-stock-detail="${escapeHtml(encodeURIComponent(ingredient.key))}">
-    <h3>${escapeHtml(t(state.language, "ingredient_stock_title"))}</h3>
-    <div class="ingredient-stock-detail-card">
-      <div class="ingredient-stock-current">
-        <span>${escapeHtml(t(state.language, "current_stock"))}</span>
-        <strong>${escapeHtml(`${formatNumber(grams, 1)} g`)}</strong>
-        <small>${escapeHtml(equivalent)}</small>
-      </div>
-      <label class="dialog-field">
-        <span>${escapeHtml(t(state.language, "quantity_to_add"))}</span>
-        <input type="number" min="0.000000001" step="any" value="1" data-detail-stock-quantity>
-      </label>
-      <label class="dialog-field">
-        <span>${escapeHtml(t(state.language, "unit"))}</span>
-        <select data-detail-stock-unit>
-          <option value="g">g</option>
-          ${option.measure_unit === "g" ? "" : `<option value="unit" selected>${escapeHtml(option.measure_unit)}</option>`}
-        </select>
-      </label>
-      <button class="button primary compact" type="button" data-detail-stock-add>${escapeHtml(t(state.language, "add_to_stock"))}</button>
-      <button class="button ghost compact" type="button" data-detail-stock-purchase>${escapeHtml(t(state.language, "add_purchase_unit"))}</button>
-      <p class="ingredient-stock-feedback" data-detail-stock-feedback role="status"></p>
-    </div>
-  </section>`;
-}
-
-function refreshIngredientDetailStock(ingredient, message = "") {
-  const current = [...$("#grocery-details-information")
-    .querySelectorAll("[data-ingredient-stock-detail]")]
-    .find((section) => decodeURIComponent(section.dataset.ingredientStockDetail) === ingredient.key);
-  if (!current) return;
-  current.outerHTML = ingredientStockDetailMarkup(ingredient);
-  const refreshed = [...$("#grocery-details-information")
-    .querySelectorAll("[data-ingredient-stock-detail]")]
-    .find((section) => decodeURIComponent(section.dataset.ingredientStockDetail) === ingredient.key);
-  const feedback = refreshed?.querySelector("[data-detail-stock-feedback]");
-  if (feedback) feedback.textContent = message;
-}
-
-function priceHistoryMarkup(items) {
-  const history = combinedPriceHistory(items);
-  const chart = priceChartGeometry(history);
-  if (!history.length) {
-    return `<p class="grocery-usage-empty">${escapeHtml(t(state.language, "no_price_history"))}</p>`;
-  }
-  const dateLabel = (value) => value || t(state.language, "unknown");
-  return `
-    <div class="price-history-chart">
-      <svg viewBox="0 0 640 220" role="img" aria-label="${escapeHtml(t(state.language, "price_history_chart"))}">
-        <line x1="42" y1="18" x2="42" y2="186"></line>
-        <line x1="42" y1="186" x2="622" y2="186"></line>
-        <text x="4" y="23">${escapeHtml(formatMoney(chart.maxPrice))}</text>
-        <text x="4" y="188">${escapeHtml(formatMoney(chart.minPrice))}</text>
-        ${chart.path ? `<path d="${chart.path}"></path>` : ""}
-        ${chart.points.map((point) => `
-          <circle cx="${point.x}" cy="${point.y}" r="5">
-            <title>${escapeHtml(`${dateLabel(point.date)} · ${formatMoney(point.price)} · ${point.description}`)}</title>
-          </circle>
-        `).join("")}
-        <text class="price-chart-date" x="42" y="211">${escapeHtml(dateLabel(history[0].date))}</text>
-        <text class="price-chart-date end" x="622" y="211">${escapeHtml(dateLabel(history.at(-1).date))}</text>
-      </svg>
-    </div>
-    <ol class="price-history-list">
-      ${[...history].reverse().map((row) => `
-        <li>
-          <strong>${escapeHtml(formatMoney(row.price))}</strong>
-          <span>${escapeHtml(dateLabel(row.date))}</span>
-          <small>${escapeHtml(row.description || t(state.language, "not_available"))}</small>
-        </li>
-      `).join("")}
-    </ol>`;
-}
-
-function itemInformationMarkup(items, groceryItem) {
-  const item = items[0];
-  if (!item) {
-    return `<p class="grocery-usage-empty">${escapeHtml(t(state.language, "item_details_unavailable"))}</p>`;
-  }
-  const food = Object.hasOwn(item, "kcal");
-  const sourceUrl = externalHttpUrl(item.url);
-  const groceryFields = groceryItem ? detailFields([
-    [t(state.language, "total_need"), groceryItem.needed_quantity_text],
-    [t(state.language, "in_stock"), groceryItem.stock_quantity_text || formatNumber(0)],
-    [t(state.language, "buy"), groceryItem.purchase_quantity_text || t(state.language, "stock_enough")],
-    [t(state.language, "estimated_total"), formatMoney(groceryItem.estimated_purchase_price)],
-  ]) : "";
-  const identity = detailFields([
-    [t(state.language, "item_identifier"), item.key],
-    [t(state.language, "item_type"), t(state.language, food ? "food_item" : "general_item")],
-    [t(state.language, "category"), displayCategory(item.category), false, food ? "category" : ""],
-    [t(state.language, "measure_unit_name"), item.measure_unit],
-    [t(state.language, "description_status"), food
-      ? t(state.language, item.incomplete ? "ingredient_incomplete" : "ingredient_complete")
-      : t(state.language, "ingredient_complete")],
-  ], food ? item.key : "");
-  const nutrition = food ? detailFields([
-    [t(state.language, "nutrition_reference_grams"), detailValue(item.grams, " g")],
-    [t(state.language, "kcal_for_reference"), detailValue(item.kcal)],
-    [t(state.language, "protein_grams"), detailValue(item.protein_g, " g")],
-    [t(state.language, "carbs_grams"), detailValue(item.carbs_g, " g")],
-    [t(state.language, "fat_grams"), detailValue(item.fat_g, " g")],
-    [t(state.language, "fiber_grams"), detailValue(item.fiber_g, " g")],
-    [t(state.language, "sugars_grams"), detailValue(item.sugars_g, " g"), false, "sugars_g"],
-    [t(state.language, "saturated_fat_grams"), detailValue(item.saturated_fat_g, " g"), false, "saturated_fat_g"],
-    [t(state.language, "salt_grams"), detailValue(item.salt_g, " g"), false, "salt_g"],
-    [t(state.language, "fruit_vegetable_legume_percent"), detailValue(item.fruit_vegetable_legume_percent, " %"), false, "fruit_vegetable_legume_percent"],
-  ], item.key) : "";
-  const source = food ? detailFields([
-    [t(state.language, "source"), item.source, false, "source"],
-    [t(state.language, "source_url"), sourceUrl
-      ? `<a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.url)}</a>`
-      : item.url ? escapeHtml(item.url) : null, true, "url"],
-  ], item.key) : "";
-  const purchase = food ? detailFields([
-    [t(state.language, "grams_per_unit"), detailValue(item.grams_per_measure_unit, " g")],
-    [t(state.language, "purchase_unit"), item.purchase_unit],
-    [t(state.language, "purchase_quantity_grams"), detailValue(item.purchase_quantity_grams, " g")],
-    [t(state.language, "price_per_kg"), formatMoney(item.price_per_kg)],
-    [t(state.language, "estimated_purchase_price"), formatMoney(item.price_per_kg * item.purchase_quantity_grams / 1000)],
-    [t(state.language, "price_checked_at"), item.price_checked_at, false, "price_checked_at"],
-    [t(state.language, "price_source"), item.price_source, false, "price_source"],
-  ], item.key) : detailFields([
-    [t(state.language, "purchase_unit"), item.purchase_unit],
-    [t(state.language, "purchase_quantity"), detailValue(item.purchase_quantity)],
-    [t(state.language, "unit_price"), formatMoney(item.estimated_price)],
-    [t(state.language, "last_bought_at"), item.last_bought_at],
-    [t(state.language, "lasting_days"), detailValue(item.lasting_days)],
-    [t(state.language, "notes"), item.notes],
-  ]);
-  return `
-    ${groceryItem ? `<section><h3>${escapeHtml(t(state.language, "grocery_list"))}</h3>${groceryFields}</section>` : ""}
-    <section><h3>${escapeHtml(t(state.language, "item_identity_title"))}</h3>${identity}</section>
-    ${food ? ingredientStockDetailMarkup(item) : ""}
-    ${food ? `<section><h3>${escapeHtml(t(state.language, "ingredient_nutrition_title"))}</h3>${nutrition}</section>` : ""}
-    ${food ? `<section><h3>${escapeHtml(t(state.language, "ingredient_sources_title"))}</h3>${source}</section>` : ""}
-    <section><h3>${escapeHtml(t(state.language, "ingredient_purchase_title"))}</h3>${purchase}</section>
-    <section class="price-history-section">
-      <h3>${escapeHtml(t(state.language, "price_history"))}</h3>
-      ${priceHistoryMarkup(items)}
-    </section>`;
-}
-
-function openItemDetails(items, groceryItem = null) {
-  const item = items[0];
-  if (!item && !groceryItem) return;
-  const usageItem = groceryItem || item;
-  const usages = groceryItemUsage(usageItem);
-  $("#grocery-details-title").textContent = item?.name || groceryItem.name;
-  $("#grocery-details-information").innerHTML = itemInformationMarkup(items, groceryItem);
-  const editButton = $("#grocery-details-edit");
-  editButton.hidden = !item;
-  editButton.dataset.itemKey = item ? encodeURIComponent(item.key) : "";
-  editButton.dataset.itemKind = item
-    ? (Object.hasOwn(item, "kcal") ? "food" : "general")
-    : "";
-  $("#grocery-details-list").innerHTML = usages.map((usage) => `
-      <article class="grocery-usage ${usage.direct ? "direct" : ""}">
-        <strong>${escapeHtml(usage.name)}</strong>
-        <small>${escapeHtml(usage.context)}${usage.direct ? ` · ${escapeHtml(t(state.language, "direct_menu_use"))}` : ""}</small>
-        <div class="grocery-usage-actions">
-          <button class="button danger" type="button" data-grocery-meal-delete="${usage.index}">${escapeHtml(t(state.language, "delete"))}</button>
-          <button class="button ghost" type="button" data-grocery-meal-replace="${usage.index}">${escapeHtml(t(state.language, "replace"))}</button>
-        </div>
-      </article>
-    `).join("") || `<p class="grocery-usage-empty">${escapeHtml(t(state.language, "no_linked_dishes"))}</p>`;
-  $("#grocery-details-usages").hidden = !usages.length;
-  const dialog = $("#grocery-details-dialog");
-  if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
-  $("#grocery-details-close").focus();
-}
-
-function openGroceryDetails(itemId) {
-  const groceryItem = state.snapshot.grocery_plan.items
-    .find((candidate) => candidate.id === itemId);
-  if (!groceryItem) return;
-  openItemDetails(catalogItemsForGrocery(state.snapshot, groceryItem), groceryItem);
-}
-
-function openCatalogueItemDetails(key, kind) {
-  const items = kind === "food"
-    ? (state.snapshot.ingredients || []).filter((item) => item.key === key)
-    : (state.snapshot.household_items || []).filter((item) => item.key === key);
-  openItemDetails(items);
-}
-
-function closeGroceryDetails() {
-  const dialog = $("#grocery-details-dialog");
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-}
-
-function openMissingValueDialog(itemKey, field) {
-  const config = EDITABLE_DETAIL_FIELDS[field];
-  if (!config) return;
-  const ingredient = (state.snapshot?.ingredients || [])
-    .find((item) => item.key === itemKey);
-  if (!ingredient) return;
-  state.pendingMissingValue = { itemKey, field };
-  const label = t(state.language, config.label);
-  $("#missing-value-context").textContent = ingredient.name;
-  $("#missing-value-label").textContent = label;
-  $("#missing-value-reference").textContent = config.reference === "percent"
-    ? t(state.language, "value_reference_percent")
-    : config.reference === "nutrition"
-      ? translatedTemplate("value_reference_grams", { grams: formatNumber(ingredient.grams, 2) })
-      : t(state.language, "value_reference_general");
-  const input = $("#missing-value-input");
-  input.type = config.kind === "number" ? "number" : "text";
-  input.min = config.kind === "number" ? "0" : "";
-  input.max = field === "fruit_vegetable_legume_percent" ? "100" : "";
-  input.step = config.kind === "number" ? "any" : "";
-  input.inputMode = config.inputMode || "";
-  input.placeholder = config.placeholder ? t(state.language, config.placeholder) : "";
-  input.value = ingredient[field] ?? "";
-  $("#missing-value-source").value = ingredient.source || "";
-  $("#missing-value-url").value = ingredient.url || "";
-  $("#missing-value-source-field").hidden = field === "source";
-  $("#missing-value-url-field").hidden = field === "url";
-  $("#missing-value-error").textContent = "";
-  closeGroceryDetails();
-  const dialog = $("#missing-value-dialog");
-  if (typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open", "");
-  $("#missing-value-input").focus();
-}
-
-function closeMissingValueDialog() {
-  state.pendingMissingValue = null;
-  const dialog = $("#missing-value-dialog");
-  if (typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-}
-
 const extraNeedsFeature = createExtraNeedsFeature({
   state,
   select: $,
@@ -2183,6 +1852,34 @@ const stockPayload = stockFeature.payload;
 const addStockQuantity = stockFeature.addQuantity;
 const renderStock = stockFeature.render;
 const scheduleStockUpdate = stockFeature.scheduleUpdate;
+
+const itemDetailsFeature = createItemDetailsFeature({
+  state,
+  select: $,
+  storage: localStorage,
+  translate: (key) => t(state.language, key),
+  translatedTemplate,
+  escapeHtml,
+  externalHttpUrl,
+  displayCategory,
+  formatMoney,
+  formatNumber,
+  normalizedCategory,
+  addStockQuantity,
+  renderStock,
+  scheduleStockUpdate,
+  openConfirmation,
+  openMealReplacement,
+  renderMenu,
+  scheduleMenuUpdate,
+  send,
+  switchTab,
+  renderItemsCatalogue,
+  openItemEditor,
+});
+const closeGroceryDetails = itemDetailsFeature.close;
+const openCatalogueItemDetails = itemDetailsFeature.openCatalogue;
+const openGroceryDetails = itemDetailsFeature.openGrocery;
 
 const groceryFeature = createGroceryFeature({
   state,
@@ -3387,113 +3084,7 @@ $("#empty-data").addEventListener("click", confirmHouseholdDataReset);
 stockFeature.mount();
 extraNeedsFeature.mount();
 groceryFeature.mount();
-$("#grocery-details-list").addEventListener("click", (event) => {
-  const deleteButton = event.target.closest("[data-grocery-meal-delete]");
-  if (deleteButton) {
-    const index = Number(deleteButton.dataset.groceryMealDelete);
-    const row = state.draft[index];
-    if (!row) return;
-    const item = state.snapshot.item_options.find((option) => option.key === row.item_key);
-    closeGroceryDetails();
-    openConfirmation({
-      title: t(state.language, "delete_meal_confirm_title"),
-      message: translatedTemplate("delete_meal_confirm_message", {
-        name: item?.name || row.item_key,
-        context: `${row.day} · ${row.meal}`,
-      }),
-      confirmLabel: t(state.language, "delete"),
-      action: () => {
-        state.draft.splice(index, 1);
-        renderMenu();
-        scheduleMenuUpdate();
-      },
-    });
-    return;
-  }
-  const replaceButton = event.target.closest("[data-grocery-meal-replace]");
-  if (replaceButton) {
-    const index = Number(replaceButton.dataset.groceryMealReplace);
-    closeGroceryDetails();
-    openMealReplacement(index);
-  }
-});
-$("#grocery-details-close").addEventListener("click", closeGroceryDetails);
-$("#grocery-details-done").addEventListener("click", closeGroceryDetails);
-$("#grocery-details-information").addEventListener("click", (event) => {
-  const stockAction = event.target.closest("[data-detail-stock-add], [data-detail-stock-purchase]");
-  if (stockAction) {
-    const section = stockAction.closest("[data-ingredient-stock-detail]");
-    const itemKey = decodeURIComponent(section?.dataset.ingredientStockDetail || "");
-    const ingredient = (state.snapshot?.ingredients || [])
-      .find((item) => item.key === itemKey);
-    if (!ingredient) return;
-    const purchase = stockAction.hasAttribute("data-detail-stock-purchase");
-    const quantity = purchase
-      ? Number(ingredient.purchase_quantity_grams)
-      : Number(section.querySelector("[data-detail-stock-quantity]").value);
-    const unit = purchase ? "g" : section.querySelector("[data-detail-stock-unit]").value;
-    if (!addStockQuantity(ingredient.key, quantity, unit)) return;
-    renderStock();
-    refreshIngredientDetailStock(
-      ingredient,
-      purchase
-        ? translatedTemplate("purchase_unit_added", { unit: ingredient.purchase_unit })
-        : t(state.language, "stock_added"),
-    );
-    scheduleStockUpdate();
-    return;
-  }
-  const button = event.target.closest("[data-missing-value-field]");
-  if (!button) return;
-  openMissingValueDialog(
-    decodeURIComponent(button.dataset.missingValueItem),
-    button.dataset.missingValueField,
-  );
-});
-$("#missing-value-close").addEventListener("click", closeMissingValueDialog);
-$("#missing-value-cancel").addEventListener("click", closeMissingValueDialog);
-$("#missing-value-dialog").addEventListener("close", () => {
-  state.pendingMissingValue = null;
-});
-$("#missing-value-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const pending = state.pendingMissingValue;
-  const config = EDITABLE_DETAIL_FIELDS[pending?.field];
-  const rawValue = $("#missing-value-input").value.trim();
-  const value = config?.kind === "number" ? Number(rawValue) : rawValue;
-  const ingredient = (state.snapshot?.ingredients || [])
-    .find((item) => item.key === pending?.itemKey);
-  const valid = ingredient
-    && config
-    && (config.kind === "number"
-      ? Number.isFinite(value)
-        && value >= 0
-        && (pending.field !== "fruit_vegetable_legume_percent" || value <= 100)
-      : Boolean(value));
-  if (!valid) {
-    $("#missing-value-error").textContent = t(state.language, "invalid_missing_value");
-    return;
-  }
-  const updated = structuredClone(ingredient);
-  updated[pending.field] = pending.field === "category" ? normalizedCategory(value) : value;
-  if (pending.field !== "source") updated.source = $("#missing-value-source").value.trim();
-  if (pending.field !== "url") updated.url = $("#missing-value-url").value.trim();
-  closeMissingValueDialog();
-  send("replace-ingredient", { ingredient: updated });
-});
-$("#grocery-details-edit").addEventListener("click", (event) => {
-  const button = event.currentTarget;
-  if (!button.dataset.itemKey || !button.dataset.itemKind) return;
-  const kind = button.dataset.itemKind;
-  const key = decodeURIComponent(button.dataset.itemKey);
-  closeGroceryDetails();
-  state.itemCatalogueTab = kind === "food" ? "food" : "other";
-  localStorage.setItem("homealacarte-item-catalogue-tab", state.itemCatalogueTab);
-  switchTab("items");
-  renderItemsCatalogue();
-  openItemEditor(key, kind);
-});
-
+itemDetailsFeature.mount();
 async function bootstrap() {
   applyColorTheme(state.colorTheme);
   applyTranslations();

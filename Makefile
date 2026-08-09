@@ -45,6 +45,7 @@ test-web:
 	node tests/downloads.mjs
 	node tests/theme.mjs
 	node tests/app_state.mjs
+	node tests/worker_client.mjs
 	node tests/stock_availability.mjs
 	node tests/stock_feature.mjs
 	node tests/extra_needs_feature.mjs

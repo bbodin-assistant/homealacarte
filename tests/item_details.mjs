@@ -72,16 +72,17 @@ assert.match(chart.path, /^M /);
 assert.ok(chart.points.every((point) =>
   point.x >= 42 && point.x <= 622 && point.y >= 18 && point.y <= 186));
 
-const [app, index, stockFeature, extraNeedsFeature] = await Promise.all([
+const [app, itemDetailsFeature, index, stockFeature, extraNeedsFeature] = await Promise.all([
   readFile(new URL("../www/app.js", import.meta.url), "utf8"),
+  readFile(new URL("../www/features/item-details.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
   readFile(new URL("../www/features/stock.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/extra-needs.js", import.meta.url), "utf8"),
 ]);
 assert.match(app, /data-item-details=/);
 assert.match(app, /openCatalogueItemDetails/);
-assert.match(app, /priceHistoryMarkup/);
-assert.match(app, /grocery-details-edit/);
+assert.match(itemDetailsFeature, /priceHistoryMarkup/);
+assert.match(itemDetailsFeature, /grocery-details-edit/);
 assert.match(app, /price_history: priceHistoryFormPayload\("#ingredient-price-history-list"\)/);
 assert.match(app, /price_history: priceHistoryFormPayload\("#household-item-price-history-list"\)/);
 assert.match(index, /id="grocery-details-information"/);
@@ -92,7 +93,7 @@ assert.match(index, /id="stock-add-notes"/);
 assert.match(index, /id="custom-add-notes"/);
 assert.match(stockFeature, /data-stock-field="notes"/);
 assert.match(extraNeedsFeature, /data-custom-field="notes"/);
-for (const source of [app, index, stockFeature, extraNeedsFeature]) {
+for (const source of [app, itemDetailsFeature, index, stockFeature, extraNeedsFeature]) {
   for (const input of source.matchAll(/<input\b[^>]*\btype="number"[^>]*>/g)) {
     assert.match(input[0], /\bstep="(?:any|\d+(?:\.\d+)?)"/);
   }
