@@ -5,20 +5,33 @@ import {
   reconcileSyncedLocalState,
   writeLocalState,
 } from "./storage/local-store.js?v=homealacarte-77";
+import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-77";
 
-const SESSION_KEY = "homealacarte-supabase-session";
-const REQUEST_TIMEOUT_MS = 6000;
-
-let configPromise;
-let session = readSession();
 let remoteRevision = null;
 let pendingRemoteValue = null;
 let remoteDrain = null;
 let conflict = null;
-let lastActivityTouch = 0;
+const remoteClient = createRemoteClient({
+  emitStatus: (...args) => emitStatus(...args),
+});
+const {
+  authRequest,
+  ensureSession,
+  fetchRemoteState,
+  getSession,
+  insertRemoteState,
+  isNetworkError,
+  loadConfig,
+  normalizeSession,
+  restRequest,
+  saveSession,
+  touchAccountActivity,
+  updateRemoteState,
+} = remoteClient;
+
 let syncStatus = {
   state: "local",
-  email: session?.user?.email || "",
+  email: getSession()?.user?.email || "",
   message: "",
 };
 
@@ -26,7 +39,7 @@ function emitStatus(next) {
   syncStatus = {
     ...syncStatus,
     ...next,
-    email: next.email ?? session?.user?.email ?? syncStatus.email ?? "",
+    email: next.email ?? getSession()?.user?.email ?? syncStatus.email ?? "",
   };
   globalThis.dispatchEvent?.(
     new CustomEvent("homealacarte-storage-status", { detail: { ...syncStatus } }),
@@ -48,221 +61,6 @@ function jsonSize(value) {
   return value === undefined ? 0 : new TextEncoder().encode(JSON.stringify(value)).length;
 }
 
-async function loadConfig() {
-  if (!configPromise) {
-    configPromise = import("./supabase-config.js?v=homealacarte-30")
-      .then(({ SUPABASE_CONFIG }) => {
-        const projectUrl = String(SUPABASE_CONFIG?.projectUrl || "").replace(/\/+$/, "");
-        const publishableKey = String(SUPABASE_CONFIG?.publishableKey || "");
-        return projectUrl && publishableKey ? {
-          projectUrl,
-          publishableKey,
-          controllerName: String(SUPABASE_CONFIG?.controllerName || ""),
-          privacyContact: String(SUPABASE_CONFIG?.privacyContact || ""),
-          lawfulBasis: String(SUPABASE_CONFIG?.lawfulBasis || ""),
-          retentionPolicy: String(SUPABASE_CONFIG?.retentionPolicy || ""),
-        } : null;
-      })
-      .catch(() => null);
-  }
-  return configPromise;
-}
-
-function readSession() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function saveSession(value) {
-  session = value;
-  if (value) localStorage.setItem(SESSION_KEY, JSON.stringify(value));
-  else localStorage.removeItem(SESSION_KEY);
-}
-
-function userFromAccessToken(accessToken) {
-  try {
-    const encoded = accessToken.split(".")[1].replaceAll("-", "+").replaceAll("_", "/");
-    const payload = JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=")));
-    return payload.sub ? { id: payload.sub, email: payload.email || "" } : null;
-  } catch {
-    return null;
-  }
-}
-
-function normalizeSession(data) {
-  if (!data?.access_token || !data?.refresh_token) return null;
-  return {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_at: data.expires_at
-      || Math.floor(Date.now() / 1000) + Number(data.expires_in || 3600),
-    user: data.user || session?.user || userFromAccessToken(data.access_token),
-  };
-}
-
-function captureCallbackSession() {
-  const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
-  if (!hash.has("access_token")) return;
-  const nextSession = normalizeSession({
-    access_token: hash.get("access_token"),
-    refresh_token: hash.get("refresh_token"),
-    expires_in: hash.get("expires_in"),
-    user: null,
-  });
-  if (nextSession) saveSession(nextSession);
-  history.replaceState(null, "", `${location.pathname}${location.search}#family`);
-}
-
-captureCallbackSession();
-
-async function request(url, options = {}) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-async function responseData(response) {
-  const text = await response.text();
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
-}
-
-async function authRequest(path, body, accessToken = "") {
-  const config = await loadConfig();
-  if (!config) throw new Error("Supabase is not configured");
-  const response = await request(`${config.projectUrl}/auth/v1/${path}`, {
-    method: "POST",
-    headers: {
-      apikey: config.publishableKey,
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: body == null ? undefined : JSON.stringify(body),
-  });
-  const data = await responseData(response);
-  if (!response.ok) {
-    throw new Error(data?.msg || data?.message || data?.error_description || `Authentication failed (${response.status})`);
-  }
-  return data;
-}
-
-async function ensureSession() {
-  if (!session) return null;
-  if (Number(session.expires_at || 0) > Math.floor(Date.now() / 1000) + 60) return session;
-  try {
-    const data = await authRequest("token?grant_type=refresh_token", {
-      refresh_token: session.refresh_token,
-    });
-    const refreshed = normalizeSession(data);
-    if (!refreshed) throw new Error("Supabase returned an invalid session");
-    saveSession(refreshed);
-    return refreshed;
-  } catch (error) {
-    if (error instanceof TypeError || error?.name === "AbortError") {
-      emitStatus({ state: "offline", message: error.message });
-      return null;
-    }
-    saveSession(null);
-    emitStatus({ state: "signed-out", email: "", message: error.message });
-    return null;
-  }
-}
-
-async function restRequest(path, options = {}) {
-  const config = await loadConfig();
-  const activeSession = await ensureSession();
-  if (!config || !activeSession) throw new Error("Not signed in");
-  const response = await request(`${config.projectUrl}/rest/v1/${path}`, {
-    ...options,
-    headers: {
-      apikey: config.publishableKey,
-      Authorization: `Bearer ${activeSession.access_token}`,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-  const data = await responseData(response);
-  if (!response.ok) {
-    const error = new Error(data?.message || data?.hint || `Supabase request failed (${response.status})`);
-    error.status = response.status;
-    error.code = data?.code;
-    throw error;
-  }
-  return data;
-}
-
-async function fetchRemoteState() {
-  const activeSession = await ensureSession();
-  if (!activeSession?.user?.id) return null;
-  const rows = await restRequest(
-    `household_state?user_id=eq.${encodeURIComponent(activeSession.user.id)}&select=payload,revision,updated_at`,
-  );
-  return rows?.[0] || null;
-}
-
-async function touchAccountActivity(force = false) {
-  if (!force && Date.now() - lastActivityTouch < 6 * 60 * 60 * 1000) return;
-  await restRequest("rpc/touch_account_activity", {
-    method: "POST",
-    headers: { Prefer: "return=minimal" },
-    body: "{}",
-  });
-  lastActivityTouch = Date.now();
-}
-
-async function insertRemoteState(value) {
-  const activeSession = await ensureSession();
-  const rows = await restRequest("household_state", {
-    method: "POST",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify({
-      user_id: activeSession.user.id,
-      payload: value,
-      revision: 1,
-    }),
-  });
-  return rows?.[0] || { revision: 1 };
-}
-
-async function updateRemoteState(value, expectedRevision) {
-  const activeSession = await ensureSession();
-  const rows = await restRequest(
-    `household_state?user_id=eq.${encodeURIComponent(activeSession.user.id)}&revision=eq.${expectedRevision}`,
-    {
-      method: "PATCH",
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify({
-        payload: value,
-        revision: expectedRevision + 1,
-        updated_at: new Date().toISOString(),
-      }),
-    },
-  );
-  if (!rows?.length) {
-    const error = new Error("The online data changed on another device");
-    error.code = "sync_conflict";
-    throw error;
-  }
-  return rows[0];
-}
-
-function isNetworkError(error) {
-  return error instanceof TypeError
-    || error?.name === "AbortError"
-    || /failed to fetch|load failed|network/i.test(String(error?.message || ""));
-}
 
 async function markLocalSynced(value, revision, userId, force = false) {
   remoteRevision = revision;
@@ -361,7 +159,7 @@ export async function loadPrivateState() {
   }
   const activeSession = await ensureSession();
   if (!activeSession) {
-    emitStatus({ state: session ? "offline" : "signed-out", message: "" });
+    emitStatus({ state: getSession() ? "offline" : "signed-out", message: "" });
     return local;
   }
 
@@ -421,13 +219,13 @@ export async function savePrivateState(value) {
     locallyUpdatedAt: new Date().toISOString(),
   });
   if (activeSession) queueRemoteSave(value);
-  else emitStatus({ state: (await loadConfig()) ? (session ? "offline" : "signed-out") : "local" });
+  else emitStatus({ state: (await loadConfig()) ? (getSession() ? "offline" : "signed-out") : "local" });
 }
 
 export async function deletePrivateData() {
   pendingRemoteValue = null;
   if (remoteDrain) await remoteDrain.catch(() => {});
-  const hadSession = Boolean(session);
+  const hadSession = Boolean(getSession());
   const activeSession = await ensureSession();
   if (hadSession && !activeSession) {
     throw new Error("delete_data_online_required");
@@ -485,7 +283,7 @@ export async function getStorageDiagnostics() {
   const config = await loadConfig();
   let remote = null;
   let remoteError = "";
-  if (config && session) {
+  if (config && getSession()) {
     try {
       remote = await fetchRemoteState();
     } catch (error) {
@@ -500,8 +298,8 @@ export async function getStorageDiagnostics() {
   }
   return {
     configured: Boolean(config),
-    email: session?.user?.email || "",
-    userId: session?.user?.id || "",
+    email: getSession()?.user?.email || "",
+    userId: getSession()?.user?.id || "",
     controllerName: config?.controllerName || "",
     privacyContact: config?.privacyContact || "",
     lawfulBasis: config?.lawfulBasis || "",
@@ -554,7 +352,7 @@ export async function signUp(email, password) {
 }
 
 export async function signOut() {
-  const activeSession = session;
+  const activeSession = getSession();
   saveSession(null);
   remoteRevision = null;
   conflict = null;

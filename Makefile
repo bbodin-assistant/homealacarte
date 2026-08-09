@@ -49,6 +49,7 @@ test-web:
 	node tests/worker_client.mjs
 	node tests/worker_responses.mjs
 	node tests/local_store.mjs
+	node tests/remote_client.mjs
 	node tests/stock_availability.mjs
 	node tests/stock_feature.mjs
 	node tests/extra_needs_feature.mjs

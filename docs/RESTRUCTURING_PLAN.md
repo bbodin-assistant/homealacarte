@@ -29,7 +29,7 @@ The first implementation batches are complete and validated:
 - browser foundations now live in `www/core/` (state, formatting, downloads, theme, searchable selects, and worker transport);
 - stock, extra needs, grocery, item details, catalogue list/editors, family/food rules, the dish library/editor, both menu workflows, and data/account/privacy workflows now live in `www/features/` with their event handlers and focused tests;
 - the browser shell, saved-state bootstrap/migrations, worker transport, and worker-response orchestration have explicit controllers with focused tests;
-- IndexedDB transactions and local-state reconciliation now live in `www/storage/local-store.js`, separated from authentication and remote synchronization policy;
+- IndexedDB transactions and local-state reconciliation live in `www/storage/local-store.js`; Supabase configuration, sessions, authentication, REST transport, and remote-state CRUD live in `www/storage/remote-client.js`; `www/storage.js` now coordinates synchronization and conflicts;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
@@ -42,17 +42,15 @@ scheduling and persistence callbacks.
 
 ### Remaining delivery estimate
 
-Six implementation checkpoints remain; the storage checkpoint is underway after
-the local persistence extraction. Some may
+Five implementation checkpoints remain after the storage split. Some may
 become two commits when that keeps review size reasonable, but the architectural
 checkpoints are:
 
-1. remote authentication/client versus synchronization-policy separation;
-2. CSS layers and feature stylesheets;
-3. deterministic HTML partial composition;
-4. domain integration-test ownership;
-5. source-size and dependency-boundary enforcement;
-6. full release validation and final cleanup.
+1. CSS layers and feature stylesheets;
+2. deterministic HTML partial composition;
+3. domain integration-test ownership;
+4. source-size and dependency-boundary enforcement;
+5. full release validation and final cleanup.
 
 This is an engineering estimate rather than a promise that every checkpoint maps
 to exactly one commit. The definition of done below remains the completion gate.
