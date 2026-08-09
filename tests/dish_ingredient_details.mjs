@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const [menu, style] = await Promise.all([
   readFile(new URL("../www/features/menu.js", import.meta.url), "utf8"),
-  readFile(new URL("../www/styles/data-account.css", import.meta.url), "utf8"),
+  readFile(new URL("../www/styles/dishes.css", import.meta.url), "utf8"),
 ]);
 
 assert.match(menu, /data-dish-ingredient-details=/);

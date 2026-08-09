@@ -3,10 +3,15 @@ import { readFile } from "node:fs/promises";
 
 const index = await readFile(new URL("../www/index.html", import.meta.url), "utf8");
 const layers = [
+  "tokens",
   "base",
-  "family-menu",
+  "layout",
+  "components",
+  "family",
+  "menu",
+  "grocery",
+  "catalogue",
   "data-account",
-  "grocery-catalogue",
   "dishes",
   "responsive",
 ];

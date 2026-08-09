@@ -1,0 +1,184 @@
+.family-heading { align-items: center; }
+.family-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px;
+}
+.family-card, .family-add-card {
+  position: relative;
+  min-height: 330px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+.family-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 34px 24px 24px;
+  text-align: center;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 50% 10%, color-mix(in srgb, var(--green) 16%, transparent), transparent 48%),
+    var(--surface);
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.family-card:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 42%, var(--line)); }
+.family-card:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 48%, transparent); outline-offset: 3px; }
+.family-card.child {
+  background:
+    radial-gradient(circle at 50% 10%, color-mix(in srgb, var(--gold) 19%, transparent), transparent 48%),
+    var(--surface);
+}
+.family-avatar {
+  width: 146px;
+  height: 146px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 13px;
+  color: var(--green);
+  background: rgba(226,236,229,.82);
+  border: 1px solid rgba(85,119,99,.14);
+  border-radius: 50%;
+}
+.family-card.child .family-avatar {
+  color: #9c6820;
+  background: #f6ead7;
+  border-color: rgba(195,138,57,.16);
+}
+.family-avatar svg { width: 104px; height: 104px; stroke-width: 2.4; }
+.family-kind {
+  padding: 4px 9px;
+  color: var(--green);
+  background: var(--green-soft);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.family-card.child .family-kind { color: #8b5c1c; background: #f6ead7; }
+.family-card h2 {
+  margin: 8px 0 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 500;
+}
+.family-description {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.family-target { display: grid; gap: 2px; margin: auto 0 0; }
+.family-target strong { font-size: 13px; }
+.family-target span { color: var(--muted); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+.family-remove {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #9b7b71;
+  background: color-mix(in srgb, var(--surface-strong) 78%, transparent);
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  cursor: pointer;
+}
+.family-remove svg { width: 15px; height: 15px; }
+.family-remove:hover:not(:disabled) { color: white; background: var(--accent); border-color: var(--accent); }
+.family-remove:disabled { opacity: .32; cursor: not-allowed; }
+.family-add-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 28px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
+  border-style: dashed;
+  cursor: pointer;
+  transition: .18s ease;
+}
+.family-add-card > span {
+  width: 74px;
+  height: 74px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 7px;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border-radius: 50%;
+  font-family: Georgia, serif;
+  font-size: 43px;
+  font-weight: 300;
+}
+.family-add-card strong { color: var(--ink); font-size: 15px; }
+.family-add-card small { font-size: 11px; }
+.family-add-card:hover { border-color: var(--accent); background: var(--surface); transform: translateY(-2px); }
+.menu-item-dialog.family-dialog { width: min(860px, calc(100vw - 32px)); }
+.family-food-rules { display: grid; gap: 12px; padding: 15px; background: color-mix(in srgb, var(--paper) 72%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
+.family-food-rules-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.family-food-rules-heading strong { font-size: 12px; }
+.family-food-rules-heading p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.family-food-rules-list { display: grid; gap: 10px; }
+.family-food-rules-empty { margin: 0; color: var(--muted); font-size: 10px; font-style: italic; }
+.family-food-rule { position: relative; display: grid; grid-template-columns: minmax(130px, .8fr) minmax(150px, 1fr) minmax(230px, 1.5fr) 90px 100px 34px; gap: 9px; align-items: end; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.family-food-rule > label, .food-rule-items-field { min-width: 0; display: grid; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 800; }
+.family-food-rule select, .family-food-rule input { min-width: 0; width: 100%; }
+.food-rule-item-picker { position: relative; min-width: 0; }
+.food-rule-item-selection { min-height: 38px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 5px 7px; background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 9px; cursor: text; }
+.food-rule-item-selection:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
+.food-rule-selected-items { display: contents; }
+.food-rule-selected-item { min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px 3px 4px; color: var(--accent-dark); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line)); border-radius: 7px; cursor: pointer; font: inherit; font-size: 9px; font-weight: 750; }
+.food-rule-selected-item > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.food-rule-selected-check { width: 14px; height: 14px; flex: 0 0 auto; display: grid; place-items: center; color: white; background: var(--accent); border-radius: 3px; font-size: 9px; line-height: 1; }
+.food-rule-selected-remove { color: var(--muted); font-size: 13px; font-weight: 500; line-height: 1; }
+.food-rule-selected-item:hover .food-rule-selected-remove { color: var(--accent-dark); }
+.family-food-rule [data-food-rule-item-search] { min-width: 110px; width: auto; flex: 1 1 130px; padding: 4px 2px; color: var(--ink); background: transparent; border: 0; outline: 0; font: inherit; font-size: 10px; }
+.family-food-rule [data-food-rule-items] { position: absolute; top: calc(100% + 5px); right: 0; left: 0; z-index: 12; max-height: 190px; overflow: auto; padding: 5px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 9px; box-shadow: 0 12px 30px rgba(66,52,39,.15); }
+.family-food-rule .food-rule-choice { display: flex; align-items: center; gap: 7px; padding: 7px; color: var(--ink); border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; }
+.family-food-rule .food-rule-choice:hover { background: var(--accent-soft); }
+.family-food-rule .food-rule-choice input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: var(--accent); }
+.food-rule-items-empty { margin: 0; padding: 9px; color: var(--muted); font-size: 10px; font-weight: 500; text-align: center; }
+.family-food-rule .remove-food-rule { align-self: center; }
+.food-rule-days-field { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; color: var(--muted); font-size: 9px; font-weight: 800; }
+.food-rule-days-field small { font-size: 9px; font-weight: 500; }
+.family-food-rule [data-food-rule-days] { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.family-food-rule .food-rule-day { display: flex; align-items: center; gap: 5px; padding: 5px 8px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; font-size: 10px; font-weight: 600; cursor: pointer; }
+.family-food-rule .food-rule-day input { width: 14px; height: 14px; flex: 0 0 auto; accent-color: var(--accent); }
+.family-food-rule.never-rule [data-routine-field] { display: none; }
+.family-rules-summary { margin: -5px 0 12px; color: var(--accent-dark); font-size: 10px; font-weight: 800; }
+.family-role-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.family-role-picker legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.family-role-options { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.family-role-options label { position: relative; cursor: pointer; }
+.family-role-options input { position: absolute; opacity: 0; }
+.family-role-options label > span {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px;
+  color: var(--muted);
+  background: #f8f5ef;
+  border: 2px solid transparent;
+  border-radius: 14px;
+}
+.family-role-options input:checked + span { color: var(--green); background: var(--green-soft); border-color: rgba(85,119,99,.35); }
+.family-role-options label:last-child input:checked + span { color: #8b5c1c; background: #f6ead7; border-color: rgba(195,138,57,.38); }
+.family-role-options input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.role-icon { width: 52px; height: 52px; display: grid; place-items: center; color: inherit; background: var(--surface-strong); border-radius: 50%; }
+.role-icon svg { width: 39px; height: 39px; stroke-width: 2.2; }

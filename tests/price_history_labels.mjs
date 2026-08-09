@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const style = await readFile(new URL("../www/styles/grocery-catalogue.css", import.meta.url), "utf8");
+const style = await readFile(new URL("../www/styles/catalogue.css", import.meta.url), "utf8");
 const textRule = style.match(/\.price-history-chart text\s*\{([^}]*)\}/)?.[1] || "";
 
 assert.match(textRule, /stroke:\s*none;/);

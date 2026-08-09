@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const [index, style] = await Promise.all([
   readFile(new URL("../www/views/grocery.html", import.meta.url), "utf8"),
-  readFile(new URL("../www/styles/grocery-catalogue.css", import.meta.url), "utf8"),
+  readFile(new URL("../www/styles/grocery.css", import.meta.url), "utf8"),
 ]);
 
 assert.match(index, /class="button ghost add-extra-need-button"/);
