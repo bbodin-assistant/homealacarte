@@ -22,7 +22,6 @@ import {
   menuUsageContext,
   priceChartGeometry,
 } from "./item-details.js?v=homealacarte-77";
-import { matchesSelectedNutriScores } from "./dish-filters.js?v=homealacarte-77";
 import { buildScheduledDishRow } from "./dish-scheduling.js?v=homealacarte-77";
 import { mergeCompatibleMenuRows } from "./menu-rows.js?v=homealacarte-77";
 import {
@@ -36,10 +35,24 @@ import {
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
 } from "./profile-rules.js?v=homealacarte-77";
+import { createStockFeature } from "./features/stock.js?v=homealacarte-77";
+import { createExtraNeedsFeature } from "./features/extra-needs.js?v=homealacarte-77";
+import { createGroceryFeature } from "./features/grocery.js?v=homealacarte-77";
+import { createDishesFeature } from "./features/dishes.js?v=homealacarte-77";
+import { createAutoMenuFeature } from "./features/auto-menu.js?v=homealacarte-77";
 import {
-  dishStockAvailability,
-  estimatedStockValue,
-} from "./stock-availability.js?v=homealacarte-77";
+  createFormatters,
+  displayCategory,
+  escapeHtml,
+  externalHttpUrl,
+  formatInputNumber,
+  normalizedCategory,
+  options,
+} from "./core/format.js?v=homealacarte-77";
+import { createSearchableSelect } from "./core/searchable-select.js?v=homealacarte-77";
+import { buildZip, downloadBytes, downloadText } from "./core/downloads.js?v=homealacarte-77";
+import { createThemeController } from "./core/theme.js?v=homealacarte-77";
+import { createAppState } from "./core/app-state.js?v=homealacarte-77";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -56,209 +69,32 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   stock: [],
   extra_needs: [],
 }, null, 2)}\n`;
-function storedJson(key, fallback = null) {
-  try {
-    return JSON.parse(localStorage.getItem(key) || "null") ?? fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-const storedAutoMenuOptions = storedJson("homealacarte-auto-menu-options", {});
-function storedAutoMenuNumber(key, fallback) {
-  const value = Number(storedAutoMenuOptions[key]);
-  return Number.isFinite(value) ? value : fallback;
-}
-
 const worker = new Worker("./worker.js?v=homealacarte-77", { type: "module" });
-const state = {
-  language: localStorage.getItem("homealacarte-language") || "fr",
-  snapshot: null,
-  familyDraft: [],
-  familyEditKey: null,
-  familyOriginal: "",
-  draft: [],
-  stockDraft: [],
-  customDraft: [],
-  activeTab: "family",
-  itemCatalogueTab: localStorage.getItem("homealacarte-item-catalogue-tab") === "other"
-    ? "other"
-    : "food",
-  groceryMode: localStorage.getItem("homealacarte-grocery-mode") || "list",
-  menuMode: localStorage.getItem("homealacarte-menu-mode") || "manual",
-  menuSelectedOnly: localStorage.getItem("homealacarte-menu-selected-only") === "true",
-  groceryHideStocked: localStorage.getItem("homealacarte-grocery-hide-stocked") === "true",
-  colorTheme: Number(localStorage.getItem("homealacarte-color-theme") || 0),
-  randomThemes: storedJson("homealacarte-random-themes", []),
-  dishRangeSignature: "",
-  source: "bundled",
-  requestId: 0,
-  latestRequest: 0,
-  editTimer: null,
-  stockTimer: null,
-  customTimer: null,
-  importedSources: null,
-  serializedData: null,
-  storageStatus: getStorageStatus(),
-  privacyRequests: [],
-  privacyRequestsUserId: "",
-  privacyRequestsLoading: false,
-  restorePeople: null,
-  restoreMenu: null,
-  restoreStock: null,
-  restoreCustom: null,
-  menuCellDraft: null,
-  pendingConfirmation: null,
-  pendingReplacementIndex: null,
-  pendingMissingValue: null,
-  dishDetailsMenuIndex: null,
-  dishDetailsDishKey: null,
-  dishDetailsOriginal: null,
-  dishDetailsItemUnit: "unit",
-  dishDetailsScheduling: false,
-  dishFormKey: null,
-  dishFormOriginal: "",
-  ingredientSelectedKey: null,
-  itemEditorCreating: false,
-  ingredientOriginal: "",
-  householdItemOriginal: "",
-  draggedMenuIndex: null,
-  autoMenuSignature: "",
-  autoMenuAvailability: {},
-  autoMenuSlots: {},
-  autoMenuCandidates: {},
-  autoMenuOptions: {
-    kcalThreshold: storedAutoMenuNumber("kcalThreshold", 150),
-    minPortions: storedAutoMenuNumber("minPortions", 0.5),
-    maxPortions: storedAutoMenuNumber("maxPortions", 2),
-    portionStep: storedAutoMenuNumber("portionStep", 0.25),
-    samePortionForEveryone: storedAutoMenuOptions.samePortionForEveryone === true,
-  },
-  autoMenuProposal: null,
-  engineBusy: false,
-  engineMessage: "",
-  lastError: null,
-  pendingDataAction: null,
-};
+const state = createAppState(localStorage, getStorageStatus);
+const themeController = createThemeController(state, localStorage, document.documentElement.style);
+const applyColorTheme = themeController.apply;
+const randomizeColorTheme = themeController.randomize;
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-
-function searchableSelectInput(select) {
-  return select?.closest(".searchable-select")?.querySelector(".searchable-select-input") || null;
-}
-
-function enhanceSearchableSelect(
-  select,
-  placeholder = "",
-  requiredOverride = null,
-  allowCustom = false,
-) {
-  if (!select) return null;
-  const required = requiredOverride == null
-    ? (select.required || select.dataset.wasRequired === "true")
-    : Boolean(requiredOverride);
-  let wrapper = select.closest(".searchable-select");
-  let input = searchableSelectInput(select);
-  if (!wrapper) {
-    wrapper = document.createElement("div");
-    wrapper.className = "searchable-select";
-    select.before(wrapper);
-    wrapper.append(select);
-    input = document.createElement("input");
-    input.type = "search";
-    input.className = "searchable-select-input";
-    input.autocomplete = "off";
-    const list = document.createElement("datalist");
-    list.id = `searchable-select-${Math.random().toString(36).slice(2)}`;
-    input.setAttribute("list", list.id);
-    wrapper.prepend(input);
-    wrapper.append(list);
-    select.classList.add("searchable-select-source");
-    input.addEventListener("input", () => {
-      const query = input.value.trim().toLocaleLowerCase(state.language);
-      const customAllowed = input.dataset.allowCustom === "true";
-      const options = [...select.options].filter((option) => option.value);
-      const exact = options.find((option) => option.textContent.trim()
-        .toLocaleLowerCase(state.language) === query);
-      const startsWith = options.filter((option) => option.textContent.trim()
-        .toLocaleLowerCase(state.language).startsWith(query));
-      const match = exact
-        || (!customAllowed && query && startsWith.length === 1 ? startsWith[0] : null);
-      const nextValue = match?.value || "";
-      if (select.value !== nextValue) {
-        select.value = nextValue;
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      }
-      input.setCustomValidity((customAllowed && query)
-        || nextValue
-        || input.dataset.required !== "true"
-        ? ""
-        : t(state.language, "select_catalogue_suggestion"));
-    });
-    input.addEventListener("change", () => input.dispatchEvent(new Event("input")));
-  }
-  select.dataset.wasRequired = String(required);
-  select.required = false;
-  input.placeholder = placeholder;
-  input.dataset.required = String(required);
-  input.dataset.allowCustom = String(allowCustom);
-  input.required = required;
-  const list = wrapper.querySelector("datalist");
-  list.innerHTML = [...select.options]
-    .filter((option) => option.value)
-    .map((option) => `<option value="${escapeHtml(option.textContent.trim())}"></option>`)
-    .join("");
-  const selected = select.selectedOptions[0];
-  input.value = selected?.value ? selected.textContent.trim() : "";
-  input.setCustomValidity("");
-  return input;
-}
-
-function setSearchableSelectHidden(select, hidden) {
-  const wrapper = select?.closest(".searchable-select");
-  if (wrapper) {
-    wrapper.hidden = hidden;
-    const input = searchableSelectInput(select);
-    if (input) input.disabled = hidden;
-  }
-  else if (select) select.hidden = hidden;
-}
-const formatNumber = (value, digits = 1) => new Intl.NumberFormat(
-  state.language === "fr" ? "fr-FR" : "en-GB",
-  { maximumFractionDigits: digits },
-).format(value || 0);
-const formatMoney = (value) => new Intl.NumberFormat(
-  state.language === "fr" ? "fr-FR" : "en-GB",
-  { style: "currency", currency: "EUR" },
-).format(value || 0);
-const formatInputNumber = (value) => {
-  const number = Number(value);
-  return Number.isFinite(number) ? String(number) : "";
-};
-const formatBytes = (value) => {
-  const bytes = Number(value || 0);
-  if (!bytes) return `0 ${t(state.language, "bytes")}`;
-  const units = ["bytes", "kilobytes", "megabytes"];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${formatNumber(bytes / (1024 ** index), index ? 1 : 0)} ${t(state.language, units[index])}`;
-};
-const formatDateTime = (value) => {
-  if (!value) return t(state.language, "never");
-  const date = new Date(value);
-  return Number.isNaN(date.valueOf())
-    ? t(state.language, "unknown")
-    : new Intl.DateTimeFormat(state.language === "fr" ? "fr-FR" : "en-GB", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(date);
-};
-const displayCategory = (value) => String(value || "").replaceAll("::", " › ");
-const normalizedCategory = (value) => String(value || "").replace(/\s*›\s*/g, "::");
-const translatedTemplate = (key, values = {}) => Object.entries(values).reduce(
-  (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
-  t(state.language, key),
+const {
+  formatBytes,
+  formatDateTime,
+  formatMoney,
+  formatNumber,
+  translatedTemplate,
+} = createFormatters(
+  () => state.language,
+  (key) => t(state.language, key),
 );
+const searchableSelect = createSearchableSelect({
+  getLanguage: () => state.language,
+  translate: (key) => t(state.language, key),
+  escapeHtml,
+});
+const enhanceSearchableSelect = searchableSelect.enhance;
+const searchableSelectInput = searchableSelect.inputFor;
+const setSearchableSelectHidden = searchableSelect.setHidden;
 const optionalInputNumber = (selector) => {
   const value = $(selector).value;
   return value === "" ? null : Number(value);
@@ -307,108 +143,6 @@ function dishNutriScoreDetail(dish) {
   );
 }
 
-const COLOR_THEMES = [
-  {
-    paper: "#f7f4ed", surface: "#fffdf8", surfaceStrong: "#ffffff",
-    ink: "#2f2b27", muted: "#746e66", line: "#e5dfd4", lineStrong: "#d6cdbf",
-    accent: "#b45e46", accentDark: "#8e4533", accentSoft: "#f3dfd8",
-    green: "#557763", greenSoft: "#e2ece5", gold: "#c38a39",
-  },
-  {
-    paper: "#eef6f8", surface: "#fbfeff", surfaceStrong: "#ffffff",
-    ink: "#17343c", muted: "#5e7780", line: "#d4e4e8", lineStrong: "#bfd4d9",
-    accent: "#167d91", accentDark: "#0d5b6c", accentSoft: "#d4edf2",
-    green: "#6c7f3f", greenSoft: "#e7edd8", gold: "#d69035",
-  },
-  {
-    paper: "#f6f1fa", surface: "#fefbff", surfaceStrong: "#ffffff",
-    ink: "#34283c", muted: "#786a80", line: "#e6dbea", lineStrong: "#d6c7dc",
-    accent: "#7c4d9e", accentDark: "#5f347e", accentSoft: "#eadcf2",
-    green: "#477d70", greenSoft: "#dcedea", gold: "#c28a34",
-  },
-  {
-    paper: "#f8f6e9", surface: "#fffef8", surfaceStrong: "#ffffff",
-    ink: "#333225", muted: "#76725d", line: "#e7e1c6", lineStrong: "#d8d0aa",
-    accent: "#d46a1f", accentDark: "#a94b0c", accentSoft: "#f8e1ce",
-    green: "#54813d", greenSoft: "#e3efd9", gold: "#c79416",
-  },
-  {
-    paper: "#faf1f4", surface: "#fffafd", surfaceStrong: "#ffffff",
-    ink: "#3d2630", muted: "#806b73", line: "#ead9df", lineStrong: "#d9c3cb",
-    accent: "#b33967", accentDark: "#8a244b", accentSoft: "#f2d8e2",
-    green: "#477966", greenSoft: "#dcebe5", gold: "#bd8536",
-  },
-  {
-    paper: "#eef5ef", surface: "#fbfefb", surfaceStrong: "#ffffff",
-    ink: "#26362b", muted: "#68786d", line: "#d8e4da", lineStrong: "#c3d3c6",
-    accent: "#39745a", accentDark: "#285841", accentSoft: "#d7e9df",
-    green: "#8a6b35", greenSoft: "#eee5d3", gold: "#c27b32",
-  },
-];
-
-function applyColorTheme(index) {
-  const numericIndex = Number(index);
-  const safeIndex = Number.isInteger(numericIndex) && numericIndex >= 0 && numericIndex < 12
-    ? numericIndex
-    : 0;
-  while (state.randomThemes.length < 6) state.randomThemes.push(vividRandomTheme());
-  if (state.randomThemes.length > 6) state.randomThemes = state.randomThemes.slice(0, 6);
-  localStorage.setItem("homealacarte-random-themes", JSON.stringify(state.randomThemes));
-  const theme = safeIndex < COLOR_THEMES.length
-    ? COLOR_THEMES[safeIndex]
-    : state.randomThemes[safeIndex - COLOR_THEMES.length];
-  const root = document.documentElement.style;
-  Object.entries(theme).forEach(([key, value]) => {
-    const property = `--${key.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`)}`;
-    root.setProperty(property, value);
-  });
-  state.colorTheme = safeIndex;
-}
-
-function vividRandomTheme() {
-  const hue = Math.floor(Math.random() * 360);
-  const secondary = (hue + 110 + Math.floor(Math.random() * 70)) % 360;
-  const tertiary = (hue + 225 + Math.floor(Math.random() * 45)) % 360;
-  const lightBackground = Math.random() > 0.22;
-  if (lightBackground) {
-    return {
-      paper: `hsl(${hue} 88% 72%)`,
-      surface: `hsl(${secondary} 92% 90%)`,
-      surfaceStrong: `hsl(${tertiary} 95% 86%)`,
-      ink: `hsl(${tertiary} 82% 12%)`,
-      muted: `hsl(${secondary} 68% 25%)`,
-      line: `hsl(${hue} 72% 43%)`,
-      lineStrong: `hsl(${tertiary} 76% 35%)`,
-      accent: `hsl(${secondary} 92% 40%)`,
-      accentDark: `hsl(${secondary} 95% 23%)`,
-      accentSoft: `hsl(${secondary} 95% 78%)`,
-      green: `hsl(${tertiary} 82% 31%)`,
-      greenSoft: `hsl(${tertiary} 82% 78%)`,
-      gold: `hsl(${(hue + 45) % 360} 96% 43%)`,
-    };
-  }
-  return {
-    paper: `hsl(${hue} 72% 13%)`,
-    surface: `hsl(${secondary} 66% 20%)`,
-    surfaceStrong: `hsl(${tertiary} 72% 25%)`,
-    ink: `hsl(${(hue + 55) % 360} 96% 88%)`,
-    muted: `hsl(${secondary} 78% 77%)`,
-    line: `hsl(${tertiary} 72% 48%)`,
-    lineStrong: `hsl(${secondary} 82% 59%)`,
-    accent: `hsl(${secondary} 96% 64%)`,
-    accentDark: `hsl(${secondary} 98% 83%)`,
-    accentSoft: `hsl(${secondary} 75% 31%)`,
-    green: `hsl(${tertiary} 92% 68%)`,
-    greenSoft: `hsl(${tertiary} 65% 30%)`,
-    gold: `hsl(${(hue + 45) % 360} 100% 68%)`,
-  };
-}
-
-function randomizeColorTheme() {
-  const next = (Number(state.colorTheme) + 1) % 12;
-  localStorage.setItem("homealacarte-color-theme", String(next));
-  applyColorTheme(next);
-}
 
 function send(type, payload = {}) {
   const requestId = ++state.requestId;
@@ -611,119 +345,6 @@ worker.onmessageerror = () => {
   showError("", "worker_error");
 };
 
-function downloadText(filename, content) {
-  downloadBytes(
-    filename,
-    new TextEncoder().encode(content),
-    "application/json;charset=utf-8",
-  );
-}
-
-function downloadBytes(filename, bytes, type) {
-  const url = URL.createObjectURL(new Blob([bytes], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-const CRC32_TABLE = (() => {
-  const table = new Uint32Array(256);
-  for (let index = 0; index < table.length; index += 1) {
-    let value = index;
-    for (let bit = 0; bit < 8; bit += 1) {
-      value = (value >>> 1) ^ (value & 1 ? 0xedb88320 : 0);
-    }
-    table[index] = value >>> 0;
-  }
-  return table;
-})();
-
-function crc32(bytes) {
-  let value = 0xffffffff;
-  for (const byte of bytes) value = (value >>> 8) ^ CRC32_TABLE[(value ^ byte) & 0xff];
-  return (value ^ 0xffffffff) >>> 0;
-}
-
-function zipHeader(size) {
-  const bytes = new Uint8Array(size);
-  return { bytes, view: new DataView(bytes.buffer) };
-}
-
-function joinBytes(parts) {
-  const result = new Uint8Array(parts.reduce((total, part) => total + part.length, 0));
-  let offset = 0;
-  for (const part of parts) {
-    result.set(part, offset);
-    offset += part.length;
-  }
-  return result;
-}
-
-function buildZip(files) {
-  const encoder = new TextEncoder();
-  const localParts = [];
-  const centralParts = [];
-  let localOffset = 0;
-
-  for (const file of files) {
-    const path = String(file.path || "").replaceAll("\\", "/").replace(/^\/+/, "");
-    if (!path || path.split("/").includes("..")) throw new Error(`Invalid ZIP path: ${file.path}`);
-    const name = encoder.encode(path);
-    const content = encoder.encode(file.content);
-    const checksum = crc32(content);
-
-    const local = zipHeader(30);
-    local.view.setUint32(0, 0x04034b50, true);
-    local.view.setUint16(4, 20, true);
-    local.view.setUint16(6, 0x0800, true);
-    local.view.setUint16(8, 0, true);
-    local.view.setUint16(10, 0, true);
-    local.view.setUint16(12, 33, true);
-    local.view.setUint32(14, checksum, true);
-    local.view.setUint32(18, content.length, true);
-    local.view.setUint32(22, content.length, true);
-    local.view.setUint16(26, name.length, true);
-    local.view.setUint16(28, 0, true);
-    localParts.push(local.bytes, name, content);
-
-    const central = zipHeader(46);
-    central.view.setUint32(0, 0x02014b50, true);
-    central.view.setUint16(4, 20, true);
-    central.view.setUint16(6, 20, true);
-    central.view.setUint16(8, 0x0800, true);
-    central.view.setUint16(10, 0, true);
-    central.view.setUint16(12, 0, true);
-    central.view.setUint16(14, 33, true);
-    central.view.setUint32(16, checksum, true);
-    central.view.setUint32(20, content.length, true);
-    central.view.setUint32(24, content.length, true);
-    central.view.setUint16(28, name.length, true);
-    central.view.setUint16(30, 0, true);
-    central.view.setUint16(32, 0, true);
-    central.view.setUint16(34, 0, true);
-    central.view.setUint16(36, 0, true);
-    central.view.setUint32(38, 0, true);
-    central.view.setUint32(42, localOffset, true);
-    centralParts.push(central.bytes, name);
-
-    localOffset += local.bytes.length + name.length + content.length;
-  }
-
-  const centralDirectory = joinBytes(centralParts);
-  const end = zipHeader(22);
-  end.view.setUint32(0, 0x06054b50, true);
-  end.view.setUint16(4, 0, true);
-  end.view.setUint16(6, 0, true);
-  end.view.setUint16(8, files.length, true);
-  end.view.setUint16(10, files.length, true);
-  end.view.setUint32(12, centralDirectory.length, true);
-  end.view.setUint32(16, localOffset, true);
-  end.view.setUint16(20, 0, true);
-  return joinBytes([...localParts, centralDirectory, end.bytes]);
-}
-
 function applyTranslations() {
   document.documentElement.lang = state.language;
   $("#language-select").value = state.language;
@@ -768,144 +389,6 @@ function setMenuMode(mode) {
     panel.classList.toggle("active", active);
     panel.hidden = !active;
   });
-}
-
-const autoMenuSettingKey = (...parts) => JSON.stringify(parts);
-const autoMenuMeals = () => [state.snapshot.meals[2], state.snapshot.meals[5]].filter(Boolean);
-
-function initializeAutoMenuSettings() {
-  const people = state.snapshot.people;
-  const signature = JSON.stringify([
-    state.language,
-    state.snapshot.days,
-    people.map((person) => person.key),
-  ]);
-  if (state.autoMenuSignature === signature) return;
-  state.autoMenuSignature = signature;
-  state.autoMenuAvailability = {};
-  state.autoMenuSlots = {};
-  state.autoMenuCandidates = {};
-  state.autoMenuProposal = null;
-  const hasMenu = state.draft.length > 0;
-  for (const person of people) {
-    for (const day of state.snapshot.days) {
-      state.autoMenuAvailability[autoMenuSettingKey(person.key, day)] = !hasMenu
-        || state.draft.some((row) => row.day === day && row.people.includes(person.key));
-      if (person.kcal_target == null) {
-        state.autoMenuAvailability[autoMenuSettingKey(person.key, day)] = false;
-      }
-    }
-  }
-  for (const day of state.snapshot.days) {
-    for (const meal of autoMenuMeals()) {
-      state.autoMenuSlots[autoMenuSettingKey(day, meal)] = !state.draft
-        .some((row) => row.day === day && row.meal === meal);
-    }
-  }
-  const used = new Set(state.draft.map((row) => row.item_key));
-  for (const dish of state.snapshot.dishes) {
-    state.autoMenuCandidates[dish.key] = !used.has(dish.key);
-  }
-}
-
-function renderAutoMenuDishes() {
-  const usedDishes = new Set(state.draft.map((row) => row.item_key));
-  const query = $("#auto-dish-search").value.trim().toLocaleLowerCase(state.language);
-  const dishes = state.snapshot.dishes.filter((dish) => !query
-    || `${dish.name} ${dish.nutri_score || ""}`
-      .toLocaleLowerCase(state.language).includes(query));
-  $("#auto-menu-dishes").innerHTML = dishes.map((dish) => {
-    const used = usedDishes.has(dish.key);
-    const mainMeal = dish.auto_menu_main !== false;
-    const disabled = used || !mainMeal;
-    return `<label class="auto-menu-dish ${disabled ? "used" : ""}">
-      <input type="checkbox" data-auto-dish-key="${escapeHtml(encodeURIComponent(dish.key))}" ${!disabled && state.autoMenuCandidates[dish.key] !== false ? "checked" : ""} ${disabled ? "disabled" : ""}>
-      <strong title="${escapeHtml(dish.name)}">${escapeHtml(dish.name)}</strong>
-      <small>${mainMeal ? `${formatNumber(dish.per_serving.kcal, 0)} kcal · ${formatMoney(dish.per_serving.cost)}` : escapeHtml(t(state.language, "not_main_meal"))}</small>
-    </label>`;
-  }).join("") || `<p class="auto-menu-dishes-empty">${escapeHtml(t(state.language, query ? "no_matching_dishes" : "no_eligible_dishes"))}</p>`;
-}
-
-function renderAutoMenu() {
-  initializeAutoMenuSettings();
-  const people = state.snapshot.people;
-  $("#auto-kcal-threshold").value = formatInputNumber(state.autoMenuOptions.kcalThreshold);
-  $("#auto-min-portions").value = formatInputNumber(state.autoMenuOptions.minPortions);
-  $("#auto-max-portions").value = formatInputNumber(state.autoMenuOptions.maxPortions);
-  $("#auto-portion-step").value = formatInputNumber(state.autoMenuOptions.portionStep);
-  $("#auto-same-portions").checked = state.autoMenuOptions.samePortionForEveryone;
-
-  $("#auto-menu-availability").innerHTML = `
-    <table class="auto-menu-availability">
-      <thead><tr><th>${escapeHtml(t(state.language, "people"))}</th>${state.snapshot.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("")}</tr></thead>
-      <tbody>${people.map((person) => `<tr>
-        <td><strong>${escapeHtml(person.name)}</strong><span>${person.kcal_target == null ? escapeHtml(t(state.language, "excluded_without_calorie_target")) : `${formatNumber(person.kcal_target, 0)} kcal`}</span></td>
-        ${state.snapshot.days.map((day) => {
-          const key = autoMenuSettingKey(person.key, day);
-          return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" ${state.autoMenuAvailability[key] ? "checked" : ""} ${person.kcal_target == null ? "disabled" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
-        }).join("")}
-      </tr>`).join("")}</tbody>
-    </table>`;
-
-  $("#auto-menu-slots").innerHTML = state.snapshot.days.map((day) => `
-    <div class="auto-menu-slot-day">
-      <h3>${escapeHtml(day)}</h3>
-      ${autoMenuMeals().map((meal) => {
-        const occupied = state.draft.some((row) => row.day === day && row.meal === meal);
-        const key = autoMenuSettingKey(day, meal);
-        return `<label class="auto-menu-slot ${occupied ? "unavailable" : ""}">
-          <input type="checkbox" data-auto-slot-day="${escapeHtml(encodeURIComponent(day))}" data-auto-slot-meal="${escapeHtml(encodeURIComponent(meal))}" ${!occupied && state.autoMenuSlots[key] ? "checked" : ""} ${occupied ? "disabled" : ""}>
-          <span>${escapeHtml(meal)}${occupied ? ` · ${escapeHtml(t(state.language, "already_scheduled"))}` : ""}</span>
-        </label>`;
-      }).join("")}
-    </div>`).join("");
-
-  renderAutoMenuDishes();
-  renderAutoMenuResult();
-}
-
-function renderAutoMenuResult() {
-  const container = $("#auto-menu-result");
-  const proposal = state.autoMenuProposal;
-  if (!proposal) {
-    container.hidden = true;
-    container.innerHTML = "";
-    return;
-  }
-  const people = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
-  const items = new Map(state.snapshot.item_options.map((item) => [item.key, item.name]));
-  container.hidden = false;
-  container.innerHTML = `
-    <div class="auto-menu-result-summary">
-      <div><span>${escapeHtml(t(state.language, "grocery_total_after_generation"))}</span><strong>${formatMoney(proposal.estimated_grocery_total)}</strong></div>
-      <div><span>${escapeHtml(t(state.language, "additional_grocery_cost"))}</span><strong>${formatMoney(proposal.estimated_additional_cost)}</strong></div>
-      <div><span>${escapeHtml(t(state.language, "generated_rows"))}</span><strong>${proposal.rows.length}</strong><small>${escapeHtml(t(state.language, proposal.decomposed ? "solver_daily_optimized" : proposal.optimal ? "solver_optimal" : "solver_feasible"))}</small></div>
-    </div>
-    <section class="panel auto-menu-preview">
-      <h2>${escapeHtml(t(state.language, "generated_menu_preview"))}</h2>
-      <div class="auto-menu-preview-grid">${proposal.rows.map((row) => `
-        <div class="auto-menu-preview-card">
-          <strong>${escapeHtml(`${row.day} · ${row.meal}`)}</strong>
-          <span>${escapeHtml(items.get(row.item_key) || row.item_key)} · ${formatNumber(row.quantity, 2)} ${escapeHtml(row.quantity_unit)}</span>
-          <span>${escapeHtml(row.people.map((key) => people.get(key) || key).join(", "))}</span>
-        </div>`).join("")}</div>
-    </section>
-    <section class="panel auto-menu-preview table-scroll">
-      <h2>${escapeHtml(t(state.language, "calorie_check"))}</h2>
-      <table class="auto-menu-daily"><thead><tr>
-        <th>${escapeHtml(t(state.language, "people"))} · ${escapeHtml(t(state.language, "day"))}</th>
-        <th>${escapeHtml(t(state.language, "existing_kcal"))}</th><th>${escapeHtml(t(state.language, "generated_kcal"))}</th>
-        <th>${escapeHtml(t(state.language, "total_kcal"))}</th><th>${escapeHtml(t(state.language, "target_kcal"))}</th>
-      </tr></thead><tbody>${proposal.daily_results.map((row) => `<tr>
-        <td>${escapeHtml(`${people.get(row.person_key) || row.person_key} · ${row.day}`)}</td>
-        <td>${formatNumber(row.existing_kcal, 0)}</td><td>${formatNumber(row.generated_kcal, 0)}</td>
-        <td><strong>${formatNumber(row.total_kcal, 0)}</strong></td><td>${formatNumber(row.target_kcal, 0)}</td>
-      </tr>`).join("")}</tbody></table>
-    </section>
-    <div class="auto-menu-result-actions">
-      <button id="auto-menu-discard" class="button ghost" type="button">${escapeHtml(t(state.language, "discard_preview"))}</button>
-      <button id="auto-menu-apply" class="button primary" type="button">${escapeHtml(t(state.language, "apply_generated_menu"))}</button>
-    </div>`;
 }
 
 function render() {
@@ -1407,27 +890,6 @@ function renderSummary() {
   ];
   $("#summary-cards").innerHTML = cards.map(([value, label]) =>
     `<div class="summary-card"><strong>${value}</strong><span>${label}</span></div>`,
-  ).join("");
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[character]);
-}
-
-function externalHttpUrl(value) {
-  try {
-    const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
-  } catch {
-    return "";
-  }
-}
-
-function options(values, selected) {
-  return values.map((value) =>
-    `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`,
   ).join("");
 }
 
@@ -2683,396 +2145,97 @@ function closeMissingValueDialog() {
   else dialog.removeAttribute("open");
 }
 
-function renderGrocery() {
-  const grocery = state.snapshot.grocery_plan;
-  $("#grocery-hide-stocked").checked = state.groceryHideStocked;
-  const categories = grocery.categories
-    .map((category) => ({
-      ...category,
-      subcategories: category.subcategories
-        .map((subcategory) => ({
-          ...subcategory,
-          items: subcategory.items.filter((item) =>
-            !state.groceryHideStocked || !item.stock_sufficient
-          ),
-        }))
-        .filter((subcategory) => subcategory.items.length),
-    }))
-    .filter((category) => category.subcategories.length);
-  $("#grocery-grid").innerHTML = categories.map((category) => `
-    <article class="grocery-category">
-      <h2>${escapeHtml(category.name)}</h2>
-      ${category.subcategories.map((subcategory) => `
-        <section class="grocery-subcategory">
-          ${subcategory.name ? `<h3>${escapeHtml(subcategory.name)}</h3>` : ""}
-          ${subcategory.items.map((item) => {
-            const checked = item.stock_sufficient;
-            const partial = !checked && Number(item.stock_quantity) > 0;
-            const purchase = item.stock_sufficient
-              ? t(state.language, "stock_enough")
-              : partial
-                ? `${t(state.language, "in_stock")}: ${escapeHtml(item.stock_quantity_text)} / ${escapeHtml(item.needed_quantity_text)} · ${t(state.language, "buy")}: ${escapeHtml(item.purchase_quantity_text)}`
-                : `${t(state.language, "buy")}: ${escapeHtml(item.purchase_quantity_text)}`;
-            const stockStatus = checked
-              ? `<span class="stock-status enough">${escapeHtml(t(state.language, "stock_enough"))}</span>`
-              : partial
-                ? `<span class="stock-status partial">${escapeHtml(t(state.language, "stock_partial"))}: ${escapeHtml(item.stock_quantity_text)}</span>`
-                : "";
-            return `<div class="grocery-item ${checked ? "checked stock-covered" : ""} ${partial ? "stock-partial" : ""}" tabindex="0" data-grocery-details="${escapeHtml(encodeURIComponent(item.id))}" aria-label="${escapeHtml(`${t(state.language, "details")}: ${item.name}`)}">
-              <span class="grocery-item-check">
-                <input type="checkbox" data-id="${escapeHtml(item.id)}" aria-label="${escapeHtml(`${t(state.language, checked ? "remove_stock" : "add_stock")}: ${item.name}`)}" ${checked ? "checked" : ""}>
-                <span><strong>${escapeHtml(item.name)}</strong><small>${t(state.language, "total_need")}: ${escapeHtml(item.needed_quantity_text)} · ${purchase}</small></span>
-              </span>
-              <span class="grocery-item-end">
-                ${stockStatus}
-                ${checked ? "" : `<span class="price">${formatMoney(item.estimated_purchase_price)}</span>`}
-              </span>
-            </div>`;
-          }).join("")}
-        </section>
-      `).join("")}
-    </article>
-  `).join("") || `<p class="grocery-empty">${escapeHtml(t(state.language, "empty"))}</p>`;
-  updateGroceryProgress();
-}
+const extraNeedsFeature = createExtraNeedsFeature({
+  state,
+  select: $,
+  translate: (key) => t(state.language, key),
+  displayCategory,
+  normalizeCategory: normalizedCategory,
+  escapeHtml,
+  formatInputNumber,
+  formatMoney,
+  setCountBadge,
+  enhanceSearchableSelect,
+  searchableSelectInput,
+  openConfirmation,
+  setBusy,
+  send,
+});
+const customGroceryPayload = extraNeedsFeature.payload;
+const renderCustomGrocery = extraNeedsFeature.render;
+const scheduleCustomGroceryUpdate = extraNeedsFeature.scheduleUpdate;
 
-function customGroceryPayload() {
-  return state.customDraft.map((item) => ({
-    key: item.key,
-    name: item.name,
-    category: normalizedCategory(item.category),
-    quantity: Number(item.quantity),
-    measure_unit: item.measure_unit,
-    purchase_unit: item.purchase_unit,
-    purchase_quantity: Number(item.purchase_quantity),
-    estimated_price: Number(item.estimated_price),
-    notes: item.notes || "",
-    custom: Boolean(item.custom),
-  }));
-}
+const stockFeature = createStockFeature({
+  state,
+  select: $,
+  translate: (key) => t(state.language, key),
+  displayCategory,
+  escapeHtml,
+  formatInputNumber,
+  formatMoney,
+  setCountBadge,
+  enhanceSearchableSelect,
+  openConfirmation,
+  setBusy,
+  send,
+});
+const stockPayload = stockFeature.payload;
+const addStockQuantity = stockFeature.addQuantity;
+const renderStock = stockFeature.render;
+const scheduleStockUpdate = stockFeature.scheduleUpdate;
 
-function renderCustomGrocery() {
-  setCountBadge("#needs-tab-count", state.customDraft.length);
-  $("#empty-extra-needs").disabled = state.customDraft.length === 0;
-  const activeKeys = new Set(state.customDraft.map((item) => item.key));
-  $("#custom-add-existing").innerHTML = `<option value=""></option>${(state.snapshot.household_options || [])
-    .filter((item) => !activeKeys.has(item.key))
-    .map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)
-    .join("")}`;
-  const query = $("#needs-search").value.trim().toLocaleLowerCase(state.language);
-  const visibleItems = state.customDraft.filter((item) => !query
-    || `${item.name} ${displayCategory(item.category)} ${item.notes || ""}`
-      .toLocaleLowerCase(state.language).includes(query));
-  const rows = visibleItems.map((item) => `
-    <div class="custom-row" data-custom-key="${escapeHtml(item.key)}">
-      <strong class="custom-row-name">
-        ${escapeHtml(item.name)}
-        <small class="item-origin ${item.custom ? "custom" : "catalogue"}">${escapeHtml(t(state.language, item.custom ? "custom_item" : "catalogue_item"))}</small>
-      </strong>
-      <span class="custom-category">${escapeHtml(displayCategory(item.category))}</span>
-      <input class="custom-quantity" data-custom-field="quantity" type="number" min="0.000000001" step="any" value="${formatInputNumber(item.quantity)}" aria-label="${escapeHtml(t(state.language, "quantity"))}">
-      <span class="custom-unit">${escapeHtml(item.measure_unit)}</span>
-      <span class="custom-price">${escapeHtml(formatMoney(item.estimated_price))}</span>
-      <input class="custom-notes" data-custom-field="notes" value="${escapeHtml(item.notes || "")}" aria-label="${escapeHtml(t(state.language, "notes"))}" placeholder="${escapeHtml(t(state.language, "need_notes_placeholder"))}">
-      <button class="icon-button remove-custom" type="button" title="${escapeHtml(t(state.language, "remove_custom_grocery"))}" aria-label="${escapeHtml(t(state.language, "remove_custom_grocery"))}">
-        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-      </button>
-    </div>
-  `).join("") || `<p class="stock-empty">${escapeHtml(t(state.language, query ? "no_matching_items" : "empty"))}</p>`;
-  $("#custom-list").innerHTML = `
-    <div class="custom-head">
-      <span>${t(state.language, "name")}</span>
-      <span>${t(state.language, "category")}</span>
-      <span>${t(state.language, "quantity")}</span>
-      <span>${t(state.language, "unit")}</span>
-      <span>${t(state.language, "unit_price")}</span>
-      <span>${t(state.language, "notes")}</span>
-      <span></span>
-    </div>
-    ${rows}
-  `;
-  enhanceSearchableSelect(
-    $("#custom-add-existing"),
-    t(state.language, "type_or_create_item"),
-    true,
-    true,
-  );
-  updateExtraNeedSelection();
-}
+const groceryFeature = createGroceryFeature({
+  state,
+  select: $,
+  translate: (key) => t(state.language, key),
+  escapeHtml,
+  formatMoney,
+  setCountBadge,
+  storage: localStorage,
+  send,
+  stockPayload,
+  extraNeedsPayload: customGroceryPayload,
+  openDetails: openGroceryDetails,
+});
+const renderGrocery = groceryFeature.render;
 
-function updateExtraNeedSelection() {
-  const option = (state.snapshot.household_options || [])
-    .find((item) => item.key === $("#custom-add-existing").value);
-  const form = $("#custom-add-form");
-  const wasCatalogue = form.dataset.catalogMatch === "true";
-  const catalogue = Boolean(option);
-  form.dataset.catalogMatch = String(catalogue);
-  $("#custom-add-category").readOnly = catalogue;
-  $("#custom-add-measure-unit").readOnly = catalogue;
-  $("#custom-add-price").readOnly = catalogue;
-  if (option) {
-    $("#custom-add-category").value = displayCategory(option.category);
-    $("#custom-add-measure-unit").value = option.measure_unit;
-    $("#custom-add-price").value = formatInputNumber(option.estimated_price);
-    $("#custom-add-notes").value = option.notes || "";
-  } else if (wasCatalogue || !$("#custom-add-category").value) {
-    $("#custom-add-category").value = t(state.language, "other");
-    $("#custom-add-measure-unit").value = t(state.language, "units");
-    $("#custom-add-price").value = "0";
-    $("#custom-add-notes").value = "";
-  }
-}
+const dishesFeature = createDishesFeature({
+  state,
+  select: $,
+  selectAll: $$,
+  translate: (key) => t(state.language, key),
+  escapeHtml,
+  formatMoney,
+  formatNumber,
+  translatedTemplate,
+  ingredientNutriScoreMissing,
+  dishNutriScoreDetail,
+  openDetails: openDishDetails,
+});
+const configureDishRanges = dishesFeature.configureRanges;
+const renderDishes = dishesFeature.render;
 
-function stockPayload() {
-  return state.stockDraft.map(({ item_key, quantity, quantity_unit, notes, household }) => ({
-    item_key,
-    quantity: Number(quantity),
-    quantity_unit,
-    notes: notes || "",
-    household: Boolean(household),
-  }));
-}
-
-function addStockQuantity(itemKey, quantity, quantityUnit, notes = "") {
-  const option = (state.snapshot?.stock_options || [])
-    .find((item) => item.item_key === itemKey);
-  const amount = Number(quantity);
-  if (!option || !Number.isFinite(amount) || amount <= 0) return false;
-  const household = Boolean(option.household);
-  const unit = household ? "unit" : quantityUnit;
-  const gramsPerUnit = Number(option.grams_per_measure_unit || 1);
-  const current = state.stockDraft.find((item) => item.item_key === itemKey
-    && Boolean(item.household) === household);
-  if (current) {
-    let amountInCurrentUnit = amount;
-    if (!household && unit !== current.quantity_unit) {
-      amountInCurrentUnit = unit === "unit"
-        ? amount * gramsPerUnit
-        : amount / gramsPerUnit;
-    }
-    current.quantity = Number(current.quantity) + amountInCurrentUnit;
-    if (notes) current.notes = notes;
-  } else {
-    state.stockDraft.push({
-      item_key: itemKey,
-      name: option.name,
-      category: option.category,
-      quantity: amount,
-      quantity_unit: unit,
-      measure_unit: option.measure_unit,
-      grams_per_measure_unit: gramsPerUnit,
-      notes,
-      household,
-    });
-  }
-  return true;
-}
-
-function renderStock() {
-  updateStockValue();
-  setCountBadge("#stock-tab-count", state.stockDraft.length);
-  $("#empty-stock").disabled = state.stockDraft.length === 0;
-  const query = $("#stock-search").value.trim().toLocaleLowerCase(state.language);
-  const visibleItems = state.stockDraft.filter((item) => !query
-    || `${item.name} ${displayCategory(item.category)} ${item.notes || ""}`
-      .toLocaleLowerCase(state.language).includes(query));
-  $("#stock-list").innerHTML = visibleItems.map((item) => `
-    <div class="stock-row" data-stock-key="${escapeHtml(item.item_key)}" data-stock-household="${item.household ? "true" : "false"}">
-      <strong class="stock-row-name">
-        <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
-        <small>${escapeHtml(displayCategory(item.category))}</small>
-      </strong>
-      <input class="stock-control" data-stock-field="quantity" type="number" min="0" step="any" value="${formatInputNumber(item.quantity)}">
-      <select class="stock-control" data-stock-field="quantity_unit">
-        ${item.household
-          ? `<option value="unit">${escapeHtml(item.measure_unit)}</option>`
-          : `<option value="g" ${item.quantity_unit === "g" ? "selected" : ""}>g</option>
-            ${item.measure_unit !== "g" ? `<option value="unit" ${item.quantity_unit === "unit" ? "selected" : ""}>${escapeHtml(item.measure_unit)}</option>` : ""}`}
-      </select>
-      <input class="stock-control stock-notes" data-stock-field="notes" value="${escapeHtml(item.notes || "")}" aria-label="${escapeHtml(t(state.language, "notes"))}" placeholder="${escapeHtml(t(state.language, "stock_notes_placeholder"))}">
-      <button class="icon-button remove-stock" type="button" title="${escapeHtml(t(state.language, "remove_stock"))}" aria-label="${escapeHtml(t(state.language, "remove_stock"))}">
-        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-      </button>
-    </div>
-  `).join("") || `<p class="stock-empty">${escapeHtml(t(state.language, query ? "no_matching_items" : "empty"))}</p>`;
-
-  $("#stock-add-item").innerHTML = `<option value=""></option>${(state.snapshot.stock_options || [])
-    .map((item) => `<option value="${escapeHtml(item.item_key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)
-    .join("")}`;
-  enhanceSearchableSelect(
-    $("#stock-add-item"),
-    t(state.language, "type_item_to_select"),
-    true,
-  );
-  setStockAddUnit();
-  $("#stock-add-form").querySelector("button").disabled = !$("#stock-add-item").value;
-}
-
-function updateStockValue() {
-  const total = estimatedStockValue(
-    state.stockDraft,
-    state.snapshot?.ingredients,
-    state.snapshot?.household_items,
-  );
-  $("#stock-total").textContent = formatMoney(total);
-}
-
-function setStockAddUnit() {
-  const option = (state.snapshot?.stock_options || [])
-    .find((item) => item.item_key === $("#stock-add-item").value);
-  if (!option) {
-    $("#stock-add-unit").innerHTML = "";
-    return;
-  }
-  $("#stock-add-unit").innerHTML = option.household
-    ? `<option value="unit">${escapeHtml(option.measure_unit)}</option>`
-    : `<option value="g">g</option>${option.measure_unit === "g"
-      ? ""
-      : `<option value="unit">${escapeHtml(option.measure_unit)}</option>`}`;
-  const current = state.stockDraft.find((item) => item.item_key === option.item_key);
-  $("#stock-add-unit").value = current?.quantity_unit || option.quantity_unit;
-}
-
-function updateGroceryProgress() {
-  const grocery = state.snapshot?.grocery_plan;
-  const items = grocery?.items || [];
-  const total = items.length;
-  const checked = items.filter((item) => item.stock_sufficient).length;
-  const remainingTotal = items
-    .filter((item) => !item.stock_sufficient)
-    .reduce((sum, item) => sum + item.estimated_purchase_price, 0);
-  const fullTotal = Number(grocery?.estimated_full_purchase_total);
-  $("#grocery-total").textContent = `${formatMoney(remainingTotal)} / ${formatMoney(
-    Number.isFinite(fullTotal) && fullTotal >= remainingTotal ? fullTotal : remainingTotal,
-  )}`;
-  $("#grocery-progress-label").textContent = `${checked} / ${total}`;
-  $("#grocery-progress-bar").style.width = `${total ? checked / total * 100 : 0}%`;
-  setCountBadge("#grocery-tab-count", total - checked);
-  $("#grocery-count").textContent = String(total - checked);
-  $("#grocery-count").hidden = total === checked;
-}
-
-function renderNutriScoreAudit() {
-  const ingredients = state.snapshot.ingredients || [];
-  const dishes = state.snapshot.dishes || [];
-  const readyIngredients = ingredients
-    .filter((ingredient) => ingredientNutriScoreMissing(ingredient) === 0).length;
-  const readyDishes = dishes.filter((dish) => dish.nutri_score_computed).length;
-  const missingValues = ingredients
-    .reduce((total, ingredient) => total + ingredientNutriScoreMissing(ingredient), 0);
-  $("#nutri-score-audit").innerHTML = `
-    <strong>${escapeHtml(t(state.language, "nutri_score_audit_title"))}</strong>
-    <span>${escapeHtml(translatedTemplate("nutri_score_audit_summary", {
-      readyIngredients,
-      totalIngredients: ingredients.length,
-      readyDishes,
-      totalDishes: dishes.length,
-      missingValues,
-    }))}</span>
-  `;
-}
-
-function renderDishes() {
-  renderNutriScoreAudit();
-  const search = $("#dish-search").value.toLowerCase().trim();
-  const minimumCost = Number($("#dish-cost-min").value);
-  const maximumCost = Number($("#dish-cost-max").value);
-  const minimumKcal = Number($("#dish-kcal-min").value);
-  const maximumKcal = Number($("#dish-kcal-max").value);
-  const selectedNutriScores = new Set(
-    $$("[data-dish-nutri-score]:checked").map((input) => input.value),
-  );
-  $("#dish-cost-output").textContent =
-    `${formatMoney(minimumCost)} – ${formatMoney(maximumCost)}`;
-  $("#dish-kcal-output").textContent =
-    `${formatNumber(minimumKcal, 0)} – ${formatNumber(maximumKcal, 0)} kcal`;
-  updateDualRangeTrack("cost");
-  updateDualRangeTrack("kcal");
-  const dishes = state.snapshot.dishes.filter((dish) => {
-    const matchesSearch = !search
-      || `${dish.name} ${dish.key}`.toLowerCase().includes(search);
-    return matchesSearch
-      && matchesSelectedNutriScores(dish, selectedNutriScores)
-      && dish.per_serving.cost >= minimumCost
-      && dish.per_serving.cost <= maximumCost
-      && dish.per_serving.kcal >= minimumKcal
-      && dish.per_serving.kcal <= maximumKcal;
-  });
-  $("#dish-grid").innerHTML = dishes.map((dish) => {
-    const availability = dishStockAvailability(dish, state.stockDraft);
-    const portions = Math.floor(availability.portions * 10) / 10;
-    const limitingIngredient = dish.components
-      .find((component) => component.key === availability.limitingKey)?.name || "";
-    return `
-      <article class="dish-card">
-        <button class="dish-card-open" type="button" data-dish-key="${escapeHtml(encodeURIComponent(dish.key))}">
-          <div class="dish-title"><h2>${escapeHtml(dish.name)}</h2></div>
-          <div class="dish-metrics">
-            <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
-            ${dish.nutri_score
-              ? `<div class="nutri-score metric-${escapeHtml(dish.nutri_score.toLowerCase())}" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>${escapeHtml(dish.nutri_score)}</strong><span>Nutri-Score${dish.nutri_score_computed ? " · auto" : ""}</span></div>`
-              : `<div class="nutri-score-missing" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>—</strong><span>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: dish.nutri_score_missing_values }))}</span></div>`}
-            <div><strong>${formatMoney(dish.per_serving.cost)}</strong><span>${escapeHtml(t(state.language, "cost"))} · ${escapeHtml(t(state.language, "per_serving"))}</span></div>
-          </div>
-          <div class="dish-stock-availability ${portions > 0 ? "available" : "unavailable"}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16M6 8l1 11h10l1-11M9 8V5h6v3"/></svg>
-            <span>${escapeHtml(translatedTemplate("dish_stock_portions", { count: formatNumber(portions, 1) }))}</span>
-            ${limitingIngredient ? `<small>${escapeHtml(translatedTemplate("limited_by", { item: limitingIngredient }))}</small>` : ""}
-          </div>
-        </button>
-      </article>`;
-  }).join("") || `<p>${t(state.language, "empty")}</p>`;
-}
-
-function configureDishRanges() {
-  const maximumCost = Math.max(
-    0.01,
-    ...state.snapshot.dishes.map((dish) => Math.ceil(Number(dish.per_serving.cost || 0) * 100) / 100),
-  );
-  const maximumKcal = Math.max(
-    1,
-    ...state.snapshot.dishes.map((dish) => Math.ceil(Number(dish.per_serving.kcal || 0))),
-  );
-  const signature = `${maximumCost}|${maximumKcal}`;
-  if (state.dishRangeSignature === signature) return;
-  state.dishRangeSignature = signature;
-  [
-    ["cost", maximumCost],
-    ["kcal", maximumKcal],
-  ].forEach(([pair, maximum]) => {
-    const minimumControl = $(`#dish-${pair}-min`);
-    const maximumControl = $(`#dish-${pair}-max`);
-    minimumControl.max = String(maximum);
-    maximumControl.max = String(maximum);
-    minimumControl.value = "0";
-    maximumControl.value = String(maximum);
-    updateDualRangeTrack(pair);
-  });
-}
-
-function updateDualRangeTrack(pair) {
-  const minimum = $(`#dish-${pair}-min`);
-  const maximum = $(`#dish-${pair}-max`);
-  const track = $(`[data-dual-range="${pair}"]`);
-  if (!minimum || !maximum || !track) return;
-  const range = Number(maximum.max) - Number(minimum.min);
-  const start = range ? (Number(minimum.value) - Number(minimum.min)) / range * 100 : 0;
-  const end = range ? (Number(maximum.value) - Number(minimum.min)) / range * 100 : 100;
-  track.style.setProperty("--range-start", `${start}%`);
-  track.style.setProperty("--range-end", `${end}%`);
-}
-
-function updateDishRange(changedControl) {
-  const pair = changedControl?.id?.includes("kcal") ? "kcal" : "cost";
-  const minimum = $(`#dish-${pair}-min`);
-  const maximum = $(`#dish-${pair}-max`);
-  if (Number(minimum.value) > Number(maximum.value)) {
-    if (changedControl === minimum) maximum.value = minimum.value;
-    else minimum.value = maximum.value;
-  }
-  updateDualRangeTrack(pair);
-  renderDishes();
-}
+const autoMenuFeature = createAutoMenuFeature({
+  state,
+  select: $,
+  selectAll: $,
+  storage: localStorage,
+  translate: (key) => t(state.language, key),
+  escapeHtml,
+  formatInputNumber,
+  formatMoney,
+  formatNumber,
+  stockPayload,
+  send,
+  applyProposal: (rows) => {
+    state.draft.push(...rows);
+    setMenuMode("manual");
+    renderMenu();
+    scheduleMenuUpdate();
+  },
+});
+const renderAutoMenu = autoMenuFeature.render;
+const renderAutoMenuResult = autoMenuFeature.renderResult;
 
 function scheduleMenuUpdate() {
   clearTimeout(state.editTimer);
@@ -3083,22 +2246,6 @@ function scheduleMenuUpdate() {
   setBusy(true);
   state.editTimer = setTimeout(() => {
     send("replace-menu", { rows: state.draft });
-  }, 350);
-}
-
-function scheduleStockUpdate() {
-  clearTimeout(state.stockTimer);
-  setBusy(true);
-  state.stockTimer = setTimeout(() => {
-    send("replace-stock", { rows: stockPayload() });
-  }, 350);
-}
-
-function scheduleCustomGroceryUpdate() {
-  clearTimeout(state.customTimer);
-  setBusy(true);
-  state.customTimer = setTimeout(() => {
-    send("replace-custom-grocery", { rows: customGroceryPayload() });
   }, 350);
 }
 
@@ -3372,22 +2519,6 @@ document.addEventListener("click", (event) => {
     localStorage.setItem("homealacarte-grocery-mode", state.groceryMode);
   }
 });
-$(".dish-filter-panel").addEventListener("input", (event) => {
-  if (event.target.matches("input[type='range']")) updateDishRange(event.target);
-  else if (event.target.matches("input")) renderDishes();
-});
-$("#dish-clear-filters").addEventListener("click", () => {
-  $("#dish-search").value = "";
-  $("#dish-cost-min").value = "0";
-  $("#dish-cost-max").value = $("#dish-cost-max").max;
-  $("#dish-kcal-min").value = "0";
-  $("#dish-kcal-max").value = $("#dish-kcal-max").max;
-  $$("[data-dish-nutri-score]").forEach((input) => {
-    input.checked = false;
-  });
-  updateDishRange($("#dish-cost-min"));
-  updateDualRangeTrack("kcal");
-});
 $("#item-filter-panel").addEventListener("input", (event) => {
   if (event.target.matches("#item-search")) renderItemsCatalogue();
 });
@@ -3512,10 +2643,6 @@ $("#new-dish-form").addEventListener("submit", (event) => {
     replacing: Boolean(state.dishFormKey),
   });
   closeNewDishDialog();
-});
-$("#dish-grid").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-dish-key]");
-  if (button) openDishDetails(decodeURIComponent(button.dataset.dishKey), Number.NaN);
 });
 $("#add-catalogue-item").addEventListener("click", openNewCatalogueItem);
 $("#item-catalogue").addEventListener("click", (event) => {
@@ -3754,106 +2881,6 @@ $("#family-form").addEventListener("submit", (event) => {
 $$('[data-menu-mode]').forEach((button) => button.addEventListener("click", () => {
   setMenuMode(button.dataset.menuMode);
 }));
-$("#auto-menu-availability").addEventListener("change", (event) => {
-  const input = event.target.closest("[data-auto-availability-person]");
-  if (!input) return;
-  const person = decodeURIComponent(input.dataset.autoAvailabilityPerson);
-  const day = decodeURIComponent(input.dataset.autoAvailabilityDay);
-  state.autoMenuAvailability[autoMenuSettingKey(person, day)] = input.checked;
-  state.autoMenuProposal = null;
-  renderAutoMenuResult();
-});
-$("#auto-menu-slots").addEventListener("change", (event) => {
-  const input = event.target.closest("[data-auto-slot-day]");
-  if (!input) return;
-  const day = decodeURIComponent(input.dataset.autoSlotDay);
-  const meal = decodeURIComponent(input.dataset.autoSlotMeal);
-  state.autoMenuSlots[autoMenuSettingKey(day, meal)] = input.checked;
-  state.autoMenuProposal = null;
-  renderAutoMenuResult();
-});
-$("#auto-dish-search").addEventListener("input", renderAutoMenuDishes);
-$("#auto-menu-dishes").addEventListener("change", (event) => {
-  const input = event.target.closest("[data-auto-dish-key]");
-  if (!input) return;
-  state.autoMenuCandidates[decodeURIComponent(input.dataset.autoDishKey)] = input.checked;
-  state.autoMenuProposal = null;
-  renderAutoMenuResult();
-});
-$("#auto-dishes-all").addEventListener("click", () => {
-  $$("#auto-menu-dishes input:not(:disabled)").forEach((input) => {
-    input.checked = true;
-    state.autoMenuCandidates[decodeURIComponent(input.dataset.autoDishKey)] = true;
-  });
-  state.autoMenuProposal = null;
-  renderAutoMenuResult();
-});
-$("#auto-dishes-none").addEventListener("click", () => {
-  $$("#auto-menu-dishes input:not(:disabled)").forEach((input) => {
-    input.checked = false;
-    state.autoMenuCandidates[decodeURIComponent(input.dataset.autoDishKey)] = false;
-  });
-  state.autoMenuProposal = null;
-  renderAutoMenuResult();
-});
-$("#auto-menu-form").addEventListener("input", () => {
-  state.autoMenuOptions = {
-    kcalThreshold: Number($("#auto-kcal-threshold").value),
-    minPortions: Number($("#auto-min-portions").value),
-    maxPortions: Number($("#auto-max-portions").value),
-    portionStep: Number($("#auto-portion-step").value),
-    samePortionForEveryone: $("#auto-same-portions").checked,
-  };
-  localStorage.setItem("homealacarte-auto-menu-options", JSON.stringify(state.autoMenuOptions));
-  state.autoMenuProposal = null;
-  renderAutoMenuResult();
-});
-$("#auto-menu-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  if (!event.currentTarget.reportValidity()) return;
-  const availability = $$("#auto-menu-availability input:checked").map((input) => ({
-    person_key: decodeURIComponent(input.dataset.autoAvailabilityPerson),
-    day: decodeURIComponent(input.dataset.autoAvailabilityDay),
-  }));
-  const slots = $$("#auto-menu-slots input:checked").map((input) => ({
-    day: decodeURIComponent(input.dataset.autoSlotDay),
-    meal: decodeURIComponent(input.dataset.autoSlotMeal),
-  }));
-  const selectedDays = new Set(slots.map((slot) => slot.day));
-  const relevantAvailability = availability.filter((entry) => selectedDays.has(entry.day));
-  const candidateDishKeys = $$("#auto-menu-dishes input:checked").map((input) =>
-    decodeURIComponent(input.dataset.autoDishKey));
-  clearTimeout(state.editTimer);
-  state.autoMenuProposal = null;
-  renderAutoMenuResult();
-  send("generate-menu", {
-    rows: state.draft,
-    stock: stockPayload(),
-    request: {
-      kcal_threshold: state.autoMenuOptions.kcalThreshold,
-      min_portions: state.autoMenuOptions.minPortions,
-      max_portions: state.autoMenuOptions.maxPortions,
-      portion_step: state.autoMenuOptions.portionStep,
-      same_portion_for_everyone: state.autoMenuOptions.samePortionForEveryone,
-      availability: relevantAvailability,
-      slots,
-      candidate_dish_keys: candidateDishKeys,
-    },
-  });
-});
-$("#auto-menu-result").addEventListener("click", (event) => {
-  if (event.target.closest("#auto-menu-discard")) {
-    state.autoMenuProposal = null;
-    renderAutoMenuResult();
-    return;
-  }
-  if (!event.target.closest("#auto-menu-apply") || !state.autoMenuProposal) return;
-  state.draft.push(...structuredClone(state.autoMenuProposal.rows));
-  state.autoMenuProposal = null;
-  setMenuMode("manual");
-  renderMenu();
-  scheduleMenuUpdate();
-});
 $("#profile-select").addEventListener("change", (event) => send("set-profile", { profile: event.target.value }));
 $("#show-selected-only").addEventListener("change", (event) => {
   state.menuSelectedOnly = event.target.checked;
@@ -4357,181 +3384,9 @@ $("#json-input").addEventListener("change", async (event) => {
 $("#reset-data").addEventListener("click", confirmPrivateDataDeletion);
 $("#empty-data").addEventListener("click", confirmHouseholdDataReset);
 
-$("#empty-stock").addEventListener("click", () => {
-  if (!state.stockDraft.length) return;
-  openConfirmation({
-    title: t(state.language, "empty_stock_confirm_title"),
-    message: t(state.language, "empty_stock_confirm_message"),
-    confirmLabel: t(state.language, "empty_stock"),
-    action: () => {
-      state.stockDraft = [];
-      renderStock();
-      scheduleStockUpdate();
-    },
-  });
-});
-
-$("#empty-extra-needs").addEventListener("click", () => {
-  if (!state.customDraft.length) return;
-  openConfirmation({
-    title: t(state.language, "empty_extra_needs_confirm_title"),
-    message: t(state.language, "empty_extra_needs_confirm_message"),
-    confirmLabel: t(state.language, "empty_extra_needs"),
-    action: () => {
-      state.customDraft = [];
-      renderCustomGrocery();
-      scheduleCustomGroceryUpdate();
-    },
-  });
-});
-
-$("#stock-list").addEventListener("input", (event) => {
-  const control = event.target.closest("[data-stock-field]");
-  const row = event.target.closest("[data-stock-key]");
-  if (!control || !row) return;
-  const household = row.dataset.stockHousehold === "true";
-  const target = state.stockDraft.find((item) =>
-    item.item_key === row.dataset.stockKey && Boolean(item.household) === household
-  );
-  if (!target) return;
-  if (control.dataset.stockField === "quantity") {
-    target.quantity = Number(control.value);
-  } else if (control.dataset.stockField === "quantity_unit") {
-    const nextUnit = control.value;
-    const previousUnit = target.quantity_unit;
-    const gramsPerUnit = Number(target.grams_per_measure_unit || 1);
-    if (previousUnit !== nextUnit && gramsPerUnit > 0) {
-      if (previousUnit === "unit" && nextUnit === "g") {
-        target.quantity = Number(target.quantity) * gramsPerUnit;
-      } else if (previousUnit === "g" && nextUnit === "unit") {
-        target.quantity = Number(target.quantity) / gramsPerUnit;
-      }
-    }
-    target.quantity_unit = nextUnit;
-    renderStock();
-  } else {
-    target.notes = control.value;
-  }
-  updateStockValue();
-  scheduleStockUpdate();
-});
-
-$("#stock-list").addEventListener("click", (event) => {
-  const button = event.target.closest(".remove-stock");
-  const row = event.target.closest("[data-stock-key]");
-  if (!button || !row) return;
-  const household = row.dataset.stockHousehold === "true";
-  state.stockDraft = state.stockDraft.filter((item) =>
-    item.item_key !== row.dataset.stockKey || Boolean(item.household) !== household
-  );
-  renderStock();
-  scheduleStockUpdate();
-});
-
-$("#stock-add-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const itemKey = $("#stock-add-item").value;
-  const quantity = Number($("#stock-add-quantity").value);
-  if (!itemKey || !Number.isFinite(quantity) || quantity <= 0) return;
-  const quantityUnit = $("#stock-add-unit").value;
-  if (!addStockQuantity(itemKey, quantity, quantityUnit, $("#stock-add-notes").value.trim())) return;
-  $("#stock-add-quantity").value = "";
-  $("#stock-add-notes").value = "";
-  renderStock();
-  scheduleStockUpdate();
-});
-$("#stock-add-item").addEventListener("change", setStockAddUnit);
-$("#stock-search").addEventListener("input", renderStock);
-
-$("#custom-list").addEventListener("input", (event) => {
-  const control = event.target.closest("[data-custom-field]");
-  const row = event.target.closest("[data-custom-key]");
-  if (!control || !row) return;
-  const target = state.customDraft.find((item) => item.key === row.dataset.customKey);
-  if (!target) return;
-  if (control.dataset.customField === "quantity") {
-    target.quantity = Number(control.value);
-  } else {
-    target.notes = control.value;
-  }
-  scheduleCustomGroceryUpdate();
-});
-
-$("#custom-list").addEventListener("click", (event) => {
-  const button = event.target.closest(".remove-custom");
-  const row = event.target.closest("[data-custom-key]");
-  if (!button || !row) return;
-  state.customDraft = state.customDraft.filter((item) => item.key !== row.dataset.customKey);
-  renderCustomGrocery();
-  scheduleCustomGroceryUpdate();
-});
-
-$("#custom-add-existing").addEventListener("change", updateExtraNeedSelection);
-$("#needs-search").addEventListener("input", renderCustomGrocery);
-$("#custom-add-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const option = (state.snapshot.household_options || [])
-    .find((item) => item.key === $("#custom-add-existing").value);
-  const custom = !option;
-  const name = option?.name || searchableSelectInput($("#custom-add-existing"))?.value.trim() || "";
-  const category = normalizedCategory($("#custom-add-category").value.trim());
-  const quantity = Number($("#custom-add-quantity").value);
-  const measureUnit = $("#custom-add-measure-unit").value.trim();
-  const estimatedPrice = Number($("#custom-add-price").value);
-  const notes = $("#custom-add-notes").value.trim();
-  if (!name || !category || !measureUnit || quantity <= 0 || estimatedPrice < 0) return;
-  const suffix = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-  if (option && state.customDraft.some((item) => item.key === option.key)) return;
-  state.customDraft.push({
-    key: option?.key || `custom_${suffix.replaceAll("-", "_").replace(".", "_")}`,
-    name,
-    category,
-    quantity,
-    measure_unit: measureUnit,
-    purchase_unit: option?.purchase_unit || measureUnit,
-    purchase_quantity: option?.purchase_quantity || 1,
-    estimated_price: estimatedPrice,
-    notes,
-    custom,
-  });
-  $("#custom-add-quantity").value = "1";
-  $("#custom-add-notes").value = "";
-  $("#custom-add-form").dataset.catalogMatch = "true";
-  renderCustomGrocery();
-  scheduleCustomGroceryUpdate();
-});
-$("#grocery-hide-stocked").addEventListener("change", (event) => {
-  state.groceryHideStocked = event.target.checked;
-  localStorage.setItem("homealacarte-grocery-hide-stocked", String(state.groceryHideStocked));
-  renderGrocery();
-});
-$("#grocery-grid").addEventListener("change", (event) => {
-  const checkbox = event.target.closest("input[data-id]");
-  if (!checkbox) return;
-  checkbox.closest(".grocery-item").classList.toggle("checked", checkbox.checked);
-  clearTimeout(state.editTimer);
-  clearTimeout(state.stockTimer);
-  clearTimeout(state.customTimer);
-  send("set-grocery-stock", {
-    itemIds: [checkbox.dataset.id],
-    stocked: checkbox.checked,
-    rows: state.draft,
-    stock: stockPayload(),
-    customGrocery: customGroceryPayload(),
-  });
-});
-$("#grocery-grid").addEventListener("click", (event) => {
-  if (event.target.closest("input[data-id]")) return;
-  const item = event.target.closest("[data-grocery-details]");
-  if (item) openGroceryDetails(decodeURIComponent(item.dataset.groceryDetails));
-});
-$("#grocery-grid").addEventListener("keydown", (event) => {
-  if (!["Enter", " "].includes(event.key) || event.target.closest("input[data-id]")) return;
-  const item = event.target.closest("[data-grocery-details]");
-  if (!item) return;
-  event.preventDefault();
-  openGroceryDetails(decodeURIComponent(item.dataset.groceryDetails));
-});
+stockFeature.mount();
+extraNeedsFeature.mount();
+groceryFeature.mount();
 $("#grocery-details-list").addEventListener("click", (event) => {
   const deleteButton = event.target.closest("[data-grocery-meal-delete]");
   if (deleteButton) {

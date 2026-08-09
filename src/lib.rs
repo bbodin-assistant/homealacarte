@@ -1,11 +1,20 @@
+mod catalogue;
 mod engine;
+mod grocery;
 mod loader;
+mod menu_loading;
+mod menu_math;
 mod model;
 mod optimizer;
+mod optimizer_solver;
+mod optimizer_support;
 mod personal_data;
 mod pdf;
+mod price_history;
+mod snapshot;
 
-pub use engine::{Engine, build_grocery, build_snapshot, exclude_grocery_items};
+pub use engine::Engine;
+pub use grocery::{build_grocery, exclude_grocery_items};
 pub use loader::load_dataset;
 pub use model::*;
 pub use personal_data::{
@@ -13,6 +22,7 @@ pub use personal_data::{
     merge_personal_documents,
 };
 pub use pdf::generate_grocery_pdf;
+pub use snapshot::build_snapshot;
 
 use loader::MenuInput;
 use wasm_bindgen::prelude::*;
@@ -210,8 +220,8 @@ impl HomeALaCarteEngine {
         excluded_ids: &std::collections::HashSet<String>,
     ) -> Result<Vec<u8>, JsValue> {
         let dataset = self.inner.dataset.as_ref().ok_or_else(|| js_error("no dataset loaded"))?;
-        let grocery = crate::engine::build_grocery(dataset).map_err(js_error)?;
-        let grocery = crate::engine::exclude_grocery_items(grocery, excluded_ids);
+        let grocery = crate::grocery::build_grocery(dataset).map_err(js_error)?;
+        let grocery = crate::grocery::exclude_grocery_items(grocery, excluded_ids);
         Ok(crate::pdf::generate_grocery_pdf(
             &grocery,
             language.as_deref().unwrap_or(&self.inner.language),

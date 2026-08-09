@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
+import { groceryProgress } from "../www/features/grocery.js";
 
-const app = fs.readFileSync(new URL("../www/app.js", import.meta.url), "utf8");
-const progress = app.slice(
-  app.indexOf("function updateGroceryProgress()"),
-  app.indexOf("function renderNutriScoreAudit()"),
-);
-
-assert.match(progress, /estimated_full_purchase_total/);
-assert.match(progress, /`\$\{formatMoney\(remainingTotal\)\} \/ \$\{formatMoney\(/);
+assert.deepEqual(groceryProgress({
+  estimated_full_purchase_total: 25,
+  items: [
+    { stock_sufficient: false, estimated_purchase_price: 10 },
+    { stock_sufficient: true, estimated_purchase_price: 0 },
+  ],
+}), {
+  checked: 1,
+  fullTotal: 25,
+  remaining: 1,
+  remainingTotal: 10,
+  total: 2,
+});
 
 console.log("Grocery summary shows the remaining and full estimated totals.");

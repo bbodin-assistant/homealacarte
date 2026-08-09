@@ -41,8 +41,16 @@ test-web:
 	node tests/menu_rows.mjs
 	node tests/food_rules.mjs
 	node tests/profile_rules.mjs
+	node tests/format.mjs
+	node tests/downloads.mjs
+	node tests/theme.mjs
+	node tests/app_state.mjs
 	node tests/stock_availability.mjs
+	node tests/stock_feature.mjs
+	node tests/extra_needs_feature.mjs
 	node tests/grocery_total.mjs
+	node tests/dishes_feature.mjs
+	node tests/auto_menu_feature.mjs
 
 test-browser-startup: web-build
 	bash tests/browser_startup.sh

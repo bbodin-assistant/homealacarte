@@ -28,12 +28,12 @@ assert.deepEqual(
   ["missing"],
 );
 
-const [app, index] = await Promise.all([
-  readFile(new URL("../www/app.js", import.meta.url), "utf8"),
+const [feature, index] = await Promise.all([
+  readFile(new URL("../www/features/dishes.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
 ]);
-assert.match(app, /selectedNutriScores/);
-assert.match(app, /matchesSelectedNutriScores/);
+assert.match(feature, /nutriScores/);
+assert.match(feature, /matchesSelectedNutriScores/);
 assert.match(index, /data-dish-nutri-score="A"/);
 assert.match(index, /data-dish-nutri-score="E"/);
 assert.match(index, /data-dish-nutri-score="UNKNOWN"/);

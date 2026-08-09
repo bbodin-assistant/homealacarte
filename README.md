@@ -156,6 +156,9 @@ HTML + CSS + JavaScript
 IndexedDB <-> optional Supabase/Postgres
 ```
 
+The incremental module extraction and source-size strategy is documented in
+[the code restructuring plan](docs/RESTRUCTURING_PLAN.md).
+
 ## Validation
 
 ```bash

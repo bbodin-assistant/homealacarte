@@ -72,9 +72,11 @@ assert.match(chart.path, /^M /);
 assert.ok(chart.points.every((point) =>
   point.x >= 42 && point.x <= 622 && point.y >= 18 && point.y <= 186));
 
-const [app, index] = await Promise.all([
+const [app, index, stockFeature, extraNeedsFeature] = await Promise.all([
   readFile(new URL("../www/app.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/features/stock.js", import.meta.url), "utf8"),
+  readFile(new URL("../www/features/extra-needs.js", import.meta.url), "utf8"),
 ]);
 assert.match(app, /data-item-details=/);
 assert.match(app, /openCatalogueItemDetails/);
@@ -88,9 +90,9 @@ assert.match(index, /id="ingredient-price-history-list"/);
 assert.match(index, /id="household-item-price-history-list"/);
 assert.match(index, /id="stock-add-notes"/);
 assert.match(index, /id="custom-add-notes"/);
-assert.match(app, /data-stock-field="notes"/);
-assert.match(app, /data-custom-field="notes"/);
-for (const source of [app, index]) {
+assert.match(stockFeature, /data-stock-field="notes"/);
+assert.match(extraNeedsFeature, /data-custom-field="notes"/);
+for (const source of [app, index, stockFeature, extraNeedsFeature]) {
   for (const input of source.matchAll(/<input\b[^>]*\btype="number"[^>]*>/g)) {
     assert.match(input[0], /\bstep="(?:any|\d+(?:\.\d+)?)"/);
   }
