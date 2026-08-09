@@ -1,4 +1,5 @@
 mod catalogue;
+mod dish_loading;
 mod engine;
 mod grocery;
 mod loader;
