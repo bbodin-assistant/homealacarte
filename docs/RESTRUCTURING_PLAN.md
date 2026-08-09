@@ -27,23 +27,24 @@ Line count is not the only design signal. The first objective is to separate rea
 The first implementation batches are complete and validated:
 
 - browser foundations now live in `www/core/` (state, formatting, downloads, theme, searchable selects, and worker transport);
-- stock, extra needs, grocery, item details, catalogue list/editors, family/food rules, the dish library/editor, and both manual and automatic-menu workflows now live in `www/features/` with their event handlers and focused tests;
+- stock, extra needs, grocery, item details, catalogue list/editors, family/food rules, the dish library/editor, both menu workflows, and data/account/privacy workflows now live in `www/features/` with their event handlers and focused tests;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
 
-After these batches, `www/app.js` is 1,272 lines, `src/engine.rs` is 575,
+After these batches, `www/app.js` is 828 lines, `src/engine.rs` is 575,
 `src/optimizer.rs` is 447, and `src/loader.rs` is 518. The remaining oversized
 entrypoint is therefore the next priority; CSS, HTML, and integration-test splits
 remain deliberately later phases.
 
 ### Remaining delivery estimate
 
-Seven implementation batches remain after the manual-menu extraction. Some may
+Seven implementation checkpoints remain; the first is partly complete after the
+data/account extraction. Some may
 become two commits when that keeps review size reasonable, but the architectural
 checkpoints are:
 
-1. data/account/privacy UI and the remaining application coordinator;
+1. remaining application coordinator and bootstrap cleanup;
 2. local storage/authentication versus remote synchronization;
 3. CSS layers and feature stylesheets;
 4. deterministic HTML partial composition;

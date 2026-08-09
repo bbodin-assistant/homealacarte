@@ -33,6 +33,7 @@ import { createDishEditorFeature } from "./features/dish-editor.js?v=homealacart
 import { createCatalogueFeature } from "./features/catalogue.js?v=homealacarte-77";
 import { createFamilyFeature } from "./features/family.js?v=homealacarte-77";
 import { createMenuFeature } from "./features/menu.js?v=homealacarte-77";
+import { createDataAccountFeature } from "./features/data-account.js?v=homealacarte-77";
 import {
   createFormatters,
   displayCategory,
@@ -623,6 +624,50 @@ const autoMenuFeature = createAutoMenuFeature({
 const renderAutoMenu = autoMenuFeature.render;
 const renderAutoMenuResult = autoMenuFeature.renderResult;
 
+const dataAccountFeature = createDataAccountFeature({
+  state,
+  select: $,
+  selectAll: $$,
+  documentRef: document,
+  storage: localStorage,
+  translate: (key) => t(state.language, key),
+  translatedTemplate,
+  localizeError,
+  externalHttpUrl,
+  formatBytes,
+  formatDateTime,
+  getStorageStatus,
+  getStorageDiagnostics,
+  getPrivateStateCopy,
+  loadPrivacyRequests,
+  deletePrivateData,
+  resolveSyncConflict,
+  savePrivateState,
+  signIn,
+  signOut,
+  signUp,
+  submitPrivacyRequest,
+  synchronizePrivateState,
+  downloadText,
+  stockPayload,
+  customGroceryPayload,
+  send,
+  showError,
+  openConfirmation,
+  switchTab,
+  applyColorTheme,
+  applyTranslations,
+  reloadPage: () => location.reload(),
+  storagePrefix: STORAGE_PREFIX,
+  dataSchemaVersion: DATA_SCHEMA_VERSION,
+  emptyDatabaseContent: EMPTY_DATABASE_CONTENT,
+});
+const closeAboutDialog = dataAccountFeature.closeAboutDialog;
+const openAccountSection = dataAccountFeature.openAccountSection;
+const renderDataOverview = dataAccountFeature.renderDataOverview;
+const renderHeaderStatus = dataAccountFeature.renderHeaderStatus;
+const renderStorageStatus = dataAccountFeature.renderStorageStatus;
+
 function scheduleMenuUpdate() {
   clearTimeout(state.editTimer);
   state.draft = mergeCompatibleMenuRows(state.draft);
@@ -653,213 +698,6 @@ function persistDraft() {
   }).catch((error) => console.warn("Unable to persist private state", error));
 }
 
-function storageStatusKey(statusName) {
-  return {
-    local: "sync_local",
-    "signed-out": "sync_signed_out",
-    connecting: "sync_connecting",
-    saving: "sync_saving",
-    synced: "sync_synced",
-    offline: "sync_offline",
-    conflict: "sync_conflict",
-    error: "sync_error",
-  }[statusName] || "sync_local";
-}
-
-function storageStatusDetailKey(statusName) {
-  return {
-    local: "sync_local_detail",
-    "signed-out": "sync_signed_out_detail",
-    connecting: "sync_connecting_detail",
-    saving: "sync_saving_detail",
-    synced: "sync_synced_detail",
-    offline: "sync_offline_detail",
-    conflict: "sync_conflict_detail",
-    error: "sync_error_detail",
-  }[statusName] || "sync_local_detail";
-}
-
-function displayedStorageStatus(status = state.storageStatus || getStorageStatus()) {
-  if (!state.lastError) return status;
-  return {
-    ...status,
-    state: "error",
-    message: localizeError(state.lastError.message, state.lastError.code),
-  };
-}
-
-function renderStorageStatus(status = getStorageStatus()) {
-  state.storageStatus = status;
-  const displayed = displayedStorageStatus(status);
-  const label = t(state.language, storageStatusKey(displayed.state));
-  const source = $("#source-status");
-  if (!source) return;
-  renderHeaderStatus();
-  $(".account-current-status").className = `account-current-status sync-${displayed.state}`;
-  $("#account-status-label").textContent = label;
-  $("#account-status-detail").textContent = displayed.message === "confirmation_required"
-    ? t(state.language, "confirmation_required")
-    : displayed.message || t(state.language, storageStatusDetailKey(displayed.state));
-  const signedIn = Boolean(status.email) && status.state !== "signed-out";
-  $("#account-signed-out").hidden = signedIn;
-  $("#account-signed-in").hidden = !signedIn;
-  $("#account-email-label").textContent = status.email || "";
-  $("#account-conflict").hidden = status.state !== "conflict";
-  const privacySignedIn = Boolean(status.email) && status.state !== "signed-out";
-  $("#privacy-request-signed-out").hidden = privacySignedIn;
-  $("#privacy-request-signed-in").hidden = !privacySignedIn;
-  if (!privacySignedIn) {
-    state.privacyRequests = [];
-    state.privacyRequestsUserId = "";
-  }
-  if (state.activeTab === "data") renderDataOverview();
-}
-
-function privacyRequestTypeLabel(requestType) {
-  return t(state.language, `privacy_type_${requestType}`);
-}
-
-function privacyRequestStatusLabel(status) {
-  return t(state.language, `privacy_status_${status}`);
-}
-
-function renderPrivacyRequestList() {
-  const list = $("#privacy-request-list");
-  list.replaceChildren();
-  if (!state.privacyRequests.length) {
-    const empty = document.createElement("p");
-    empty.className = "privacy-request-empty";
-    empty.textContent = t(state.language, "privacy_request_none");
-    list.append(empty);
-    return;
-  }
-  state.privacyRequests.forEach((request) => {
-    const row = document.createElement("article");
-    row.className = "privacy-request-row";
-    const heading = document.createElement("strong");
-    heading.textContent = privacyRequestTypeLabel(request.request_type);
-    const date = document.createElement("time");
-    date.dateTime = request.created_at;
-    date.textContent = formatDateTime(request.created_at);
-    const status = document.createElement("span");
-    status.className = `privacy-request-status ${String(request.status).replaceAll("_", "-")}`;
-    status.textContent = privacyRequestStatusLabel(request.status);
-    const message = document.createElement("p");
-    message.textContent = request.message;
-    row.append(heading, date, status, message);
-    if (request.response_message) {
-      const response = document.createElement("p");
-      response.className = "privacy-request-response";
-      response.textContent = translatedTemplate("privacy_request_response", {
-        response: request.response_message,
-      });
-      row.append(response);
-    }
-    list.append(row);
-  });
-}
-
-async function refreshPrivacyRequests(force = false) {
-  const userId = state.storageStatus?.email && state.storageStatus.state !== "signed-out"
-    ? (await getStorageDiagnostics()).userId
-    : "";
-  if (!userId) {
-    state.privacyRequests = [];
-    state.privacyRequestsUserId = "";
-    renderPrivacyRequestList();
-    return;
-  }
-  if (!force && state.privacyRequestsUserId === userId) {
-    renderPrivacyRequestList();
-    return;
-  }
-  if (state.privacyRequestsLoading) return;
-  state.privacyRequestsLoading = true;
-  try {
-    state.privacyRequests = await loadPrivacyRequests();
-    state.privacyRequestsUserId = userId;
-    renderPrivacyRequestList();
-  } catch (error) {
-    const feedback = $("#privacy-request-feedback");
-    feedback.classList.add("error");
-    feedback.textContent = localizeError(error?.message || String(error), error?.code);
-  } finally {
-    state.privacyRequestsLoading = false;
-  }
-}
-
-async function renderDataOverview() {
-  if (!$("#data-overview-title")) return;
-  try {
-    const diagnostics = await getStorageDiagnostics();
-    $("#data-account-email").textContent = diagnostics.email || t(state.language, "not_signed_in");
-    $("#data-account-id").textContent = diagnostics.userId || "—";
-    $("#data-local-size").textContent = formatBytes(diagnostics.localBytes);
-    $("#data-local-date").textContent = diagnostics.localUpdatedAt
-      ? translatedTemplate("updated_at", { date: formatDateTime(diagnostics.localUpdatedAt) })
-      : t(state.language, "no_saved_copy");
-    $("#data-online-size").textContent = diagnostics.remoteError
-      ? t(state.language, "unavailable")
-      : diagnostics.email
-        ? formatBytes(diagnostics.remoteBytes)
-        : t(state.language, "not_signed_in");
-    $("#data-online-date").textContent = diagnostics.remoteError
-      || (diagnostics.remoteUpdatedAt
-        ? translatedTemplate("updated_at", { date: formatDateTime(diagnostics.remoteUpdatedAt) })
-        : t(state.language, "no_online_copy"));
-    const controllerLink = $("#about-controller-contact");
-    controllerLink.textContent = diagnostics.controllerName
-      || t(state.language, "controller_not_configured");
-    const contactUrl = externalHttpUrl(diagnostics.privacyContact);
-    if (contactUrl) {
-      controllerLink.href = contactUrl;
-    } else if (diagnostics.privacyContact.includes("@")) {
-      controllerLink.href = `mailto:${diagnostics.privacyContact}`;
-    } else {
-      controllerLink.removeAttribute("href");
-    }
-    await refreshPrivacyRequests();
-  } catch (error) {
-    $("#data-online-size").textContent = t(state.language, "unavailable");
-    $("#data-online-date").textContent = localizeError(error?.message || String(error));
-  }
-}
-
-function renderHeaderStatus() {
-  const source = $("#source-status");
-  if (!source) return;
-  if (state.engineBusy) {
-    source.className = "source-badge sync-saving engine-busy";
-    $("#source-label").textContent = state.engineMessage || t(state.language, "loading");
-    return;
-  }
-  const status = displayedStorageStatus();
-  source.className = `source-badge sync-${status.state}`;
-  $("#source-label").textContent = state.lastError
-    ? t(state.language, "data_error")
-    : t(state.language, storageStatusKey(status.state));
-}
-
-function openAccountSection() {
-  switchTab("data");
-  renderStorageStatus(state.storageStatus);
-  $("#account-message").textContent = "";
-  requestAnimationFrame(() => {
-    $("#account-section").scrollIntoView({ behavior: "smooth", block: "start" });
-    $("#account-section").focus({ preventScroll: true });
-  });
-}
-
-function openAboutDialog() {
-  renderDataOverview();
-  const dialog = $("#about-dialog");
-  if (!dialog.open) dialog.showModal();
-}
-
-function closeAboutDialog() {
-  $("#about-dialog").close();
-}
-
 function enableBackdropDismissal(selector, closeDialog) {
   const dialog = $(selector);
   dialog.addEventListener("click", (event) => {
@@ -870,18 +708,6 @@ function enableBackdropDismissal(selector, closeDialog) {
       || event.clientY < bounds.top
       || event.clientY > bounds.bottom;
     if (clickedOutsideWindow) closeDialog();
-  });
-}
-
-function setAccountBusy(busy) {
-  $$("#account-section button, #account-section input").forEach((control) => {
-    control.disabled = busy;
-  });
-}
-
-function accountError(error) {
-  $("#account-message").textContent = translatedTemplate("auth_failed", {
-    message: localizeError(error?.message || String(error)),
   });
 }
 
@@ -934,11 +760,6 @@ function selectLanguage(language) {
 const languageSelect = $("#language-select");
 languageSelect.addEventListener("input", (event) => selectLanguage(event.target.value));
 languageSelect.addEventListener("change", (event) => selectLanguage(event.target.value));
-$("#source-status").addEventListener("click", openAccountSection);
-$("#about-open").addEventListener("click", openAboutDialog);
-$("#about-data").addEventListener("click", openAboutDialog);
-$("#about-close").addEventListener("click", closeAboutDialog);
-$("#about-done").addEventListener("click", closeAboutDialog);
 [
   ["#family-dialog", closeFamilyDialog],
   ["#menu-item-dialog", closeMenuItemDialog],
@@ -949,272 +770,6 @@ $("#about-done").addEventListener("click", closeAboutDialog);
   ["#meal-replace-dialog", closeMealReplacement],
   ["#about-dialog", closeAboutDialog],
 ].forEach(([selector, closeDialog]) => enableBackdropDismissal(selector, closeDialog));
-$("#account-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  setAccountBusy(true);
-  $("#account-message").textContent = "";
-  try {
-    await signIn($("#account-email").value.trim(), $("#account-password").value);
-    location.reload();
-  } catch (error) {
-    accountError(error);
-    setAccountBusy(false);
-  }
-});
-$("#account-create").addEventListener("click", async () => {
-  if (!$("#account-email").reportValidity() || !$("#account-password").reportValidity()) return;
-  if (!$("#account-privacy-consent").checked) {
-    $("#account-message").textContent = t(state.language, "privacy_consent_required");
-    $("#account-privacy-consent").focus();
-    return;
-  }
-  setAccountBusy(true);
-  $("#account-message").textContent = "";
-  try {
-    const result = await signUp(
-      $("#account-email").value.trim(),
-      $("#account-password").value,
-    );
-    if (result.confirmationRequired) {
-      $("#account-message").textContent = t(state.language, "confirmation_required");
-      setAccountBusy(false);
-    } else {
-      location.reload();
-    }
-  } catch (error) {
-    accountError(error);
-    setAccountBusy(false);
-  }
-});
-$("#account-sign-out").addEventListener("click", async () => {
-  setAccountBusy(true);
-  await signOut();
-  location.reload();
-});
-$("#account-sync-now").addEventListener("click", async () => {
-  setAccountBusy(true);
-  try {
-    await synchronizePrivateState();
-  } catch (error) {
-    accountError(error);
-  } finally {
-    setAccountBusy(false);
-  }
-});
-$("#account-use-online").addEventListener("click", async () => {
-  setAccountBusy(true);
-  try {
-    if (await resolveSyncConflict("remote")) location.reload();
-  } catch (error) {
-    accountError(error);
-    setAccountBusy(false);
-  }
-});
-$("#account-use-local").addEventListener("click", async () => {
-  setAccountBusy(true);
-  try {
-    if (await resolveSyncConflict("local")) location.reload();
-    else setAccountBusy(false);
-  } catch (error) {
-    accountError(error);
-    setAccountBusy(false);
-  }
-});
-$("#privacy-request-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  if (!form.reportValidity()) return;
-  const submit = $("#privacy-request-submit");
-  const feedback = $("#privacy-request-feedback");
-  submit.disabled = true;
-  feedback.classList.remove("error");
-  feedback.textContent = t(state.language, "privacy_request_sending");
-  try {
-    await submitPrivacyRequest(
-      $("#privacy-request-type").value,
-      $("#privacy-request-message").value.trim(),
-    );
-    $("#privacy-request-message").value = "";
-    feedback.textContent = t(state.language, "privacy_request_sent");
-    state.privacyRequestsUserId = "";
-    await refreshPrivacyRequests(true);
-  } catch (error) {
-    feedback.classList.add("error");
-    feedback.textContent = localizeError(error?.message || String(error), error?.code);
-  } finally {
-    submit.disabled = false;
-  }
-});
-async function downloadData() {
-  if (state.lastError || !state.snapshot) {
-    const stored = await getPrivateStateCopy();
-    if (stored !== undefined) {
-      const source = stored?.sources?.length === 1 ? stored.sources[0] : null;
-      downloadText(
-        source?.path?.toLowerCase().endsWith(".json") ? source.path : "homealacarte_private_state.json",
-        typeof source?.content === "string" ? source.content : JSON.stringify(stored, null, 2),
-      );
-      return;
-    }
-  }
-  clearTimeout(state.editTimer);
-  clearTimeout(state.stockTimer);
-  clearTimeout(state.customTimer);
-  send("export-data", {
-    kind: "consolidated",
-    rows: state.draft,
-    stock: stockPayload(),
-    customGrocery: customGroceryPayload(),
-  });
-}
-
-function clearClientPreferences() {
-  Object.keys(localStorage)
-    .filter((key) => key.startsWith(STORAGE_PREFIX))
-    .forEach((key) => localStorage.removeItem(key));
-  state.language = "fr";
-  state.groceryMode = "list";
-  state.menuSelectedOnly = false;
-  state.groceryHideStocked = false;
-  state.colorTheme = 0;
-  state.randomThemes = [];
-  state.dishRangeSignature = "";
-  state.source = "deleted";
-  state.importedSources = null;
-  state.serializedData = null;
-  state.restorePeople = null;
-  state.restoreMenu = null;
-  state.restoreStock = null;
-  state.restoreCustom = null;
-  applyColorTheme(0);
-  applyTranslations();
-}
-
-function emptyAllHouseholdData() {
-  clearTimeout(state.editTimer);
-  clearTimeout(state.stockTimer);
-  clearTimeout(state.customTimer);
-  const files = [{
-    path: "homealacarte_empty_state.json",
-    content: EMPTY_DATABASE_CONTENT,
-  }];
-  state.source = "empty";
-  state.importedSources = files;
-  state.serializedData = EMPTY_DATABASE_CONTENT;
-  state.restorePeople = null;
-  state.restoreMenu = null;
-  state.restoreStock = null;
-  state.restoreCustom = null;
-  state.autoMenuProposal = null;
-  localStorage.removeItem("homealacarte-menu");
-  switchTab("data");
-  const requestId = send("load-files", {
-    files,
-    language: state.language,
-    source: "empty",
-  });
-  state.pendingDataAction = { requestId, messageKey: "empty_data_success" };
-}
-
-function confirmHouseholdDataReset() {
-  const onlineAccount = Boolean(state.storageStatus?.email)
-    && state.storageStatus.state !== "signed-out";
-  openConfirmation({
-    title: t(state.language, "empty_data_confirm_title"),
-    message: t(
-      state.language,
-      onlineAccount ? "empty_data_confirm_online" : "empty_data_confirm_local",
-    ),
-    confirmLabel: t(state.language, "empty_data"),
-    action: emptyAllHouseholdData,
-  });
-}
-
-async function deleteAllPrivateData() {
-  const result = await deletePrivateData();
-  clearClientPreferences();
-  switchTab("data");
-  const message = $("#data-action-message");
-  message.classList.remove("warning");
-  message.textContent = t(
-    state.language,
-    result.accountDeleted ? "delete_data_success_online" : "delete_data_success_local",
-  );
-  send("load-bundled", {
-    manifestUrl: "./demo-data-manifest.json",
-    language: state.language,
-  });
-}
-
-function confirmPrivateDataDeletion() {
-  const onlineAccount = Boolean(state.storageStatus?.email)
-    && state.storageStatus.state !== "signed-out";
-  openConfirmation({
-    title: t(state.language, "delete_data_confirm_title"),
-    message: t(
-      state.language,
-      onlineAccount ? "delete_data_confirm_online" : "delete_data_confirm_local",
-    ),
-    confirmLabel: t(state.language, "reset_data"),
-    action: deleteAllPrivateData,
-  });
-}
-
-$("#export-data").addEventListener("click", () => {
-  downloadData().catch((error) => showError(error?.message || String(error)));
-});
-$("#about-download-data").addEventListener("click", () => {
-  closeAboutDialog();
-  downloadData().catch((error) => showError(error?.message || String(error)));
-});
-$("#about-edit-data").addEventListener("click", () => {
-  closeAboutDialog();
-  switchTab("family");
-});
-$("#about-request-erasure").addEventListener("click", () => {
-  closeAboutDialog();
-  switchTab("data");
-  confirmPrivateDataDeletion();
-});
-$("#download-pdf").addEventListener("click", () => {
-  clearTimeout(state.editTimer);
-  clearTimeout(state.stockTimer);
-  clearTimeout(state.customTimer);
-  send("generate-pdf", {
-    language: state.language,
-    rows: state.draft,
-    stock: stockPayload(),
-    customGrocery: customGroceryPayload(),
-    excludedIds: [],
-  });
-});
-$("#import-json").addEventListener("click", () => $("#json-input").click());
-$("#json-input").addEventListener("change", async (event) => {
-  const file = event.target.files[0];
-  if (file?.name.toLowerCase().endsWith(".json")) {
-    const files = [{ path: file.name, content: await file.text() }];
-    state.importedSources = files;
-    state.restorePeople = null;
-    state.restoreMenu = null;
-    state.restoreStock = null;
-    state.restoreCustom = null;
-    savePrivateState({
-      version: DATA_SCHEMA_VERSION,
-      language: state.language,
-      sources: files,
-      people: null,
-      menu: null,
-      stock: null,
-      customGrocery: null,
-    })
-      .catch((error) => console.warn("Unable to persist imported files", error));
-    send("load-files", { files, language: state.language });
-  }
-  event.target.value = "";
-});
-$("#reset-data").addEventListener("click", confirmPrivateDataDeletion);
-$("#empty-data").addEventListener("click", confirmHouseholdDataReset);
-
 stockFeature.mount();
 extraNeedsFeature.mount();
 groceryFeature.mount();
@@ -1223,6 +778,7 @@ catalogueFeature.mount();
 familyFeature.mount();
 itemDetailsFeature.mount();
 menuFeature.mount();
+dataAccountFeature.mount();
 async function bootstrap() {
   applyColorTheme(state.colorTheme);
   applyTranslations();

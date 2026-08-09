@@ -54,6 +54,7 @@ test-web:
 	node tests/dish_editor_feature.mjs
 	node tests/auto_menu_feature.mjs
 	node tests/menu_feature.mjs
+	node tests/data_account_feature.mjs
 
 test-browser-startup: web-build
 	bash tests/browser_startup.sh
