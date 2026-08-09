@@ -36,22 +36,28 @@ The first implementation batches are complete and validated:
 - `scripts/check_source_boundaries.py` enforces source-size limits, rejects stale exceptions, and prevents `www/core/` from importing features; it runs in `test-web` and `release-check`;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
-- full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
+- full Rust tests, web tests, focused UI tests, source-boundary enforcement, the optimized Wasm build, the release scan, and Chromium startup pass.
 
 After these batches, `www/app.js` is 532 lines, `src/engine.rs` is 575,
-`src/optimizer.rs` is 447, and `src/loader.rs` is 518. The remaining oversized
-browser files are now the planned CSS and HTML sources rather than the JavaScript
-entrypoint. `app.js` primarily composes controllers and retains a few shared
-scheduling and persistence callbacks.
+`src/optimizer.rs` is 447, and `src/loader.rs` is 518. No tracked source file
+exceeds 700 lines. `app.js` primarily composes controllers and retains a few
+shared scheduling and persistence callbacks.
 
-### Remaining delivery estimate
+### Delivery status
 
-One implementation checkpoint remains after boundary enforcement:
+All planned restructuring checkpoints are complete. The final CI-equivalent
+release check and Chromium startup validation pass.
 
-1. full release validation and final cleanup.
+Two intentional size exceptions remain in the automated boundary check:
 
-This is an engineering estimate rather than a promise that every checkpoint maps
-to exactly one commit. The definition of done below remains the completion gate.
+- `www/app.js` may reach 550 lines because it is the explicit composition root
+  for feature dependencies (currently 532 lines);
+- `www/storage.js` may reach 425 lines because it owns synchronization and
+  conflict policy (currently 401 lines).
+
+Both exceptions fail if their files grow beyond those limits, and the check also
+fails when an exception becomes unnecessary so it can be removed rather than
+silently retained.
 
 ## Architectural rules
 
