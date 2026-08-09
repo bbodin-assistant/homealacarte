@@ -30,7 +30,7 @@ test:
 	cargo test
 
 test-domain:
-	cargo test --test domain
+	cargo test --test loading --test grocery --test dishes --test catalogue --test stock --test family
 
 test-web:
 	node --check www/app.js
@@ -111,7 +111,7 @@ test-add-to-needs-button:
 	node tests/add_to_needs_button.mjs
 
 test-catalogue-add:
-	cargo test --test domain the_item_catalogue_edits_general_items_and_deletes_safely
+	cargo test --test catalogue the_item_catalogue_edits_general_items_and_deletes_safely
 	node tests/catalogue_add.mjs
 	node --check www/app.js
 
