@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 const [app, grocery, style] = await Promise.all([
   readFile(new URL("../www/app.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/grocery.js", import.meta.url), "utf8"),
-  readFile(new URL("../www/style.css", import.meta.url), "utf8"),
+  readFile(new URL("../www/styles/grocery-catalogue.css", import.meta.url), "utf8"),
 ]);
 
 assert.match(grocery, /class="grocery-item[^"]*"[^>]*data-grocery-details=/);

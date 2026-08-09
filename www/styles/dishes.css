@@ -1,0 +1,57 @@
+.dish-filter-panel { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto auto auto; gap: 12px; align-items: end; margin-bottom: 18px; padding: 13px; }
+.dish-filter-panel .search { min-width: 0; align-self: stretch; }
+.dish-range-filter { width: 210px; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; align-items: center; margin: 0; padding: 0; border: 0; }
+.dish-range-filter legend { margin-bottom: 5px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.dish-range-filter output { grid-column: 1 / -1; color: var(--ink); font-size: 10px; font-weight: 800; text-align: center; }
+.dish-nutri-filter { min-width: 205px; margin: 0; padding: 0; border: 0; }
+.dish-nutri-filter legend { margin-bottom: 5px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.dish-nutri-options { display: flex; gap: 4px; }
+.dish-nutri-options label { position: relative; cursor: pointer; }
+.dish-nutri-options input { position: absolute; opacity: 0; pointer-events: none; }
+.dish-nutri-options span { width: 29px; height: 29px; display: grid; place-items: center; color: white; border: 3px solid transparent; border-radius: 50%; font-size: 11px; font-weight: 900; opacity: .52; transition: opacity .15s, transform .15s, border-color .15s; }
+.dish-nutri-options .metric-a span { background: #038141; }
+.dish-nutri-options .metric-b span { background: #85bb2f; }
+.dish-nutri-options .metric-c span { color: #352e14; background: #fecb02; }
+.dish-nutri-options .metric-d span { background: #ee8100; }
+.dish-nutri-options .metric-e span { background: #e63e11; }
+.dish-nutri-options .metric-unknown span { color: var(--muted); background: white; border-color: var(--line-strong); box-shadow: inset 0 0 0 1px var(--line); }
+.dish-nutri-options .metric-unknown input:checked + span { color: var(--ink); border-color: var(--ink); }
+.dish-nutri-options input:checked + span { border-color: var(--ink); opacity: 1; transform: translateY(-1px); }
+.dish-nutri-options input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dual-range { --range-start: 0%; --range-end: 100%; position: relative; grid-column: 1 / -1; height: 22px; }
+.dual-range::before { position: absolute; top: 9px; right: 0; left: 0; height: 4px; background: linear-gradient(to right, var(--line-strong) 0 var(--range-start), var(--accent) var(--range-start) var(--range-end), var(--line-strong) var(--range-end) 100%); border-radius: 999px; content: ""; }
+.dual-range input[type="range"] { position: absolute; inset: 0; width: 100%; height: 22px; margin: 0; appearance: none; background: transparent; cursor: pointer; pointer-events: none; }
+.dual-range input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+.dual-range input[type="range"]::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; appearance: none; background: var(--surface-strong); border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 1px 4px rgba(47,43,39,.22); pointer-events: auto; }
+.dual-range input[type="range"]::-moz-range-track { height: 4px; background: transparent; border: 0; }
+.dual-range input[type="range"]::-moz-range-thumb { width: 13px; height: 13px; background: var(--surface-strong); border: 2px solid var(--accent); border-radius: 50%; box-shadow: 0 1px 4px rgba(47,43,39,.22); pointer-events: auto; }
+.dish-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(315px, 1fr)); gap: 15px; }
+.nutri-score-audit { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 15px; padding: 14px 18px; }
+.nutri-score-audit strong { font-size: 12px; }
+.nutri-score-audit span { color: var(--muted); font-size: 11px; text-align: right; }
+.nutri-score-field-help, .nutri-score-detail { margin: 12px 0 0; padding: 10px 12px; color: var(--muted); background: var(--paper); border-radius: 9px; font-size: 10px; line-height: 1.5; }
+.nutri-score-detail { margin: -4px 0 18px; color: var(--ink); }
+.dish-card { overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 15px; box-shadow: 0 8px 22px rgba(66,52,39,.045); }
+.dish-card-open { width: 100%; display: block; padding: 18px; color: inherit; background: transparent; border: 0; cursor: pointer; text-align: left; }
+.dish-card-open:hover { background: rgba(180,94,70,.035); }
+.dish-title { min-height: 46px; display: flex; align-items: flex-start; gap: 10px; }
+.dish-title h2 { display: -webkit-box; margin: 0; overflow: hidden; font-family: Georgia, serif; font-size: 20px; font-weight: 500; line-height: 1.15; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.dish-title { margin-bottom: 14px; }
+.dish-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.dish-metrics div { padding: 8px; background: color-mix(in srgb, var(--paper) 72%, var(--surface)); border-radius: 9px; }
+.dish-metrics strong { display: block; font-size: 12px; }
+.dish-metrics span { color: var(--muted); font-size: 8px; text-transform: uppercase; }
+.dish-metrics .nutri-score strong { width: 24px; height: 24px; display: grid; place-items: center; color: white; border-radius: 50%; }
+.dish-metrics .metric-a strong { background: #038141; }
+.dish-metrics .metric-b strong { background: #85bb2f; }
+.dish-metrics .metric-c strong { color: #352e14; background: #fecb02; }
+.dish-metrics .metric-d strong { background: #ee8100; }
+.dish-metrics .metric-e strong { background: #e63e11; }
+.dish-metrics .nutri-score-missing strong { color: #8a5b14; }
+.dish-stock-availability { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; font-weight: 750; }
+.dish-stock-availability svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.dish-stock-availability.available { color: var(--green); }
+.dish-stock-availability.unavailable { color: #8a5b14; }
+.dish-stock-availability small { margin-left: auto; color: var(--muted); font-size: 8px; font-weight: 600; }
+.button:disabled { cursor: not-allowed; opacity: .45; }
+

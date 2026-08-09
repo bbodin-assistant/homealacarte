@@ -30,6 +30,7 @@ The first implementation batches are complete and validated:
 - stock, extra needs, grocery, item details, catalogue list/editors, family/food rules, the dish library/editor, both menu workflows, and data/account/privacy workflows now live in `www/features/` with their event handlers and focused tests;
 - the browser shell, saved-state bootstrap/migrations, worker transport, and worker-response orchestration have explicit controllers with focused tests;
 - IndexedDB transactions and local-state reconciliation live in `www/storage/local-store.js`; Supabase configuration, sessions, authentication, REST transport, and remote-state CRUD live in `www/storage/remote-client.js`; `www/storage.js` now coordinates synchronization and conflicts;
+- the former 1,347-line stylesheet is split into six explicitly ordered layers under `www/styles/`, with responsive overrides last and every stylesheet below 500 lines;
 - Rust catalogue mutations, snapshots, grocery calculation, price history, and menu math have moved out of `engine.rs`;
 - loader localization/menu normalization and nested-dish loading, plus optimizer support/solver construction, have dedicated modules;
 - full Rust tests, web tests, focused UI tests, the optimized Wasm build, and Chromium startup pass.
@@ -42,15 +43,14 @@ scheduling and persistence callbacks.
 
 ### Remaining delivery estimate
 
-Five implementation checkpoints remain after the storage split. Some may
+Four implementation checkpoints remain after the CSS split. Some may
 become two commits when that keeps review size reasonable, but the architectural
 checkpoints are:
 
-1. CSS layers and feature stylesheets;
-2. deterministic HTML partial composition;
-3. domain integration-test ownership;
-4. source-size and dependency-boundary enforcement;
-5. full release validation and final cleanup.
+1. deterministic HTML partial composition;
+2. domain integration-test ownership;
+3. source-size and dependency-boundary enforcement;
+4. full release validation and final cleanup.
 
 This is an engineering estimate rather than a promise that every checkpoint maps
 to exactly one commit. The definition of done below remains the completion gate.
