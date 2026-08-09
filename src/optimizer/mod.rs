@@ -2,11 +2,13 @@ use crate::grocery::build_grocery;
 use crate::loader::{localized_days, merge_menu_rows};
 use crate::model::{AutoMenuProposal, AutoMenuRequest, Dataset};
 use self::solver::solve_menu_once;
-use self::support::routine_rows;
+use self::rules::routine_rows;
 use std::collections::{BTreeSet, HashSet};
 
+mod candidates;
+mod requirements;
+mod rules;
 mod solver;
-mod support;
 
 fn generate_menu_once(
     dataset: &Dataset,
