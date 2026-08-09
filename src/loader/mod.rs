@@ -1,19 +1,24 @@
-use crate::model::{
-    Dataset, FoodRule, HouseholdItem, Ingredient, Person,
-    PriceObservation, SourceFile,
+use crate::model::{Dataset, HouseholdItem, Ingredient, Person, SourceFile};
+pub use self::inputs::MenuInput;
+pub(crate) use self::localization::{
+    food_rule_meal_name, localize_day, localize_meal, localized_days, localized_meals,
 };
 pub(crate) use self::menu::{
-    FOOD_RULE_DAYS, MenuInput, food_rule_meal_name, localize_day, localize_meal, localized_days,
-    localized_meals, merge_menu_rows, normalize_food_rules, normalize_menu,
+    FOOD_RULE_DAYS, merge_menu_rows, normalize_food_rules, normalize_menu,
 };
-use self::dishes::{DishInput, flatten_dishes};
-use serde::{Deserialize, Deserializer};
+use self::dishes::flatten_dishes;
+use self::inputs::{Document, DishInput, HouseholdItemInput, HouseholdQuantityInput, IngredientInput, PersonInput, StockInput};
+use self::prices::normalize_price_history;
+use serde::Deserialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 mod dishes;
+mod inputs;
+mod localization;
 mod menu;
+mod prices;
 
 const SECTIONS: &[&str] = &[
     "items",
@@ -23,128 +28,6 @@ const SECTIONS: &[&str] = &[
     "stock",
     "extra_needs",
 ];
-
-#[derive(Debug)]
-struct Document {
-    path: String,
-    value: Value,
-}
-
-#[derive(Debug, Deserialize)]
-struct IngredientInput {
-    key: String,
-    name: String,
-    #[serde(default)]
-    custom: bool,
-    #[serde(default)]
-    incomplete: bool,
-    grams: f64,
-    kcal: f64,
-    protein_g: f64,
-    carbs_g: f64,
-    fat_g: f64,
-    fiber_g: f64,
-    #[serde(default, deserialize_with = "missing_value")]
-    sugars_g: Option<f64>,
-    #[serde(default, deserialize_with = "missing_value")]
-    saturated_fat_g: Option<f64>,
-    #[serde(default, deserialize_with = "missing_value")]
-    salt_g: Option<f64>,
-    #[serde(default, deserialize_with = "missing_value")]
-    fruit_vegetable_legume_percent: Option<f64>,
-    category: String,
-    source: String,
-    url: String,
-    price_per_kg: f64,
-    #[serde(default)]
-    price_source: String,
-    #[serde(default)]
-    price_checked_at: String,
-    #[serde(default)]
-    price_history: Vec<PriceObservation>,
-    #[serde(default = "default_grams")]
-    measure_unit: String,
-    #[serde(default = "one")]
-    grams_per_measure_unit: f64,
-    purchase_unit: Option<String>,
-    purchase_quantity_grams: Option<f64>,
-}
-
-fn missing_value<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    match Value::deserialize(deserializer)? {
-        Value::Null => Ok(None),
-        Value::Number(value) => value
-            .as_f64()
-            .map(Some)
-            .ok_or_else(|| serde::de::Error::custom("invalid numeric value")),
-        Value::String(value) if value == "MISSINGVALUE" => Ok(None),
-        _ => Err(serde::de::Error::custom(
-            "expected a number, null, or \"MISSINGVALUE\"",
-        )),
-    }
-}
-
-fn default_grams() -> String {
-    "g".to_string()
-}
-
-fn one() -> f64 {
-    1.0
-}
-
-
-#[derive(Debug, Deserialize)]
-struct PersonInput {
-    key: String,
-    name: Option<String>,
-    kcal_target: Option<f64>,
-    kind: Option<String>,
-    description: Option<String>,
-    #[serde(default)]
-    food_rules: Vec<FoodRule>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct StockInput {
-    item_key: String,
-    #[serde(default)]
-    quantity: f64,
-    quantity_unit: Option<String>,
-    #[serde(default)]
-    notes: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct HouseholdItemInput {
-    key: String,
-    name: String,
-    category: String,
-    #[serde(default)]
-    estimated_price: f64,
-    #[serde(default)]
-    price_history: Vec<PriceObservation>,
-    purchase_unit: Option<String>,
-    purchase_quantity: Option<f64>,
-    measure_unit: Option<String>,
-    last_bought_at: Option<String>,
-    lasting_days: Option<f64>,
-    notes: Option<String>,
-    #[serde(default)]
-    custom: bool,
-}
-
-#[derive(Debug, Deserialize)]
-struct HouseholdQuantityInput {
-    item_key: String,
-    quantity: f64,
-    quantity_unit: Option<String>,
-    #[serde(default)]
-    notes: String,
-}
 
 fn deserialize<T: for<'de> Deserialize<'de>>(path: &str, section: &str, value: Value) -> Result<T, String> {
     serde_json::from_value(value)
@@ -475,47 +358,4 @@ fn append_note(notes: &mut BTreeMap<String, String>, key: &str, note: &str) {
         current.push('\n');
         current.push_str(note);
     }
-}
-
-fn normalize_price_history(
-    mut history: Vec<PriceObservation>,
-    current_date: &str,
-    current_price: f64,
-    current_description: &str,
-) -> Result<Vec<PriceObservation>, String> {
-    if !current_price.is_finite() || current_price < 0.0 {
-        return Err("price history contains an invalid current price".to_string());
-    }
-    let current_description = if current_description.trim().is_empty() {
-        "Imported current price"
-    } else {
-        current_description.trim()
-    };
-    if !history.iter().any(|entry| {
-            entry.date.trim() == current_date.trim()
-                && entry.price == current_price
-                && entry.description.trim() == current_description
-        })
-    {
-        history.push(PriceObservation {
-            date: current_date.trim().to_string(),
-            price: current_price,
-            description: current_description.to_string(),
-        });
-    }
-    for entry in &mut history {
-        if !entry.price.is_finite() || entry.price < 0.0 {
-            return Err("price history contains a negative or non-finite price".to_string());
-        }
-        entry.date = entry.date.trim().to_string();
-        entry.description = entry.description.trim().to_string();
-    }
-    history.sort_by(|left, right| {
-        left.date
-            .cmp(&right.date)
-            .then_with(|| left.price.total_cmp(&right.price))
-            .then(left.description.cmp(&right.description))
-    });
-    history.dedup();
-    Ok(history)
 }

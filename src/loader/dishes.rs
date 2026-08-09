@@ -1,46 +1,7 @@
 use crate::model::{Dish, DishComponent, Ingredient};
-use serde::Deserialize;
+use super::inputs::DishInput;
 use serde_json::Value;
 use std::collections::HashMap;
-
-fn one() -> f64 {
-    1.0
-}
-
-fn bool_true() -> bool {
-    true
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct DishInput {
-    pub(crate) key: String,
-    name: String,
-    #[serde(default = "bool_true")]
-    auto_menu_main: bool,
-    #[serde(default = "one")]
-    pub(crate) servings: f64,
-    #[serde(default)]
-    recipe_url: String,
-    #[serde(default)]
-    source: String,
-    #[serde(default)]
-    source_notes: Value,
-    #[serde(default)]
-    nutri_score: String,
-    pub(crate) components: Vec<ComponentInput>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct ComponentInput {
-    item_key: String,
-    grams: Option<f64>,
-    measure_quantity: Option<f64>,
-    quantity: Option<f64>,
-    quantity_unit: Option<String>,
-    #[serde(default)]
-    source_quantity: String,
-}
 
 pub(crate) fn flatten_dishes(
     inputs: Vec<DishInput>,
