@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [app, index, translations, guide] = await Promise.all([
-  readFile(new URL("../www/app.js", import.meta.url), "utf8"),
+const [feature, index, translations, guide] = await Promise.all([
+  readFile(new URL("../www/features/family.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
   readFile(new URL("../www/translations.js", import.meta.url), "utf8"),
   readFile(new URL("../HOMEALACARTE_JSON_AGENT_GUIDE.md", import.meta.url), "utf8"),
@@ -10,15 +10,15 @@ const [app, index, translations, guide] = await Promise.all([
 
 assert.match(index, /id="family-food-rule-add"/);
 assert.match(index, /id="family-food-rules-list"/);
-assert.match(app, /function familyFoodRulesPayload/);
-assert.match(app, /food_rules: foodRules/);
-assert.match(app, /data-food-rule-items] input:checked/);
-assert.match(app, /data-food-rule-selected-items/);
-assert.match(app, /function filterFoodRuleItems/);
-assert.match(app, /results\.hidden = !query/);
-assert.match(app, /data-food-rule-selected-item/);
-assert.match(app, /data-food-rule-days] input:checked/);
-assert.match(app, /days: kind !== "routine"/);
+assert.match(feature, /function familyFoodRulesPayload/);
+assert.match(feature, /food_rules: foodRules/);
+assert.match(feature, /data-food-rule-items] input:checked/);
+assert.match(feature, /data-food-rule-selected-items/);
+assert.match(feature, /function filterFoodRuleItems/);
+assert.match(feature, /results\.hidden = !query/);
+assert.match(feature, /data-food-rule-selected-item/);
+assert.match(feature, /data-food-rule-days] input:checked/);
+assert.match(feature, /days: kind !== "routine"/);
 assert.match(translations, /food_rule_routine:/);
 assert.match(translations, /food_rule_days:/);
 assert.match(translations, /food_rule_never:/);
