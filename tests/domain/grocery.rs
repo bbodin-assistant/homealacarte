@@ -4,8 +4,7 @@ use homealacarte_web::{
 use std::collections::HashSet;
 
 
-mod support;
-use support::synthetic_dataset;
+use crate::support::synthetic_dataset;
 #[test]
 fn synthetic_data_supports_groceries_stock_export_and_pdf() {
     let mut engine = Engine::default();

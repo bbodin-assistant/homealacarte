@@ -1,8 +1,7 @@
 use homealacarte_web::{AppConfig, Engine, HouseholdItem, Ingredient};
 
 
-mod support;
-use support::synthetic_dataset;
+use crate::support::synthetic_dataset;
 #[test]
 fn the_item_catalogue_edits_general_items_and_deletes_safely() {
     let mut engine = Engine::default();

@@ -3,8 +3,7 @@ use homealacarte_web::{
 };
 
 
-mod support;
-use support::synthetic_dataset;
+use crate::support::synthetic_dataset;
 #[test]
 fn a_new_dish_is_calculated_and_exported() {
     let mut engine = Engine::default();

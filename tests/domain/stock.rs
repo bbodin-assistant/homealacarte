@@ -1,8 +1,7 @@
 use homealacarte_web::{AppConfig, Engine, StockUpdate};
 
 
-mod support;
-use support::synthetic_dataset;
+use crate::support::synthetic_dataset;
 #[test]
 fn stock_unit_changes_preserve_the_physical_quantity_and_selected_unit() {
     let mut engine = Engine::default();

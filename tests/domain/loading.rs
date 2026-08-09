@@ -1,8 +1,7 @@
 use homealacarte_web::{AppConfig, Engine, SourceFile};
 
 
-mod support;
-use support::synthetic_dataset;
+use crate::support::synthetic_dataset;
 #[test]
 fn unsupported_data_shapes_are_rejected() {
     let unsupported_section = SourceFile {

@@ -1,8 +1,7 @@
 use homealacarte_web::{AppConfig, Engine, Person};
 
 
-mod support;
-use support::synthetic_dataset;
+use crate::support::synthetic_dataset;
 #[test]
 fn family_members_can_be_added_removed_and_exported() {
     let mut engine = Engine::default();
