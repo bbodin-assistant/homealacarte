@@ -8,6 +8,8 @@ use crate::snapshot::build_snapshot;
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+mod catalogue;
+
 const EPSILON: f64 = 1e-6;
 
 fn quantity_row(key: &str, quantity: f64, quantity_unit: &str, note: Option<&String>) -> Value {

@@ -3,7 +3,7 @@ use crate::loader::{localized_days, localized_meals};
 use crate::model::{
     AutoMenuDailyResult, AutoMenuProposal, AutoMenuRequest, Dataset, MenuRow,
 };
-use crate::optimizer_support::*;
+use super::support::*;
 use microlp::{
     ComparisonOp, LinearExpr, OptimizationDirection, Problem, SolveOutcome, SolutionStatus,
     Variable,

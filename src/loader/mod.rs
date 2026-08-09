@@ -2,15 +2,18 @@ use crate::model::{
     Dataset, FoodRule, HouseholdItem, Ingredient, Person,
     PriceObservation, SourceFile,
 };
-pub(crate) use crate::menu_loading::{
+pub(crate) use self::menu::{
     FOOD_RULE_DAYS, MenuInput, food_rule_meal_name, localize_day, localize_meal, localized_days,
     localized_meals, merge_menu_rows, normalize_food_rules, normalize_menu,
 };
-use crate::dish_loading::{DishInput, flatten_dishes};
+use self::dishes::{DishInput, flatten_dishes};
 use serde::{Deserialize, Deserializer};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
+
+mod dishes;
+mod menu;
 
 const SECTIONS: &[&str] = &[
     "items",

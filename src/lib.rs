@@ -1,14 +1,9 @@
-mod catalogue;
-mod dish_loading;
 mod engine;
 mod grocery;
 mod loader;
-mod menu_loading;
 mod menu_math;
 mod model;
 mod optimizer;
-mod optimizer_solver;
-mod optimizer_support;
 mod personal_data;
 mod pdf;
 mod price_history;
