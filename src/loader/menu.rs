@@ -1,6 +1,7 @@
 use crate::model::{FoodRule, MenuRow};
 use super::inputs::MenuInput;
 use super::localization::{localize_day, localize_meal};
+use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
 pub(crate) const FOOD_RULE_MEALS: [&str; 8] = [
@@ -98,6 +99,7 @@ pub(crate) fn normalize_menu(
     default_person: Option<&str>,
 ) -> Result<Vec<MenuRow>, String> {
     let mut rows = Vec::new();
+    let mut row_ids = HashSet::new();
     for (index, input) in inputs.into_iter().enumerate() {
         if !valid_items.contains(input.item_key.trim()) {
             return Err(format!(
@@ -153,7 +155,34 @@ pub(crate) fn normalize_menu(
                 ));
             }
         }
+        let supplied_id = input.id.unwrap_or_default().trim().to_string();
+        let id = if supplied_id.is_empty() {
+            let identity = serde_json::json!({
+                "day": input.day,
+                "meal": input.meal,
+                "item_key": input.item_key,
+                "people": people,
+                "quantity": quantity,
+                "quantity_unit": unit,
+                "notes": input.notes,
+                "occurrence": index,
+            });
+            let digest = Sha256::digest(identity.to_string().as_bytes());
+            format!(
+                "menu_{}",
+                digest[..12]
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>()
+            )
+        } else {
+            supplied_id
+        };
+        if !row_ids.insert(id.clone()) {
+            return Err(format!("menu item {} has a duplicate id: {id}", index + 1));
+        }
         rows.push(MenuRow {
+            id,
             day: localize_day(&input.day, language)
                 .map_err(|error| format!("menu item {}: {error}", index + 1))?,
             meal: localize_meal(&input.meal, language)
@@ -202,6 +231,7 @@ mod tests {
 
     fn row(people: &[&str], quantity: f64, notes: &str) -> MenuRow {
         MenuRow {
+            id: String::new(),
             day: "Monday".to_string(),
             meal: "Dinner".to_string(),
             item_key: "vegetable_curry".to_string(),

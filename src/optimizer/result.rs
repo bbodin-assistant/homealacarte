@@ -36,6 +36,7 @@ pub(crate) fn assemble_result(
         }
         for (steps, people) in people_by_steps {
             rows.push(MenuRow {
+                id: String::new(),
                 day: slot.day.clone(),
                 meal: slot.meal.clone(),
                 item_key: dish.key.clone(),

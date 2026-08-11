@@ -333,7 +333,6 @@ export function createFeatureComposition({
     loadPrivacyRequests,
     deletePrivateData,
     resolveSyncConflict,
-    savePrivateState,
     signIn,
     signOut,
     signUp,
@@ -350,7 +349,6 @@ export function createFeatureComposition({
     applyTranslations,
     reloadPage: () => location.reload(),
     storagePrefix,
-    dataSchemaVersion,
     emptyDatabaseContent,
   });
   const closeAboutDialog = dataAccountFeature.closeAboutDialog;
@@ -372,7 +370,6 @@ export function createFeatureComposition({
 
   function persistDraft() {
     if (!state.snapshot) return;
-    localStorage.setItem("homealacarte-menu", JSON.stringify(state.snapshot.planner));
     localStorage.setItem("homealacarte-language", state.language);
     const sources = state.serializedData
       ? [{ path: "homealacarte_data.json", content: state.serializedData }]

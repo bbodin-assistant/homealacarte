@@ -153,8 +153,31 @@ HTML + CSS + JavaScript
           |
  validation · planning · PDF
 
-IndexedDB <-> optional Supabase/Postgres
+IndexedDB rows/outbox <-> optional Supabase/Postgres row sync
 ```
+
+### Relational synchronization
+
+JSON is the portable import/export format, but it is not sent as one mutable
+server document. Private data is decomposed into versioned domain rows for
+items, dishes, people, menu entries, stock, and extra needs. IndexedDB keeps a
+matching row cache, a durable operation outbox, and the last applied server
+cursor. Supabase applies idempotent operation batches and exposes an ordered
+change log, so devices transfer only records that changed.
+
+Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor
+before deploying a build that uses row synchronization. On the first signed-in
+startup, the browser converts an existing local IndexedDB document or legacy
+`household_state` payload into rows, uploads them, and removes the legacy online
+document after the row migration succeeds. Existing JSON files remain valid;
+menu entries without an `id` receive one during loading and later exports
+preserve it.
+
+Concurrent edits to different records merge automatically. Concurrent edits to
+the same record use its individual version and present the existing local/online
+choice without discarding unrelated changes. A lightweight cursor poll while
+the page is visible, plus refreshes on focus and reconnect, brings changes from
+other devices into the running application.
 
 ## Validation
 

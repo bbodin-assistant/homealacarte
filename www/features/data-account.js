@@ -16,7 +16,6 @@ export function createDataAccountFeature({
   loadPrivacyRequests,
   deletePrivateData,
   resolveSyncConflict,
-  savePrivateState,
   signIn,
   signOut,
   signUp,
@@ -33,7 +32,6 @@ export function createDataAccountFeature({
   applyTranslations,
   reloadPage,
   storagePrefix,
-  dataSchemaVersion,
   emptyDatabaseContent,
 }) {
   function storageStatusKey(statusName) {
@@ -316,7 +314,6 @@ export function createDataAccountFeature({
     state.restoreStock = null;
     state.restoreCustom = null;
     state.autoMenuProposal = null;
-    storage.removeItem("homealacarte-menu");
     switchTab("data");
     const requestId = send("load-files", {
       files,
@@ -503,16 +500,6 @@ export function createDataAccountFeature({
       state.restoreMenu = null;
       state.restoreStock = null;
       state.restoreCustom = null;
-      savePrivateState({
-        version: dataSchemaVersion,
-        language: state.language,
-        sources: files,
-        people: null,
-        menu: null,
-        stock: null,
-        customGrocery: null,
-      })
-        .catch((error) => console.warn("Unable to persist imported files", error));
       send("load-files", { files, language: state.language });
     }
     event.target.value = "";

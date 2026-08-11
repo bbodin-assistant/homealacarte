@@ -105,6 +105,7 @@ Rules:
 
 ```json
 {
+  "id": "menu_entry_stable_id",
   "day": "Monday",
   "meal": "Dinner",
   "item_key": "plat_dish_key",
@@ -117,6 +118,7 @@ Rules:
 
 Rules:
 
+- `id` is optional on import. HomeAlacarte assigns one when absent and preserves it on export for incremental synchronization.
 - `item_key` may reference an item or dish.
 - Use `portion` for dishes.
 - Use `g` or `unit` for direct items.

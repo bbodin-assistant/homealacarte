@@ -90,6 +90,7 @@ pub(crate) fn routine_rows(
             }
             let choice_index = day_index % allowed.len();
             rows.push(MenuRow {
+                id: String::new(),
                 day: entry.day.clone(),
                 meal,
                 item_key: allowed[choice_index].to_string(),

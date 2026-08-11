@@ -7,7 +7,7 @@ PERSONAL_OVERLAY_DIR ?= ./perso-data
 PERSONAL_MERGED_IMPORT ?= ./private-import/homealacarte-merged.json
 PERSONAL_MERGE_AUDIT ?= ./private-import/homealacarte-merge-audit.json
 
-.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-architecture test-browser-startup test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
+.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-architecture test-browser-startup test-row-sync-browser test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
 
 build: rust-build web-build
 
@@ -51,6 +51,8 @@ test-web:
 	node tests/worker_client.mjs
 	node tests/worker_responses.mjs
 	node tests/local_store.mjs
+	node tests/row_codec.mjs
+	node tests/row_sync_schema.mjs
 	node tests/remote_client.mjs
 	node tests/stock_availability.mjs
 	node tests/stock_feature.mjs
@@ -67,6 +69,9 @@ test-web:
 
 test-browser-startup: web-build
 	bash tests/browser_startup.sh
+
+test-row-sync-browser:
+	bash tests/row_sync_browser.sh
 
 test-reset-demo:
 	node tests/reset_demo.mjs

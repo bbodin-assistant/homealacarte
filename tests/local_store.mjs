@@ -11,8 +11,10 @@ assert.doesNotMatch(storage, /indexedDB\.open/);
 assert.doesNotMatch(storage, /function openDatabase/);
 assert.match(localStore, /indexedDB\.open/);
 assert.match(localStore, /export async function readLocalState/);
-assert.match(localStore, /export async function writeLocalState/);
-assert.match(localStore, /export async function reconcileSyncedLocalState/);
+assert.match(localStore, /export function writeLocalState/);
+assert.match(localStore, /export async function readPendingOperations/);
+assert.match(localStore, /export function acknowledgeOperations/);
+assert.match(localStore, /export function applyRemoteChanges/);
 assert.match(localStore, /export async function clearLocalState/);
 
-console.log("IndexedDB persistence is isolated from authentication and remote synchronization.");
+console.log("IndexedDB owns relational records, the durable outbox, and the synchronization cursor.");

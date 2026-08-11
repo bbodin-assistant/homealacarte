@@ -157,6 +157,8 @@ pub struct Person {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MenuRow {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
     pub day: String,
     pub meal: String,
     pub item_key: String,

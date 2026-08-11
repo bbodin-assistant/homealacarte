@@ -6,7 +6,8 @@ import {
   mergeBundledFoodRules,
 } from "./profile-rules.js?v=homealacarte-77";
 
-const DATA_SCHEMA_VERSION = 10;
+const DATA_SCHEMA_VERSION = 11;
+const ROW_SYNC_MIGRATION_VERSIONS = [10];
 const FOOD_RULE_MIGRATION_VERSIONS = [6, 7];
 const INGREDIENT_MIGRATION_VERSIONS = [6, 7, 8];
 const NUTRITION_MIGRATION_VERSIONS = [6, 7, 8, 9];
@@ -26,7 +27,8 @@ export async function bootstrapApplication({
   if (APPLICATION_TABS.includes(requestedTab)) switchTab(requestedTab);
 
   const saved = await loadPrivateState().catch(() => null);
-  if ([...NUTRITION_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION].includes(saved?.version)) {
+  if ([...NUTRITION_MIGRATION_VERSIONS, ...ROW_SYNC_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION]
+    .includes(saved?.version)) {
     state.language = saved.language || state.language;
     state.importedSources = saved.sources || null;
     state.restorePeople = saved.version >= 4 ? (saved.people || null) : null;

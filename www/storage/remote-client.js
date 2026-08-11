@@ -7,6 +7,7 @@ export function createRemoteClient({
   locationRef = location,
   historyRef = history,
   fetchFn = fetch,
+  configValue,
 }) {
   let configPromise;
   let session = readSession();
@@ -14,7 +15,9 @@ export function createRemoteClient({
 
   async function loadConfig() {
     if (!configPromise) {
-      configPromise = import("../supabase-config.js?v=homealacarte-30")
+      configPromise = (configValue
+        ? Promise.resolve({ SUPABASE_CONFIG: configValue })
+        : import("../supabase-config.js?v=homealacarte-30"))
         .then(({ SUPABASE_CONFIG }) => {
           const projectUrl = String(SUPABASE_CONFIG?.projectUrl || "").replace(/\/+$/, "");
           const publishableKey = String(SUPABASE_CONFIG?.publishableKey || "");
@@ -176,6 +179,50 @@ export function createRemoteClient({
     return rows?.[0] || null;
   }
 
+  async function deleteLegacyState() {
+    const activeSession = await ensureSession();
+    if (!activeSession?.user?.id) return;
+    await restRequest(
+      `household_state?user_id=eq.${encodeURIComponent(activeSession.user.id)}`,
+      { method: "DELETE", headers: { Prefer: "return=minimal" } },
+    );
+  }
+
+  async function fetchRemoteSnapshot() {
+    return restRequest("rpc/get_household_sync_snapshot", {
+      method: "POST",
+      body: "{}",
+    });
+  }
+
+  async function fetchRemoteChanges(cursor) {
+    const activeSession = await ensureSession();
+    if (!activeSession?.user?.id) return [];
+    return restRequest(
+      "household_changes"
+        + `?user_id=eq.${encodeURIComponent(activeSession.user.id)}`
+        + `&change_id=gt.${encodeURIComponent(Number(cursor || 0))}`
+        + "&select=change_id,entity_type,entity_id,operation,position,payload,record_version"
+        + "&order=change_id.asc&limit=1000",
+    );
+  }
+
+  async function applyRemoteOperations(operations) {
+    const rows = operations.map((operation) => ({
+      operation_id: operation.operationId,
+      operation: operation.operation,
+      entity_type: operation.entityType,
+      entity_id: operation.entityId,
+      position: operation.position || 0,
+      payload: operation.operation === "upsert" ? operation.payload : null,
+      expected_version: Number(operation.expectedVersion || 0),
+    }));
+    return restRequest("rpc/apply_household_sync_operations", {
+      method: "POST",
+      body: JSON.stringify({ operations: rows }),
+    });
+  }
+
   async function touchAccountActivity(force = false) {
     if (!force && Date.now() - lastActivityTouch < 6 * 60 * 60 * 1000) return;
     await restRequest("rpc/touch_account_activity", {
@@ -184,42 +231,6 @@ export function createRemoteClient({
       body: "{}",
     });
     lastActivityTouch = Date.now();
-  }
-
-  async function insertRemoteState(value) {
-    const activeSession = await ensureSession();
-    const rows = await restRequest("household_state", {
-      method: "POST",
-      headers: { Prefer: "return=representation" },
-      body: JSON.stringify({
-        user_id: activeSession.user.id,
-        payload: value,
-        revision: 1,
-      }),
-    });
-    return rows?.[0] || { revision: 1 };
-  }
-
-  async function updateRemoteState(value, expectedRevision) {
-    const activeSession = await ensureSession();
-    const rows = await restRequest(
-      `household_state?user_id=eq.${encodeURIComponent(activeSession.user.id)}&revision=eq.${expectedRevision}`,
-      {
-        method: "PATCH",
-        headers: { Prefer: "return=representation" },
-        body: JSON.stringify({
-          payload: value,
-          revision: expectedRevision + 1,
-          updated_at: new Date().toISOString(),
-        }),
-      },
-    );
-    if (!rows?.length) {
-      const error = new Error("The online data changed on another device");
-      error.code = "sync_conflict";
-      throw error;
-    }
-    return rows[0];
   }
 
   function isNetworkError(error) {
@@ -233,17 +244,19 @@ export function createRemoteClient({
   }
 
   return {
+    applyRemoteOperations,
     authRequest,
+    deleteLegacyState,
     ensureSession,
     fetchRemoteState,
+    fetchRemoteChanges,
+    fetchRemoteSnapshot,
     getSession,
-    insertRemoteState,
     isNetworkError,
     loadConfig,
     normalizeSession,
     restRequest,
     saveSession,
     touchAccountActivity,
-    updateRemoteState,
   };
 }

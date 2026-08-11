@@ -5,6 +5,7 @@ import {
   getPrivateStateCopy,
   loadPrivacyRequests,
   loadPrivateState,
+  onPrivateStateChange,
   onStorageStatus,
   resolveSyncConflict,
   savePrivateState,
@@ -39,7 +40,7 @@ import { createFeatureComposition } from "./app/feature-composition.js?v=homeala
 document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
-const DATA_SCHEMA_VERSION = 10;
+const DATA_SCHEMA_VERSION = 11;
 const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   items: [],
   dishes: [],
@@ -202,6 +203,7 @@ const application = createFeatureComposition({
 application.mount();
 
 onStorageStatus(application.renderStorageStatus);
+onPrivateStateChange(() => location.reload());
 bootstrapApplication({
   state,
   requestedTab: location.hash.slice(1),
