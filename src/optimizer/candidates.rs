@@ -2,7 +2,7 @@ use crate::model::{Dataset, Dish, Ingredient};
 use std::collections::{BTreeSet, HashMap};
 
 pub(crate) const MAX_DAILY_CANDIDATES: usize = 10;
-pub(crate) const MAX_WEEKLY_DISH_USES: usize = 2;
+pub(crate) const MAX_WEEKLY_DISH_USES: usize = 1;
 pub(crate) const VARIETY_WEIGHT: f64 = 5.0;
 
 pub(crate) fn dish_retail_cost(dish: &Dish, ingredients: &HashMap<&str, &Ingredient>) -> f64 {
