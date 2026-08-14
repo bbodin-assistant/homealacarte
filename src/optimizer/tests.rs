@@ -208,7 +208,46 @@ fn generator_applies_daily_choices_and_never_rules() {
     .unwrap_err();
     assert_eq!(dessert_error, "auto_menu_not_enough_dishes");
 
-    let repeated_across_days = generate_menu(
+    let distinct_across_days = generate_menu(
+        &dataset,
+        "en",
+        AutoMenuRequest {
+            kcal_threshold: 50.0,
+            min_portions: 1.0,
+            max_portions: 1.0,
+            portion_step: 0.05,
+            same_portion_for_everyone: false,
+            availability: vec![
+                crate::model::AutoMenuAvailability {
+                    person_key: "person".to_string(),
+                    day: "Monday".to_string(),
+                },
+                crate::model::AutoMenuAvailability {
+                    person_key: "person".to_string(),
+                    day: "Tuesday".to_string(),
+                },
+            ],
+            slots: vec![
+                crate::model::AutoMenuSlot {
+                    day: "Monday".to_string(),
+                    meal: "Lunch".to_string(),
+                },
+                crate::model::AutoMenuSlot {
+                    day: "Tuesday".to_string(),
+                    meal: "Lunch".to_string(),
+                },
+            ],
+            candidate_dish_keys: vec!["stocked_dish".to_string(), "bought_dish".to_string()],
+        },
+    )
+    .unwrap();
+    assert_eq!(distinct_across_days.selected_dish_keys.len(), 2);
+    assert_ne!(
+        distinct_across_days.selected_dish_keys[0],
+        distinct_across_days.selected_dish_keys[1]
+    );
+
+    let not_enough_unique_dishes = generate_menu(
         &dataset,
         "en",
         AutoMenuRequest {
@@ -240,12 +279,8 @@ fn generator_applies_daily_choices_and_never_rules() {
             candidate_dish_keys: vec!["stocked_dish".to_string()],
         },
     )
-    .unwrap();
-    assert_eq!(repeated_across_days.selected_dish_keys.len(), 2);
-    assert!(repeated_across_days
-        .selected_dish_keys
-        .iter()
-        .all(|key| key == "stocked_dish"));
+    .unwrap_err();
+    assert_eq!(not_enough_unique_dishes, "auto_menu_not_enough_dishes");
 }
 
 #[test]
