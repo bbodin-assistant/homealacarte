@@ -17,7 +17,7 @@ const layers = [
 ];
 let previous = -1;
 for (const layer of layers) {
-  const href = `./styles/${layer}.css?v=homealacarte-77`;
+  const href = `./styles/${layer}.css`;
   const position = index.indexOf(href);
   assert.ok(position > previous, `${layer} must preserve cascade order`);
   previous = position;
