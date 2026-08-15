@@ -5,6 +5,7 @@ import {
   buildOllamaRequest,
   discoverAiServer,
   fetchOllamaJson,
+  generateRecipeWithOllama,
   isLoopbackOllamaUrl,
   listOllamaModels,
   normalizeOllamaUrl,
@@ -87,6 +88,62 @@ await assert.rejects(
   (error) => error?.status === 404 && error?.details === "File Not Found",
 );
 
+const streamedRecipe = JSON.stringify({
+  name: "Rice",
+  servings: 2,
+  recipe_url: "",
+  source: "test",
+  source_notes: [],
+  auto_menu_main: true,
+  ingredients: [{
+    name: "Basmati rice",
+    existing_key: "rice",
+    quantity: 200,
+    unit: "g",
+    source_quantity: "200 g",
+  }],
+});
+const encoder = new TextEncoder();
+const streamedRequests = [];
+const streamingFetch = async (url, options) => {
+  streamedRequests.push({ url, options });
+  if (url.endsWith("/api/tags")) {
+    return {
+      ok: false,
+      status: 404,
+      json: async () => ({ error: { message: "File Not Found" } }),
+    };
+  }
+  if (url.endsWith("/v1/models")) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: "local-book-model" }] }),
+    };
+  }
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"reasoning_content":"checking "}}]}\n\n'));
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: streamedRecipe } }] })}\n\n`));
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  });
+  return { ok: true, status: 200, body };
+};
+const liveOutput = [];
+const streamedResult = await generateRecipeWithOllama({
+  baseUrl: "127.0.0.1:8080",
+  model: "local-book-model",
+  recipeText: "200 g basmati rice",
+  ingredientOptions: [{ kind: "ingredient", key: "rice", name: "Basmati rice", measure_unit: "g" }],
+  fetchImpl: streamingFetch,
+  onChunk: (chunk) => liveOutput.push(chunk),
+});
+assert.equal(streamedResult.recipe.name, "Rice");
+assert.equal(liveOutput.join(""), `checking ${streamedRecipe}`);
+assert.equal(JSON.parse(streamedRequests[2].options.body).stream, true);
+
 const hangingFetch = (_url, options) => new Promise((_resolve, reject) => {
   options.signal.addEventListener("abort", () => {
     const error = new Error("aborted");
@@ -99,4 +156,4 @@ await assert.rejects(
   (error) => error?.code === "timeout",
 );
 
-console.log("AI dish transport validates Ollama/OpenAI discovery, schemas, prompt isolation, errors, and timeouts.");
+console.log("AI dish transport validates Ollama/OpenAI discovery, schemas, prompt isolation, streaming, errors, and timeouts.");
