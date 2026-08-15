@@ -148,6 +148,7 @@ function recipeSystemPrompt() {
     "Return only data matching the provided JSON schema; do not add prose or Markdown.",
     "Do not try to match ingredients to a database. Every ingredient is a standalone custom ingredient at this stage.",
     "Normalize every ingredient quantity to the best reasonable gram quantity for the whole recipe and set unit to g.",
+    "Every returned ingredient must have a positive quantity. If an optional ingredient has no concrete amount, omit it entirely instead of returning quantity 0.",
     "Preserve the original amount wording in source_quantity.",
     "Use note for a short factual clarification that helps identify or quantify that ingredient; use an empty string when no clarification is needed.",
     "Do not invent nutrition values, prices, stock, categories, database keys, or household information.",
@@ -462,6 +463,13 @@ async function runStructuredRequest({
   }
 }
 
+function optionalUnquantifiedIngredient(ingredient) {
+  const quantity = Number(ingredient?.quantity);
+  if (Number.isFinite(quantity) && quantity > 0) return false;
+  const hint = `${ingredient?.source_quantity || ""} ${ingredient?.note || ""}`.toLowerCase();
+  return /\b(?:optional|facultatif|facultative|facultatifs|facultatives)\b/.test(hint);
+}
+
 function validateStructuredRecipe(recipe) {
   if (!recipe || typeof recipe !== "object" || Array.isArray(recipe)) {
     throw new OllamaError("invalid_recipe", "The model did not return a recipe object.");
@@ -474,14 +482,28 @@ function validateStructuredRecipe(recipe) {
   if (!Array.isArray(recipe.ingredients) || !recipe.ingredients.length || recipe.ingredients.length > 100) {
     throw new OllamaError("invalid_recipe", "The generated recipe has an invalid ingredient list.");
   }
+  recipe.ingredients = recipe.ingredients.filter((ingredient) => !optionalUnquantifiedIngredient(ingredient));
+  if (!recipe.ingredients.length) {
+    throw new OllamaError("invalid_recipe", "The generated recipe has no quantified ingredients.");
+  }
   recipe.ingredients.forEach((ingredient, index) => {
+    const ingredientName = String(ingredient?.name || "").trim();
+    const unit = String(ingredient?.unit || "").trim().toLowerCase();
     const quantity = Number(ingredient?.quantity);
-    if (!String(ingredient?.name || "").trim()
-      || String(ingredient?.unit || "").trim().toLowerCase() !== "g"
-      || !Number.isFinite(quantity)
-      || quantity <= 0
-      || quantity > 100000) {
-      throw new OllamaError("invalid_recipe", `Generated ingredient ${index + 1} is invalid.`);
+    if (!ingredientName) {
+      throw new OllamaError("invalid_ingredient", `Generated ingredient ${index + 1} has no name.`);
+    }
+    if (unit !== "g") {
+      throw new OllamaError(
+        "invalid_ingredient",
+        `Generated ingredient ${index + 1} "${ingredientName}" uses invalid unit "${ingredient?.unit ?? ""}".`,
+      );
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 100000) {
+      throw new OllamaError(
+        "invalid_ingredient",
+        `Generated ingredient ${index + 1} "${ingredientName}" has invalid quantity: ${ingredient?.quantity ?? "missing"} g.`,
+      );
     }
   });
   return recipe;
