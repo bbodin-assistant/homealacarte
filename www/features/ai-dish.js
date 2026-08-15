@@ -25,6 +25,7 @@ const STRINGS = {
     privacyRemote: "This server is not local. The pasted recipe text will be sent to that server.",
     corsHint: "If this site cannot reach the LLM server, configure its CORS policy. For Ollama, allow this page origin with OLLAMA_ORIGINS and restart Ollama.",
     cancel: "Cancel",
+    close: "Close",
     stop: "Stop",
     submit: "Generate and add dish",
     loadingModels: "Looking for available LLM models…",
@@ -33,6 +34,8 @@ const STRINGS = {
     matchHeading: "Ingredient matching:",
     matched: "✓ {ingredient} → {match}",
     custom: "• {ingredient} → custom ingredient",
+    finalHeading: "Final structured result:",
+    added: "✓ Dish added: {name}",
     noModels: "No models were found on this LLM server.",
     stopped: "Generation stopped.",
     invalidUrl: "Check the LLM server address.",
@@ -59,6 +62,7 @@ const STRINGS = {
     privacyRemote: "Ce serveur n’est pas local. Le texte collé sera envoyé à ce serveur.",
     corsHint: "Si ce site ne peut pas joindre le serveur LLM, configurez sa politique CORS. Pour Ollama, autorisez l’origine de cette page avec OLLAMA_ORIGINS puis redémarrez Ollama.",
     cancel: "Annuler",
+    close: "Fermer",
     stop: "Arrêter",
     submit: "Générer et ajouter le plat",
     loadingModels: "Recherche des modèles LLM disponibles…",
@@ -67,6 +71,8 @@ const STRINGS = {
     matchHeading: "Correspondance des ingrédients :",
     matched: "✓ {ingredient} → {match}",
     custom: "• {ingredient} → ingrédient personnalisé",
+    finalHeading: "Résultat structuré final :",
+    added: "✓ Plat ajouté : {name}",
     noModels: "Aucun modèle n’a été trouvé sur ce serveur LLM.",
     stopped: "Génération arrêtée.",
     invalidUrl: "Vérifiez l’adresse du serveur LLM.",
@@ -397,6 +403,11 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
     output.scrollTop = output.scrollHeight;
   }
 
+  function appendFinalResult(recipe) {
+    appendStatusLine(t("finalHeading"));
+    appendStatusLine(JSON.stringify(recipe, null, 2));
+  }
+
   function renderProgress() {
     const label = select("#ai-dish-progress span:last-child");
     if (!label) return;
@@ -553,8 +564,11 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
       send("save-dish", payload);
       controller = null;
       setGenerating(false);
-      select("#ai-dish-dialog").close();
-      select("#ai-dish-recipe").value = "";
+      appendStatusLine("");
+      appendFinalResult(result.recipe);
+      appendStatusLine(t("added", { name: payload.dish.name }));
+      select("#ai-dish-submit").disabled = true;
+      select("#ai-dish-cancel").textContent = t("close");
     } catch (error) {
       const aborted = controller?.signal.aborted || error?.name === "AbortError";
       controller = null;
