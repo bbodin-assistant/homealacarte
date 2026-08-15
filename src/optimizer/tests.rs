@@ -208,8 +208,12 @@ fn generator_applies_daily_choices_and_never_rules() {
     .unwrap_err();
     assert_eq!(dessert_error, "auto_menu_not_enough_dishes");
 
+    let mut distinct_dataset = dataset.clone();
+    distinct_dataset.people[0]
+        .food_rules
+        .retain(|rule| rule.kind != "never");
     let distinct_across_days = generate_menu(
-        &dataset,
+        &distinct_dataset,
         "en",
         AutoMenuRequest {
             kcal_threshold: 50.0,
