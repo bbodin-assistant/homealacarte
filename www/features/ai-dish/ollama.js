@@ -244,6 +244,101 @@ export async function fetchOllamaJson(
   }
 }
 
+async function fetchAiStream(
+  url,
+  options = {},
+  {
+    provider,
+    timeoutMs = OLLAMA_GENERATION_TIMEOUT_MS,
+    fetchImpl = fetch,
+    signal,
+    onChunk,
+  } = {},
+) {
+  const linked = linkedTimeoutSignal(signal, timeoutMs);
+  try {
+    const response = await fetchImpl(url, {
+      credentials: "omit",
+      mode: "cors",
+      cache: "no-store",
+      ...options,
+      signal: linked.signal,
+    });
+    if (!response.ok) {
+      const details = await readErrorBody(response);
+      throw new OllamaError(
+        "http_error",
+        `AI server returned HTTP ${response.status}.`,
+        details,
+        response.status,
+      );
+    }
+    if (!response.body?.getReader) {
+      throw new OllamaError("invalid_response", "AI server did not return a readable stream.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let content = "";
+    let metrics = { total_duration: 0, eval_count: 0 };
+
+    const consumeLine = (line) => {
+      let payload = line.trim();
+      if (!payload) return;
+      if (provider === "openai") {
+        if (!payload.startsWith("data:")) return;
+        payload = payload.slice(5).trim();
+        if (!payload || payload === "[DONE]") return;
+      }
+
+      let chunk;
+      try {
+        chunk = JSON.parse(payload);
+      } catch (error) {
+        throw new OllamaError("invalid_response", "AI server returned malformed streaming JSON.", error?.message || "");
+      }
+
+      const message = provider === "openai"
+        ? chunk?.choices?.[0]?.delta
+        : chunk?.message;
+      const reasoning = String(message?.reasoning_content ?? message?.thinking ?? "");
+      const text = String(message?.content ?? "");
+      if (reasoning) onChunk?.(reasoning);
+      if (text) {
+        content += text;
+        onChunk?.(text);
+      }
+
+      if (provider === "ollama" && chunk?.done) {
+        metrics = {
+          total_duration: Number(chunk?.total_duration || 0),
+          eval_count: Number(chunk?.eval_count || 0),
+        };
+      }
+    };
+
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() || "";
+      lines.forEach(consumeLine);
+      if (done) break;
+    }
+    if (buffer.trim()) consumeLine(buffer);
+
+    return { content, metrics };
+  } catch (error) {
+    if (error instanceof OllamaError) throw error;
+    if (linked.timedOut()) throw new OllamaError("timeout", "AI server request timed out.");
+    if (signal?.aborted || error?.name === "AbortError") throw error;
+    throw new OllamaError("network_error", "Unable to reach the AI server.", error?.message || "");
+  } finally {
+    linked.cleanup();
+  }
+}
+
 export async function discoverAiServer(baseUrl, options = {}) {
   const normalized = normalizeOllamaUrl(baseUrl);
   try {
@@ -329,20 +424,22 @@ export async function generateRecipeWithOllama({
   fetchImpl = fetch,
   signal,
   timeoutMs = OLLAMA_GENERATION_TIMEOUT_MS,
+  onChunk,
 }) {
   const normalized = normalizeOllamaUrl(baseUrl);
   const catalogue = selectIngredientCatalogue(ingredientOptions, recipeText);
   const request = buildOllamaRequest({ model, recipeText, catalogue });
   const server = await discoverAiServer(normalized, { fetchImpl, signal });
   const openAiCompatible = server.provider === "openai";
-  const data = await fetchOllamaJson(`${normalized}${openAiCompatible ? "/v1/chat/completions" : "/api/chat"}`, {
+  const streamRequest = openAiCompatible
+    ? { ...buildOpenAiRequest(request), stream: true }
+    : { ...request, stream: true, think: true };
+  const streamed = await fetchAiStream(`${normalized}${openAiCompatible ? "/v1/chat/completions" : "/api/chat"}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(openAiCompatible ? buildOpenAiRequest(request) : request),
-  }, { timeoutMs, fetchImpl, signal });
-  const content = openAiCompatible
-    ? data?.choices?.[0]?.message?.content
-    : data?.message?.content;
+    body: JSON.stringify(streamRequest),
+  }, { provider: server.provider, timeoutMs, fetchImpl, signal, onChunk });
+  const content = streamed.content;
   if (typeof content !== "string" || !content.trim()) {
     throw new OllamaError("invalid_response", "AI server returned an empty structured response.");
   }
@@ -355,9 +452,6 @@ export async function generateRecipeWithOllama({
   return {
     recipe: validateStructuredRecipe(recipe),
     catalogue,
-    metrics: {
-      total_duration: Number(data?.total_duration || 0),
-      eval_count: Number(data?.eval_count || 0),
-    },
+    metrics: streamed.metrics,
   };
 }
