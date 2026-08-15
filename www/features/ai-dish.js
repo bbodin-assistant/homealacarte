@@ -294,7 +294,8 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
       .ai-dish-wide{grid-column:1/-1}.ai-dish-fields textarea{min-height:210px;resize:vertical}.ai-dish-model-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
       .ai-dish-hint{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.ai-dish-warning{color:#8a5a18}.ai-dish-error{margin:0;color:#9b302a;white-space:pre-wrap}
       .ai-dish-progress{display:flex;align-items:center;gap:9px;margin:0;color:var(--muted);font-size:12px;font-weight:700}.ai-dish-progress .spinner{position:static;width:15px;height:15px;clip:auto;clip-path:none;margin:0;overflow:visible}
-      .ai-dish-actions .button[hidden],.ai-dish-progress[hidden],.ai-dish-error:empty{display:none}.ai-dish-actions{display:flex;justify-content:flex-end;gap:9px}
+      .ai-dish-output{box-sizing:border-box;width:100%;height:7.5em;min-height:0!important;resize:none;overflow:auto;font:inherit;font-size:12px;line-height:1.5;color:var(--muted);background:var(--surface);white-space:pre-wrap}
+      .ai-dish-actions .button[hidden],.ai-dish-progress[hidden],.ai-dish-output[hidden],.ai-dish-error:empty{display:none}.ai-dish-actions{display:flex;justify-content:flex-end;gap:9px}
       @media(max-width:620px){.ai-dish-fields{grid-template-columns:1fr;padding:18px}.ai-dish-wide{grid-column:auto}.dish-heading-actions{width:100%}.dish-heading-actions .button{flex:1}}
     `;
     documentRef.head.append(style);
@@ -329,6 +330,7 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
             <label class="dialog-field"><span id="ai-dish-model-label"></span><div class="ai-dish-model-row"><select id="ai-dish-model" required></select><button id="ai-dish-refresh" class="button ghost compact" type="button"></button></div></label>
             <p id="ai-dish-privacy" class="ai-dish-hint ai-dish-wide"></p><p id="ai-dish-cors" class="ai-dish-hint ai-dish-wide"></p>
             <p id="ai-dish-progress" class="ai-dish-progress ai-dish-wide" hidden><span class="spinner"></span><span></span></p>
+            <textarea id="ai-dish-output" class="ai-dish-output ai-dish-wide" rows="5" readonly hidden aria-label="Live model output"></textarea>
             <p id="ai-dish-error" class="ai-dish-error ai-dish-wide" role="alert"></p>
           </div>
           <div class="menu-dialog-actions ai-dish-actions"><button id="ai-dish-cancel" class="button ghost" type="button"></button><button id="ai-dish-stop" class="button ghost" type="button" hidden></button><button id="ai-dish-submit" class="button primary" type="submit"></button></div>
@@ -369,6 +371,13 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
     select("#ai-dish-error").textContent = message;
   }
 
+  function appendModelOutput(chunk) {
+    const output = select("#ai-dish-output");
+    if (!output || !chunk) return;
+    output.value += chunk;
+    output.scrollTop = output.scrollHeight;
+  }
+
   function setGenerating(generating) {
     ["#ai-dish-recipe", "#ai-dish-server", "#ai-dish-model", "#ai-dish-refresh", "#ai-dish-submit", "#ai-dish-cancel"]
       .forEach((selector) => { select(selector).disabled = generating; });
@@ -378,6 +387,11 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
       clearInterval(timer);
       timer = null;
       return;
+    }
+    const output = select("#ai-dish-output");
+    if (output) {
+      output.value = "";
+      output.hidden = false;
     }
     startedAt = Date.now();
     const update = () => {
@@ -447,6 +461,11 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
       return;
     }
     setError("");
+    const output = select("#ai-dish-output");
+    if (output) {
+      output.value = "";
+      output.hidden = true;
+    }
     select("#ai-dish-server").value = storage.getItem(SERVER_STORAGE_KEY) || DEFAULT_OLLAMA_URL;
     renderLanguage();
     const dialog = select("#ai-dish-dialog");
@@ -484,6 +503,7 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
         recipeText,
         ingredientOptions: state.snapshot.item_options,
         signal: controller.signal,
+        onChunk: appendModelOutput,
       });
       const payload = buildDishSavePayload(result.recipe, state.snapshot);
       send("save-dish", payload);
