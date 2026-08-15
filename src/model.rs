@@ -78,6 +78,8 @@ pub struct DishComponent {
 pub struct Dish {
     pub key: String,
     pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub origin_country: String,
     #[serde(default = "default_true")]
     pub auto_menu_main: bool,
     pub servings: f64,
@@ -360,6 +362,8 @@ pub struct DailyNutritionView {
 pub struct DishView {
     pub key: String,
     pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub origin_country: String,
     pub auto_menu_main: bool,
     pub servings: f64,
     pub recipe_url: String,

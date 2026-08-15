@@ -151,9 +151,19 @@ pub(crate) fn flatten_dishes(
         {
             return Err(format!("dish {key} has invalid Nutri-Score: {nutri_score}"));
         }
+        let origin_country = input.origin_country.trim().to_uppercase();
+        if !origin_country.is_empty()
+            && (origin_country.len() != 2
+                || !origin_country.chars().all(|character| character.is_ascii_alphabetic()))
+        {
+            return Err(format!(
+                "dish {key} has invalid origin country code: {origin_country}"
+            ));
+        }
         let dish = Dish {
             key: input.key.clone(),
             name: input.name.clone(),
+            origin_country,
             auto_menu_main: input.auto_menu_main,
             servings: input.servings,
             recipe_url: input.recipe_url.clone(),

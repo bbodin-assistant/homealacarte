@@ -245,6 +245,7 @@ fn dish_components_accept_and_preserve_supported_ingredient_units() {
           "dishes": [{
             "key": "plat_test_unites",
             "name": "Plat test unités",
+            "origin_country": "fr",
             "servings": 2,
             "components": [{
               "item_key": "tomate_test",
@@ -282,15 +283,45 @@ fn dish_components_accept_and_preserve_supported_ingredient_units() {
         .iter()
         .find(|dish| dish.key == "plat_test_unites")
         .unwrap();
+    assert_eq!(dish.origin_country, "FR");
     assert_eq!(dish.components[0].quantity, 1.0);
     assert_eq!(dish.components[0].quantity_unit, "pieces");
     assert_eq!(dish.components[0].grams, 150.0);
+
+    let updated = engine
+        .replace_dish(DishCreateInput {
+            key: "plat_test_unites".to_string(),
+            name: "Plat test unités modifié".to_string(),
+            auto_menu_main: true,
+            servings: 2.0,
+            recipe_url: String::new(),
+            source: String::new(),
+            source_notes: vec![],
+            nutri_score: String::new(),
+            components: vec![DishCreateComponentInput {
+                item_key: "tomate_test".to_string(),
+                quantity: 2.0,
+                quantity_unit: "pieces".to_string(),
+                source_quantity: String::new(),
+            }],
+        })
+        .unwrap();
+    assert_eq!(
+        updated
+            .dishes
+            .iter()
+            .find(|dish| dish.key == "plat_test_unites")
+            .unwrap()
+            .origin_country,
+        "FR"
+    );
 
     let folder = engine.export_folder().unwrap();
     let dishes = folder
         .iter()
         .find(|file| file.path == "dishes.json")
         .unwrap();
+    assert!(dishes.content.contains("\"origin_country\": \"FR\""));
     assert!(dishes.content.contains("\"quantity\": 2.0"));
     assert!(dishes.content.contains("\"quantity_unit\": \"pieces\""));
     assert!(!dishes.content.contains("\"grams\": 300.0"));

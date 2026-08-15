@@ -1,6 +1,14 @@
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
 
+export function countryFlag(countryCode) {
+  const code = String(countryCode || "").trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return "";
+  return String.fromCodePoint(
+    ...[...code].map((letter) => 0x1F1E6 + letter.charCodeAt(0) - 65),
+  );
+}
+
 export function dishRangeMaximums(dishes) {
   return {
     cost: Math.max(
@@ -97,10 +105,11 @@ export function createDishesFeature({
       const portions = Math.floor(availability.portions * 10) / 10;
       const limitingIngredient = dish.components
         .find((component) => component.key === availability.limitingKey)?.name || "";
+      const originFlag = countryFlag(dish.origin_country);
       return `
         <article class="dish-card">
           <button class="dish-card-open" type="button" data-dish-key="${escapeHtml(encodeURIComponent(dish.key))}">
-            <div class="dish-title"><h2>${escapeHtml(dish.name)}</h2></div>
+            <div class="dish-title"><h2>${originFlag ? `<span class="dish-origin-flag" title="${escapeHtml(dish.origin_country)}" aria-hidden="true">${originFlag}</span> ` : ""}${escapeHtml(dish.name)}</h2></div>
             <div class="dish-metrics">
               <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(translate("per_serving"))}</span></div>
               ${dish.nutri_score
