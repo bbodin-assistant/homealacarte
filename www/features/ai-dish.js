@@ -6,7 +6,7 @@ import {
   isLoopbackOllamaUrl,
   listOllamaModels,
   normalizeOllamaUrl,
-} from "./ai-dish/ollama.js?v=homealacarte-79";
+} from "./ai-dish/ollama.js?v=homealacarte-80";
 
 const SERVER_STORAGE_KEY = "homealacarte-ollama-url";
 const MODEL_STORAGE_KEY = "homealacarte-ollama-model";
