@@ -48,11 +48,12 @@ export const AI_RECIPE_SCHEMA = {
 };
 
 export class OllamaError extends Error {
-  constructor(code, message, details = "") {
+  constructor(code, message, details = "", status = 0) {
     super(message);
     this.name = "OllamaError";
     this.code = code;
     this.details = details;
+    this.status = status;
   }
 }
 
@@ -80,7 +81,7 @@ export function normalizeOllamaUrl(value) {
   if (url.username || url.password || url.search || url.hash) {
     throw new OllamaError("invalid_url", "Ollama server URL cannot contain credentials, query parameters, or fragments.");
   }
-  url.pathname = url.pathname.replace(/\/+$/, "").replace(/\/api$/i, "") || "/";
+  url.pathname = url.pathname.replace(/\/+$/, "").replace(/\/(?:api|v1)$/i, "") || "/";
   return url.toString().replace(/\/$/, "");
 }
 
@@ -190,7 +191,10 @@ function linkedTimeoutSignal(externalSignal, timeoutMs) {
 async function readErrorBody(response) {
   try {
     const data = await response.json();
-    return String(data?.error || data?.message || "").trim();
+    const detail = data?.error?.message ?? data?.error ?? data?.message ?? "";
+    if (typeof detail === "string") return detail.trim();
+    if (detail && typeof detail === "object") return JSON.stringify(detail);
+    return String(detail || "").trim();
   } catch {
     try {
       return String(await response.text()).trim();
@@ -218,8 +222,9 @@ export async function fetchOllamaJson(
       const details = await readErrorBody(response);
       throw new OllamaError(
         "http_error",
-        `Ollama returned HTTP ${response.status}.`,
+        `AI server returned HTTP ${response.status}.`,
         details,
+        response.status,
       );
     }
     try {
@@ -239,16 +244,56 @@ export async function fetchOllamaJson(
   }
 }
 
-export async function listOllamaModels(baseUrl, options = {}) {
+export async function discoverAiServer(baseUrl, options = {}) {
   const normalized = normalizeOllamaUrl(baseUrl);
-  const data = await fetchOllamaJson(`${normalized}/api/tags`, { method: "GET" }, {
+  try {
+    const data = await fetchOllamaJson(`${normalized}/api/tags`, { method: "GET" }, {
+      timeoutMs: OLLAMA_DISCOVERY_TIMEOUT_MS,
+      ...options,
+    });
+    const models = (data?.models || [])
+      .map((model) => String(model?.name || model?.model || "").trim())
+      .filter(Boolean);
+    return {
+      provider: "ollama",
+      models: [...new Set(models)].sort((left, right) => left.localeCompare(right)),
+    };
+  } catch (error) {
+    if (!(error instanceof OllamaError) || error.code !== "http_error" || error.status !== 404) throw error;
+  }
+
+  const data = await fetchOllamaJson(`${normalized}/v1/models`, { method: "GET" }, {
     timeoutMs: OLLAMA_DISCOVERY_TIMEOUT_MS,
     ...options,
   });
-  const names = (data?.models || [])
-    .map((model) => String(model?.name || model?.model || "").trim())
+  const models = (data?.data || [])
+    .map((model) => String(model?.id || "").trim())
     .filter(Boolean);
-  return [...new Set(names)].sort((left, right) => left.localeCompare(right));
+  return {
+    provider: "openai",
+    models: [...new Set(models)].sort((left, right) => left.localeCompare(right)),
+  };
+}
+
+export async function listOllamaModels(baseUrl, options = {}) {
+  return (await discoverAiServer(baseUrl, options)).models;
+}
+
+export function buildOpenAiRequest(request) {
+  return {
+    model: request.model,
+    messages: request.messages,
+    stream: false,
+    temperature: request.options?.temperature ?? 0,
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        name: "homealacarte_recipe",
+        strict: true,
+        schema: request.format || AI_RECIPE_SCHEMA,
+      },
+    },
+  };
 }
 
 function validateStructuredRecipe(recipe) {
@@ -288,14 +333,18 @@ export async function generateRecipeWithOllama({
   const normalized = normalizeOllamaUrl(baseUrl);
   const catalogue = selectIngredientCatalogue(ingredientOptions, recipeText);
   const request = buildOllamaRequest({ model, recipeText, catalogue });
-  const data = await fetchOllamaJson(`${normalized}/api/chat`, {
+  const server = await discoverAiServer(normalized, { fetchImpl, signal });
+  const openAiCompatible = server.provider === "openai";
+  const data = await fetchOllamaJson(`${normalized}${openAiCompatible ? "/v1/chat/completions" : "/api/chat"}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(request),
+    body: JSON.stringify(openAiCompatible ? buildOpenAiRequest(request) : request),
   }, { timeoutMs, fetchImpl, signal });
-  const content = data?.message?.content;
+  const content = openAiCompatible
+    ? data?.choices?.[0]?.message?.content
+    : data?.message?.content;
   if (typeof content !== "string" || !content.trim()) {
-    throw new OllamaError("invalid_response", "Ollama returned an empty structured response.");
+    throw new OllamaError("invalid_response", "AI server returned an empty structured response.");
   }
   let recipe;
   try {

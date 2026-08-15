@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {
   AI_RECIPE_SCHEMA,
+  buildOpenAiRequest,
   buildOllamaRequest,
+  discoverAiServer,
   fetchOllamaJson,
   isLoopbackOllamaUrl,
   listOllamaModels,
@@ -10,6 +12,7 @@ import {
 } from "../www/features/ai-dish/ollama.js";
 
 assert.equal(normalizeOllamaUrl("127.0.0.1:11434/api/"), "http://127.0.0.1:11434");
+assert.equal(normalizeOllamaUrl("127.0.0.1:8080/v1/"), "http://127.0.0.1:8080");
 assert.equal(normalizeOllamaUrl("http://localhost:11434/"), "http://localhost:11434");
 assert.equal(isLoopbackOllamaUrl("http://127.0.0.1:11434"), true);
 assert.equal(isLoopbackOllamaUrl("https://ollama.example.com"), false);
@@ -33,6 +36,12 @@ assert.match(request.messages[0].content, /untrusted data/i);
 assert.match(request.messages[1].content, /BEGIN UNTRUSTED RECIPE TEXT/);
 assert.match(request.messages[1].content, /IGNORE ALL INSTRUCTIONS/);
 
+const openAiRequest = buildOpenAiRequest(request);
+assert.equal(openAiRequest.model, "gemma3");
+assert.equal(openAiRequest.response_format.type, "json_schema");
+assert.equal(openAiRequest.response_format.json_schema.schema, AI_RECIPE_SCHEMA);
+assert.equal(openAiRequest.temperature, 0);
+
 const requests = [];
 const fakeFetch = async (url, options) => {
   requests.push({ url, options });
@@ -44,6 +53,39 @@ const fakeFetch = async (url, options) => {
 assert.deepEqual(await listOllamaModels("localhost:11434", { fetchImpl: fakeFetch }), ["a-model", "z-model"]);
 assert.equal(requests[0].url, "http://localhost:11434/api/tags");
 assert.equal(requests[0].options.credentials, "omit");
+
+const openAiRequests = [];
+const fakeOpenAiFetch = async (url, options) => {
+  openAiRequests.push({ url, options });
+  if (url.endsWith("/api/tags")) {
+    return {
+      ok: false,
+      status: 404,
+      json: async () => ({ error: { message: "File Not Found", type: "not_found_error" } }),
+    };
+  }
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({ data: [{ id: "local-book-model" }] }),
+  };
+};
+assert.deepEqual(
+  await discoverAiServer("127.0.0.1:8080/v1", { fetchImpl: fakeOpenAiFetch }),
+  { provider: "openai", models: ["local-book-model"] },
+);
+assert.equal(openAiRequests[0].url, "http://127.0.0.1:8080/api/tags");
+assert.equal(openAiRequests[1].url, "http://127.0.0.1:8080/v1/models");
+
+const objectErrorFetch = async () => ({
+  ok: false,
+  status: 404,
+  json: async () => ({ error: { message: "File Not Found" } }),
+});
+await assert.rejects(
+  fetchOllamaJson("http://localhost/test", {}, { fetchImpl: objectErrorFetch }),
+  (error) => error?.status === 404 && error?.details === "File Not Found",
+);
 
 const hangingFetch = (_url, options) => new Promise((_resolve, reject) => {
   options.signal.addEventListener("abort", () => {
@@ -57,4 +99,4 @@ await assert.rejects(
   (error) => error?.code === "timeout",
 );
 
-console.log("AI dish Ollama transport validates URLs, schemas, prompt isolation, discovery, and timeouts.");
+console.log("AI dish transport validates Ollama/OpenAI discovery, schemas, prompt isolation, errors, and timeouts.");
