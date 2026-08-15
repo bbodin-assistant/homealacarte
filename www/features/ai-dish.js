@@ -6,7 +6,7 @@ import {
   isLoopbackOllamaUrl,
   listOllamaModels,
   normalizeOllamaUrl,
-} from "./ai-dish/ollama.js?v=homealacarte-78";
+} from "./ai-dish/ollama.js?v=homealacarte-79";
 
 const SERVER_STORAGE_KEY = "homealacarte-ollama-url";
 const MODEL_STORAGE_KEY = "homealacarte-ollama-model";
@@ -28,7 +28,11 @@ const STRINGS = {
     stop: "Stop",
     submit: "Generate and add dish",
     loadingModels: "Looking for available LLM models…",
-    generating: "Generating structured recipe… {seconds}s",
+    extracting: "Reading and structuring recipe… {seconds}s",
+    matching: "Matching ingredient {index}/{total}: {ingredient}",
+    matchHeading: "Ingredient matching:",
+    matched: "✓ {ingredient} → {match}",
+    custom: "• {ingredient} → custom ingredient",
     noModels: "No models were found on this LLM server.",
     stopped: "Generation stopped.",
     invalidUrl: "Check the LLM server address.",
@@ -58,7 +62,11 @@ const STRINGS = {
     stop: "Arrêter",
     submit: "Générer et ajouter le plat",
     loadingModels: "Recherche des modèles LLM disponibles…",
-    generating: "Génération de la recette structurée… {seconds}s",
+    extracting: "Lecture et structuration de la recette… {seconds}s",
+    matching: "Correspondance de l’ingrédient {index}/{total} : {ingredient}",
+    matchHeading: "Correspondance des ingrédients :",
+    matched: "✓ {ingredient} → {match}",
+    custom: "• {ingredient} → ingrédient personnalisé",
     noModels: "Aucun modèle n’a été trouvé sur ce serveur LLM.",
     stopped: "Génération arrêtée.",
     invalidUrl: "Vérifiez l’adresse du serveur LLM.",
@@ -283,6 +291,8 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
   let controller = null;
   let timer = null;
   let startedAt = 0;
+  let progressState = { phase: "extracting" };
+  let matchingHeadingShown = false;
 
   function installStyles() {
     if (documentRef.querySelector("#ai-dish-styles")) return;
@@ -353,6 +363,7 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
     select("#ai-dish-stop").textContent = t("stop");
     select("#ai-dish-submit").textContent = t("submit");
     renderPrivacy();
+    renderProgress();
   }
 
   function renderPrivacy() {
@@ -378,6 +389,40 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
     output.scrollTop = output.scrollHeight;
   }
 
+  function appendStatusLine(message) {
+    const output = select("#ai-dish-output");
+    if (!output || !message) return;
+    if (output.value && !output.value.endsWith("\n")) output.value += "\n";
+    output.value += `${message}\n`;
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function renderProgress() {
+    const label = select("#ai-dish-progress span:last-child");
+    if (!label) return;
+    if (progressState.phase === "matching" || progressState.phase === "matched") {
+      label.textContent = t("matching", progressState);
+      return;
+    }
+    const seconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+    label.textContent = t("extracting", { seconds });
+  }
+
+  function handleProgress(progress) {
+    progressState = progress || { phase: "extracting" };
+    if (progressState.phase === "matching" && !matchingHeadingShown) {
+      appendStatusLine("");
+      appendStatusLine(t("matchHeading"));
+      matchingHeadingShown = true;
+    }
+    if (progressState.phase === "matched") {
+      appendStatusLine(progressState.existingName
+        ? t("matched", { ingredient: progressState.ingredient, match: progressState.existingName })
+        : t("custom", { ingredient: progressState.ingredient }));
+    }
+    renderProgress();
+  }
+
   function setGenerating(generating) {
     ["#ai-dish-recipe", "#ai-dish-server", "#ai-dish-model", "#ai-dish-refresh", "#ai-dish-submit", "#ai-dish-cancel"]
       .forEach((selector) => { select(selector).disabled = generating; });
@@ -394,12 +439,10 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
       output.hidden = false;
     }
     startedAt = Date.now();
-    const update = () => {
-      const seconds = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
-      select("#ai-dish-progress span:last-child").textContent = t("generating", { seconds });
-    };
-    update();
-    timer = setInterval(update, 1000);
+    progressState = { phase: "extracting" };
+    matchingHeadingShown = false;
+    renderProgress();
+    timer = setInterval(renderProgress, 1000);
   }
 
   function explainError(error) {
@@ -504,6 +547,7 @@ export function createAiDishFeature({ state, select, documentRef, storage, locat
         ingredientOptions: state.snapshot.item_options,
         signal: controller.signal,
         onChunk: appendModelOutput,
+        onProgress: handleProgress,
       });
       const payload = buildDishSavePayload(result.recipe, state.snapshot);
       send("save-dish", payload);

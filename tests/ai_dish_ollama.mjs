@@ -7,6 +7,7 @@ import {
   buildOllamaRequest,
   discoverAiServer,
   fetchOllamaJson,
+  findUniqueExactIngredientMatch,
   generateRecipeWithOllama,
   isLoopbackOllamaUrl,
   listOllamaModels,
@@ -29,6 +30,11 @@ const ingredientOptions = [
 const candidates = selectIngredientCandidates(ingredientOptions, "Basmati rice");
 assert.equal(candidates[0].key, "rice");
 assert.equal(candidates.some((candidate) => candidate.key === "milk"), false);
+assert.equal(findUniqueExactIngredientMatch(ingredientOptions, "basmati RICE")?.key, "rice");
+assert.equal(findUniqueExactIngredientMatch([
+  ...ingredientOptions,
+  { kind: "ingredient", key: "rice_duplicate", name: "Basmati rice", measure_unit: "g" },
+], "Basmati rice"), null);
 
 const extractionRequest = buildOllamaRequest({
   model: "local-book-model",
@@ -104,7 +110,6 @@ const extractedRecipe = {
 };
 const encoder = new TextEncoder();
 const requests = [];
-let generationCall = 0;
 
 function sse(content, reasoning = "") {
   return new ReadableStream({
@@ -127,11 +132,7 @@ const twoStepFetch = async (url, options) => {
   if (url.endsWith("/v1/models")) {
     return { ok: true, status: 200, json: async () => ({ data: [{ id: "local-book-model" }] }) };
   }
-  generationCall += 1;
-  if (generationCall === 1) {
-    return { ok: true, status: 200, body: sse(JSON.stringify(extractedRecipe), "extracting ") };
-  }
-  return { ok: true, status: 200, body: sse(JSON.stringify({ existing_key: "rice" })) };
+  return { ok: true, status: 200, body: sse(JSON.stringify(extractedRecipe), "extracting ") };
 };
 
 const progress = [];
@@ -149,15 +150,16 @@ assert.equal(result.recipe.ingredients[0].existing_key, "rice");
 assert.equal(result.recipe.ingredients[1].existing_key, "");
 assert.equal(chunks.join(""), `extracting ${JSON.stringify(extractedRecipe)}`);
 assert.deepEqual(progress.map((event) => event.phase), ["extracting", "matching", "matched", "matching", "matched"]);
+assert.equal(progress[1].method, "exact");
+assert.equal(progress[2].existingName, "Basmati rice");
+assert.equal(progress[3].method, "custom");
 
 const generationBodies = requests
   .filter((request) => request.url.endsWith("/v1/chat/completions"))
   .map((request) => JSON.parse(request.options.body));
-assert.equal(generationBodies.length, 2);
+assert.equal(generationBodies.length, 1);
 assert.equal(generationBodies[0].messages[1].content.includes("Candidate existing ingredients"), false);
-assert.equal(generationBodies[1].messages[1].content.includes("Candidate existing ingredients"), true);
 assert.equal(generationBodies[0].stream, true);
-assert.equal(generationBodies[1].stream, true);
 
 const hangingFetch = (_url, options) => new Promise((_resolve, reject) => {
   options.signal.addEventListener("abort", () => {
@@ -171,4 +173,4 @@ await assert.rejects(
   (error) => error?.code === "timeout",
 );
 
-console.log("AI dish two-step extraction/matching transport validates schemas, shortlists, streaming, and timeouts.");
+console.log("AI dish two-step extraction/matching transport validates schemas, exact-match shortcuts, streaming, progress, and timeouts.");

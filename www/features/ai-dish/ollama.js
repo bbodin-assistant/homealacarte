@@ -100,6 +100,21 @@ export function isLoopbackOllamaUrl(value) {
   return host === "localhost" || host === "::1" || /^127(?:\.\d{1,3}){3}$/.test(host);
 }
 
+export function findUniqueExactIngredientMatch(items, ingredientName) {
+  const target = normalizedText(ingredientName);
+  if (!target) return null;
+  const matches = (items || [])
+    .filter((item) => item?.kind === "ingredient" && item.key && item.name)
+    .filter((item) => normalizedText(item.name) === target);
+  if (matches.length !== 1) return null;
+  const match = matches[0];
+  return {
+    key: String(match.key),
+    name: String(match.name),
+    measure_unit: String(match.measure_unit || "g"),
+  };
+}
+
 export function selectIngredientCandidates(items, ingredientName, limit = MAX_MATCH_CANDIDATES) {
   const target = normalizedText(ingredientName);
   const targetWords = new Set(target.split(/\s+/).filter((word) => word.length >= 2));
@@ -504,17 +519,20 @@ export async function generateRecipeWithOllama({
   const total = recipe.ingredients.length;
   for (let index = 0; index < total; index += 1) {
     const ingredient = recipe.ingredients[index];
-    const candidates = selectIngredientCandidates(ingredientOptions, ingredient.name);
+    const exactMatch = findUniqueExactIngredientMatch(ingredientOptions, ingredient.name);
+    const candidates = exactMatch ? [] : selectIngredientCandidates(ingredientOptions, ingredient.name);
     onProgress?.({
       phase: "matching",
       index: index + 1,
       total,
       ingredient: ingredient.name,
       candidateCount: candidates.length,
+      method: exactMatch ? "exact" : candidates.length ? "llm" : "custom",
     });
 
-    let existingKey = "";
-    if (candidates.length) {
+    let existingKey = exactMatch?.key || "";
+    let existingName = exactMatch?.name || "";
+    if (!exactMatch && candidates.length) {
       const matchRequest = buildIngredientMatchRequest({ model, ingredient, candidates });
       const matched = await runStructuredRequest({
         normalized,
@@ -527,8 +545,10 @@ export async function generateRecipeWithOllama({
         onChunk: undefined,
       });
       const requestedKey = String(matched.value?.existing_key || "").trim();
-      if (requestedKey && candidates.some((candidate) => candidate.key === requestedKey)) {
-        existingKey = requestedKey;
+      const selected = candidates.find((candidate) => candidate.key === requestedKey);
+      if (selected) {
+        existingKey = selected.key;
+        existingName = selected.name;
       }
     }
     matchedIngredients.push({ ...ingredient, existing_key: existingKey });
@@ -538,6 +558,8 @@ export async function generateRecipeWithOllama({
       total,
       ingredient: ingredient.name,
       existingKey,
+      existingName,
+      method: exactMatch ? "exact" : candidates.length ? "llm" : "custom",
     });
   }
 
