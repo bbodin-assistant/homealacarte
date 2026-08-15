@@ -36,6 +36,7 @@ import {
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
 import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-77";
+import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -200,7 +201,16 @@ const application = createFeatureComposition({
   showError,
   localizeError,
 });
+const aiDishFeature = createAiDishFeature({
+  state,
+  select: $,
+  documentRef: document,
+  storage: localStorage,
+  locationRef: location,
+  send,
+});
 application.mount();
+aiDishFeature.mount();
 
 onStorageStatus(application.renderStorageStatus);
 onPrivateStateChange(() => location.reload());
