@@ -1,3 +1,4 @@
+import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
 import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-77";
 import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-77";
 
@@ -22,6 +23,14 @@ export function createMenuFeature({
   send,
   setMenuMode,
 }) {
+  function itemDisplayName(item) {
+    if (!item) return "";
+    if (item.kind !== "dish") return item.name;
+    const dish = state.snapshot.dishes.find((candidate) => candidate.key === item.key);
+    const flag = countryFlag(dish?.origin_country);
+    return flag ? `${flag} ${item.name}` : item.name;
+  }
+
   function itemOptions(selected, excluded = "") {
     const groups = [
       ["dish", translate("dishes")],
@@ -30,7 +39,7 @@ export function createMenuFeature({
     return groups.map(([kind, label]) => {
       const rows = state.snapshot.item_options
         .filter((item) => item.kind === kind && item.key !== excluded)
-        .map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === selected ? "selected" : ""}>${escapeHtml(item.name)}</option>`)
+        .map((item) => `<option value="${escapeHtml(item.key)}" ${item.key === selected ? "selected" : ""}>${escapeHtml(itemDisplayName(item))}</option>`)
         .join("");
       return `<optgroup label="${escapeHtml(label)}">${rows}</optgroup>`;
     }).join("");
@@ -64,7 +73,7 @@ export function createMenuFeature({
     const current = state.snapshot.item_options.find((item) => item.key === row.item_key);
     state.pendingReplacementIndex = index;
     select("#meal-replace-context").textContent =
-      `${current?.name || row.item_key} · ${row.day} · ${row.meal}`;
+      `${itemDisplayName(current) || row.item_key} · ${row.day} · ${row.meal}`;
     select("#meal-replace-select").innerHTML = itemOptions("", row.item_key);
     const search = enhanceSearchableSelect(
       select("#meal-replace-select"),
@@ -87,7 +96,7 @@ export function createMenuFeature({
     state.draft = mergeCompatibleMenuRows(state.draft);
     const profileSelect = select("#profile-select");
     const peopleNames = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
-    const itemNames = new Map(state.snapshot.item_options.map((item) => [item.key, item.name]));
+    const itemNames = new Map(state.snapshot.item_options.map((item) => [item.key, itemDisplayName(item)]));
     const dishes = new Map(state.snapshot.dishes.map((dish) => [dish.key, dish]));
     profileSelect.innerHTML = state.snapshot.people
       .filter((person) => person.kcal_target != null)
@@ -164,7 +173,9 @@ export function createMenuFeature({
       ].filter(Boolean).join(" · ")
       : "";
 
-    select("#dish-details-title").textContent = dish?.name || item?.name || dishKey;
+    const flag = countryFlag(dish?.origin_country);
+    const detailName = dish?.name || item?.name || dishKey;
+    select("#dish-details-title").textContent = flag ? `${flag} ${detailName}` : detailName;
     select("#dish-details-context").textContent = context;
     select("#dish-details-menu-note").textContent = row?.notes || "";
     select("#dish-details-menu-note").hidden = !row?.notes;

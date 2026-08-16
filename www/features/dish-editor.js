@@ -1,3 +1,11 @@
+import {
+  countryFlag,
+  displayLocalizedName,
+  localizedNameValues,
+  normalizeOriginCountry,
+  validOriginCountry,
+} from "../core/data-localization.js?v=homealacarte-80";
+
 export function createDishEditorFeature({
   state,
   select,
@@ -56,6 +64,21 @@ function ingredientOptions(selectedKey = "") {
         ${escapeHtml(item.name)}
       </option>
     `).join("");
+}
+
+function dishNameValues() {
+  return {
+    en: select("#new-dish-name-en").value.trim(),
+    fr: select("#new-dish-name-fr").value.trim(),
+  };
+}
+
+function updateOriginCountryPreview() {
+  const input = select("#new-dish-origin-country");
+  const preview = select("#new-dish-origin-flag");
+  const code = input.value.trim();
+  preview.textContent = validOriginCountry(code) ? countryFlag(code) : "";
+  input.setCustomValidity(validOriginCountry(code) ? "" : "ISO 3166-1 alpha-2");
 }
 
 function setNewDishComponentUnit(row) {
@@ -161,7 +184,8 @@ function addNewDishComponent(component = null, servings = 1) {
 
 function dishFormSignature() {
   return JSON.stringify({
-    name: select("#new-dish-name").value.trim(),
+    name_i18n: dishNameValues(),
+    origin_country: normalizeOriginCountry(select("#new-dish-origin-country").value),
     servings: Number(select("#new-dish-servings").value),
     recipe_url: select("#new-dish-url").value.trim(),
     source: select("#new-dish-source").value.trim(),
@@ -183,7 +207,8 @@ function dishFormSignature() {
 function dishFormIsValid() {
   const servings = Number(select("#new-dish-servings").value);
   const rows = selectAll("#new-dish-component-list .new-dish-component-row");
-  return Boolean(select("#new-dish-name").value.trim())
+  return Boolean(displayLocalizedName(dishNameValues(), state.language))
+    && validOriginCountry(select("#new-dish-origin-country").value)
     && Number.isFinite(servings)
     && servings > 0
     && rows.length > 0
@@ -203,6 +228,7 @@ function dishFormIsValid() {
 function updateDishFormSaveState() {
   const button = select("#new-dish-save");
   if (!button) return;
+  updateOriginCountryPreview();
   const unchanged = Boolean(state.dishFormKey)
     && dishFormSignature() === state.dishFormOriginal;
   button.disabled = !dishFormIsValid() || unchanged;
@@ -216,7 +242,15 @@ function openDishForm(dish = null) {
     dish ? "edit_dish_intro" : "new_dish_intro",
   );
   select("#new-dish-save").textContent = translate(dish ? "save_changes" : "save_dish");
-  select("#new-dish-name").value = dish?.name || "";
+  const names = localizedNameValues(
+    state.serializedData,
+    "dishes",
+    dish?.key,
+    dish?.name || "",
+  );
+  select("#new-dish-name-en").value = names.en;
+  select("#new-dish-name-fr").value = names.fr;
+  select("#new-dish-origin-country").value = dish?.origin_country || "";
   select("#new-dish-servings").value = formatInputNumber(dish?.servings || 4);
   select("#new-dish-url").value = dish?.recipe_url || "";
   select("#new-dish-source").value = dish?.source || "";
@@ -233,11 +267,12 @@ function openDishForm(dish = null) {
   } else {
     addNewDishComponent();
   }
+  updateOriginCountryPreview();
   state.dishFormOriginal = dishFormSignature();
   updateDishFormSaveState();
   const dialog = select("#new-dish-dialog");
   if (!dialog.open) dialog.showModal();
-  select("#new-dish-name").focus();
+  select(state.language === "fr" ? "#new-dish-name-fr" : "#new-dish-name-en").focus();
 }
 
 function openNewDishDialog() {
@@ -284,7 +319,8 @@ select("#new-dish-notes-list").addEventListener("click", (event) => {
 });
 select("#new-dish-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  const name = select("#new-dish-name").value.trim();
+  const nameI18n = dishNameValues();
+  const name = displayLocalizedName(nameI18n, state.language);
   const servings = Number(select("#new-dish-servings").value);
   if (!dishFormIsValid()) {
     select("#new-dish-error").textContent = translate("new_dish_invalid");
@@ -350,6 +386,8 @@ select("#new-dish-form").addEventListener("submit", (event) => {
     dish: {
       key: dishKey,
       name,
+      name_i18n: nameI18n,
+      origin_country: normalizeOriginCountry(select("#new-dish-origin-country").value),
       servings,
       recipe_url: select("#new-dish-url").value.trim(),
       source: select("#new-dish-source").value.trim(),

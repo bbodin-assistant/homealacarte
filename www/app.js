@@ -35,7 +35,7 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-79";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-80";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 
 document.documentElement.dataset.appModuleLoaded = "true";
@@ -50,7 +50,7 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   stock: [],
   extra_needs: [],
 }, null, 2)}\n`;
-const worker = new Worker("./worker.js?v=homealacarte-77", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-80", { type: "module" });
 const state = createAppState(localStorage, getStorageStatus);
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;
