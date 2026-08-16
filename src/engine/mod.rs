@@ -42,7 +42,7 @@ impl Engine {
     }
 
     pub fn set_language(&mut self, language: String) -> Result<AppSnapshot, String> {
-        if language != "fr" && language != "en" {
+        if !data_i18n::is_language_tag(&language) {
             return Err(format!("unsupported language: {language}"));
         }
         if language == self.language {
