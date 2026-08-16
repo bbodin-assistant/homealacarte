@@ -1,5 +1,11 @@
 import { latestPriceTrend } from "../core/item-details.js?v=homealacarte-77";
 import {
+  displayLocalizedName,
+  localizedFormValues,
+  localizedNameValues,
+  renderLocalizedInputs,
+} from "../core/data-localization.js?v=homealacarte-80";
+import {
   catalogueCategories,
   filterCatalogueItems,
 } from "./catalogue/filters.js?v=homealacarte-77";
@@ -10,6 +16,7 @@ export function createCatalogueFeature({
   selectAll,
   translate,
   translatedTemplate,
+  locales,
   escapeHtml,
   formatInputNumber,
   formatMoney,
@@ -83,14 +90,41 @@ function addPriceHistoryFormRow(selector) {
   list.querySelector(".item-price-history-row:last-child [data-price-observation-date]").focus();
 }
 
+function itemNameFormValues(prefix) {
+  return localizedFormValues(select(`#${prefix}-name-fields`));
+}
+
+function setItemNameFormValues(prefix, key, fallbackName) {
+  const names = localizedNameValues(
+    state.serializedData,
+    "items",
+    key,
+    fallbackName,
+    locales,
+  );
+  renderLocalizedInputs(select(`#${prefix}-name-fields`), locales, names, state.language);
+}
+
+function focusItemName(prefix) {
+  const inputs = [...select(`#${prefix}-name-fields`).querySelectorAll("[data-locale]")];
+  const language = String(state.language || "").toLowerCase();
+  const primary = language.split("-")[0];
+  const input = inputs.find((candidate) => candidate.dataset.locale.toLowerCase() === language)
+    || inputs.find((candidate) => candidate.dataset.locale.toLowerCase().split("-")[0] === primary)
+    || inputs[0];
+  input?.focus();
+}
+
 function ingredientFormPayload() {
   const existing = state.snapshot.ingredients
     .find((ingredient) => ingredient.key === state.ingredientSelectedKey);
   if (!existing && !state.itemEditorCreating) return null;
-  const name = select("#ingredient-name").value.trim();
+  const nameI18n = itemNameFormValues("ingredient");
+  const name = displayLocalizedName(nameI18n, state.language, locales);
   return {
     key: existing?.key || customIngredientKey(name),
     name,
+    name_i18n: nameI18n,
     custom: existing ? Boolean(existing.custom) : true,
     incomplete: select("#ingredient-incomplete").checked,
     grams: Number(select("#ingredient-grams").value),
@@ -176,7 +210,7 @@ function populateIngredientForm(key) {
   select("#ingredient-delete").hidden = false;
   select("#ingredient-save").textContent = translate("save_changes");
   select("#ingredient-editor-name").textContent = ingredient.name;
-  select("#ingredient-name").value = ingredient.name;
+  setItemNameFormValues("ingredient", ingredient.key, ingredient.name);
   select("#ingredient-category").value = displayCategory(ingredient.category);
   select("#ingredient-measure-unit").value = ingredient.measure_unit;
   select("#ingredient-grams-per-unit").value = formatInputNumber(ingredient.grams_per_measure_unit);
@@ -204,8 +238,7 @@ function populateIngredientForm(key) {
   updateIngredientPurchasePrice();
   const status = select("#ingredient-completeness");
   status.className = `ingredient-completeness ${ingredient.incomplete ? "incomplete" : "complete"}`;
-  status.textContent = t(
-    state.language,
+  status.textContent = translate(
     ingredient.incomplete ? "ingredient_incomplete" : "ingredient_complete",
   );
   select("#ingredient-form-message").textContent = "";
@@ -217,11 +250,13 @@ function householdItemFormPayload() {
   const existing = (state.snapshot.household_items || [])
     .find((item) => item.key === state.ingredientSelectedKey);
   if (!existing && !state.itemEditorCreating) return null;
-  const name = select("#household-item-name").value.trim();
+  const nameI18n = itemNameFormValues("household-item");
+  const name = displayLocalizedName(nameI18n, state.language, locales);
   const lastingDays = select("#household-item-lasting-days").value;
   return {
     key: existing?.key || customIngredientKey(name),
     name,
+    name_i18n: nameI18n,
     category: normalizedCategory(select("#household-item-category").value.trim()),
     purchase_unit: select("#household-item-purchase-unit").value.trim(),
     purchase_quantity: Number(select("#household-item-purchase-quantity").value),
@@ -268,7 +303,7 @@ function populateHouseholdItemForm(key) {
   select("#household-item-delete").hidden = false;
   select("#household-item-save").textContent = translate("save_changes");
   select("#household-item-editor-name").textContent = item.name;
-  select("#household-item-name").value = item.name;
+  setItemNameFormValues("household-item", item.key, item.name);
   select("#household-item-category").value = displayCategory(item.category);
   select("#household-item-measure-unit").value = item.measure_unit;
   select("#household-item-purchase-unit").value = item.purchase_unit;
@@ -321,7 +356,7 @@ function openNewCatalogueItem() {
     select("#ingredient-editor-name").textContent = translate("new_food_item");
     select("#ingredient-delete").hidden = true;
     select("#ingredient-save").textContent = translate("add_catalogue_item");
-    select("#ingredient-name").value = "";
+    setItemNameFormValues("ingredient", "", "");
     select("#ingredient-category").value = selectedCategory;
     select("#ingredient-measure-unit").value = "g";
     select("#ingredient-grams-per-unit").value = "1";
@@ -349,13 +384,13 @@ function openNewCatalogueItem() {
     select("#ingredient-form-message").textContent = "";
     state.ingredientOriginal = "";
     updateIngredientSaveState();
-    select("#ingredient-name").focus();
+    focusItemName("ingredient");
     return;
   }
   select("#household-item-editor-name").textContent = translate("new_general_item");
   select("#household-item-delete").hidden = true;
   select("#household-item-save").textContent = translate("add_catalogue_item");
-  select("#household-item-name").value = "";
+  setItemNameFormValues("household-item", "", "");
   select("#household-item-category").value = selectedCategory || translate("other");
   select("#household-item-measure-unit").value = translate("units");
   select("#household-item-purchase-unit").value = translate("units");
@@ -368,7 +403,7 @@ function openNewCatalogueItem() {
   select("#household-item-form-message").textContent = "";
   state.householdItemOriginal = "";
   updateHouseholdItemSaveState();
-  select("#household-item-name").focus();
+  focusItemName("household-item");
 }
 
 function configureItemCategoryFilter(items) {
@@ -516,7 +551,7 @@ select("#item-catalogue").addEventListener("click", (event) => {
   }
   const details = event.target.closest("[data-item-details]");
   if (details) {
-    openCatalogueItemDetails(
+    openDetails(
       decodeURIComponent(details.dataset.itemDetails),
       details.dataset.itemKind,
     );
@@ -527,7 +562,7 @@ select("#item-catalogue").addEventListener("keydown", (event) => {
   const details = event.target.closest("[data-item-details]");
   if (!details) return;
   event.preventDefault();
-  openCatalogueItemDetails(
+  openDetails(
     decodeURIComponent(details.dataset.itemDetails),
     details.dataset.itemKind,
   );

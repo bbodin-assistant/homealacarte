@@ -54,19 +54,19 @@ Localized value:
 {
   "name": {
     "en": "Tomato",
-    "fr": "Tomate"
+    "fr": "Tomate",
+    "es": "Tomate"
   }
 }
 ```
 
 Agent rules:
 
-- The current application languages are `en` and `fr`.
-- For new item and dish names, prefer an object containing both `en` and `fr` when both translations are reliable.
-- Do not invent a translation only to fill both languages. A normal string remains valid and is treated as language-neutral.
+- Localized values may contain any valid language-tag keys for which reliable text is available; do not restrict records to the locales currently present in the UI translation catalogue.
+- Do not invent a translation only to fill a locale. A normal string remains valid and is treated as language-neutral.
 - The same localized representation may be used for other user-facing text such as `category`, `source`, `measure_unit`, `purchase_unit`, dish `source_notes`, component `source_quantity`, person descriptions, and notes.
-- Locale keys may include a region suffix such as `en-GB` or `fr-FR`.
-- Resolution tries the requested locale, then its base language, then English, then French, then the first available localized value.
+- Locale keys may include a region suffix such as `en-GB`, `fr-FR`, or `zh-CN`.
+- Resolution tries the requested locale, then its base language, then the first available localized value.
 - Keep identifiers and machine-readable codes stable. Do **not** localize fields such as `key`, `item_key`, person keys, `origin_country`, `nutri_score`, booleans, or numeric values.
 - Food-rule `kind`, `meal`, and `days` values are semantic codes and must remain the documented codes rather than translated display text.
 
@@ -77,7 +77,8 @@ Agent rules:
   "key": "tomato",
   "name": {
     "en": "Tomato",
-    "fr": "Tomate"
+    "fr": "Tomate",
+    "es": "Tomate"
   },
   "category": {
     "en": "Produce::Vegetables",
@@ -113,7 +114,7 @@ Notes:
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
 - Keys use lowercase `snake_case` and must remain identical in every language.
-- Localize the display `name` rather than creating separate English and French item records.
+- Localize the display `name` rather than creating separate item records for different languages.
 
 ## 5. Dish
 
@@ -122,7 +123,8 @@ Notes:
   "key": "tomato_emmental_toast",
   "name": {
     "en": "Tomato and Emmental toast",
-    "fr": "Tartine tomate-emmental"
+    "fr": "Tartine tomate-emmental",
+    "es": "Tostada de tomate y emmental"
   },
   "origin_country": "FR",
   "auto_menu_main": true,

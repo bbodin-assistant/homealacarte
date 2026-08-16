@@ -14,6 +14,8 @@ assert.match(menu, /#weekly-menu.*addEventListener/);
 assert.match(menu, /#meal-replace-form.*addEventListener/);
 assert.match(menu, /mergeCompatibleMenuRows/);
 assert.match(menu, /buildScheduledDishRow/);
+assert.match(menu, /countryFlag/);
+assert.match(menu, /function itemDisplayName/);
 assert.doesNotMatch(app, /selectAll: \$,/);
 
-console.log("Manual menu rendering, scheduling, dialogs, and events have one feature owner.");
+console.log("Manual menu rendering, scheduling, dialogs, flags, and events have one feature owner.");

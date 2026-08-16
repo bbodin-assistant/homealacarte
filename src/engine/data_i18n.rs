@@ -4,10 +4,29 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap};
 
+pub(super) fn is_language_tag(value: &str) -> bool {
+    let mut parts = value.split('-');
+    let Some(language) = parts.next() else {
+        return false;
+    };
+    if language.len() != 2 || !language.chars().all(|character| character.is_ascii_alphabetic()) {
+        return false;
+    }
+    parts.all(|part| {
+        (2..=8).contains(&part.len())
+            && part
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric())
+    })
+}
+
 pub(super) fn localized_dataset(
     sources: &[SourceFile],
     language: &str,
 ) -> Result<Dataset, String> {
+    if !is_language_tag(language) {
+        return Err(format!("unsupported language: {language}"));
+    }
     let localized_sources = localize_sources(sources, language)?;
     let mut dataset = load_dataset(localized_sources, language)?;
     dataset.source_hash = source_hash(sources);
@@ -53,23 +72,7 @@ fn localize_sources(sources: &[SourceFile], language: &str) -> Result<Vec<Source
         .collect()
 }
 
-fn is_language_tag(value: &str) -> bool {
-    let mut parts = value.split('-');
-    let Some(language) = parts.next() else {
-        return false;
-    };
-    if language.len() != 2 || !language.chars().all(|character| character.is_ascii_alphabetic()) {
-        return false;
-    }
-    parts.all(|part| {
-        (2..=8).contains(&part.len())
-            && part
-                .chars()
-                .all(|character| character.is_ascii_alphanumeric())
-    })
-}
-
-fn localized_string(value: &Value, language: &str) -> Option<String> {
+fn localized_object(value: &Value) -> Option<&serde_json::Map<String, Value>> {
     let object = value.as_object()?;
     if object.is_empty()
         || !object
@@ -78,15 +81,11 @@ fn localized_string(value: &Value, language: &str) -> Option<String> {
     {
         return None;
     }
-    let has_known_language = object.keys().any(|key| {
-        key.split('-')
-            .next()
-            .is_some_and(|key| matches!(key.to_ascii_lowercase().as_str(), "en" | "fr"))
-    });
-    if object.len() == 1 && !has_known_language {
-        return None;
-    }
+    Some(object)
+}
 
+fn localized_string(value: &Value, language: &str) -> Option<String> {
+    let object = localized_object(value)?;
     let language = language.to_ascii_lowercase();
     let primary = language.split('-').next().unwrap_or(language.as_str());
     let find = |candidate: &str| {
@@ -109,15 +108,11 @@ fn localized_string(value: &Value, language: &str) -> Option<String> {
     };
     find(&language)
         .or_else(|| find_primary(primary))
-        .or_else(|| find("en"))
-        .or_else(|| find_primary("en"))
-        .or_else(|| find("fr"))
-        .or_else(|| find_primary("fr"))
         .or_else(|| object.values().find_map(Value::as_str).map(str::to_string))
 }
 
 fn contains_localized_value(value: &Value) -> bool {
-    if localized_string(value, "en").is_some() {
+    if localized_object(value).is_some() {
         return true;
     }
     match value {

@@ -1,3 +1,5 @@
+import { localeLabel } from "../core/data-localization.js?v=homealacarte-80";
+
 export function createShellFeature({
   state,
   select,
@@ -7,6 +9,7 @@ export function createShellFeature({
   storage,
   translate,
   hasLanguage,
+  locales,
   randomizeColorTheme,
   renderStorageStatus,
   renderDataOverview,
@@ -23,9 +26,25 @@ export function createShellFeature({
   showError,
   dialogClosers,
 }) {
+  function renderLanguageOptions() {
+    const languageSelect = select("#language-select");
+    languageSelect.replaceChildren(...locales.map((locale) => {
+      const option = documentRef.createElement("option");
+      option.value = locale;
+      option.textContent = localeLabel(locale, state.language);
+      return option;
+    }));
+    const requested = String(state.language || "").toLowerCase();
+    const primary = requested.split("-")[0];
+    languageSelect.value = locales.find((locale) => locale.toLowerCase() === requested)
+      || locales.find((locale) => locale.toLowerCase() === primary)
+      || locales[0]
+      || "";
+  }
+
   function applyTranslations() {
     documentRef.documentElement.lang = state.language;
-    select("#language-select").value = state.language;
+    renderLanguageOptions();
     selectAll("[data-i18n]").forEach((node) => {
       node.textContent = translate(node.dataset.i18n);
     });

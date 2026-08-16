@@ -35,10 +35,7 @@
                 <p data-i18n="ingredient_identity_intro">Le nom, le rayon et les unités utilisées dans les recettes.</p>
               </div>
               <div class="ingredient-editor-grid">
-                <label class="dialog-field">
-                  <span data-i18n="name">Nom</span>
-                  <input id="ingredient-name" required>
-                </label>
+                <div id="ingredient-name-fields" style="display: contents"></div>
                 <label class="dialog-field">
                   <span data-i18n="category">Catégorie</span>
                   <input id="ingredient-category">
@@ -191,7 +188,7 @@
                 <p data-i18n="general_item_intro">Produit sans informations nutritionnelles, utilisable dans le stock et les besoins.</p>
               </div>
               <div class="ingredient-editor-grid">
-                <label class="dialog-field"><span data-i18n="name">Nom</span><input id="household-item-name" required></label>
+                <div id="household-item-name-fields" style="display: contents"></div>
                 <label class="dialog-field"><span data-i18n="category">Catégorie</span><input id="household-item-category" required></label>
                 <label class="dialog-field"><span data-i18n="measure_unit_name">Nom de l’unité de mesure</span><input id="household-item-measure-unit" required></label>
                 <label class="dialog-field"><span data-i18n="purchase_unit">Unité d’achat</span><input id="household-item-purchase-unit" required></label>

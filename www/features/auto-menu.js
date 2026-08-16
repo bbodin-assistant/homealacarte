@@ -1,3 +1,5 @@
+import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
+
 export const autoMenuSettingKey = (...parts) => JSON.stringify(parts);
 
 export function buildAutoMenuRequest(options, availability, slots, candidateDishKeys) {
@@ -29,6 +31,11 @@ export function createAutoMenuFeature({
   applyProposal,
 }) {
   const meals = () => [state.snapshot.meals[2], state.snapshot.meals[5]].filter(Boolean);
+
+  function dishDisplayName(dish) {
+    const flag = countryFlag(dish?.origin_country);
+    return flag ? `${flag} ${dish.name}` : dish?.name || "";
+  }
 
   function initializeSettings() {
     const people = state.snapshot.people;
@@ -77,9 +84,10 @@ export function createAutoMenuFeature({
       const used = usedDishes.has(dish.key);
       const mainMeal = dish.auto_menu_main !== false;
       const disabled = used || !mainMeal;
+      const displayName = dishDisplayName(dish);
       return `<label class="auto-menu-dish ${disabled ? "used" : ""}">
         <input type="checkbox" data-auto-dish-key="${escapeHtml(encodeURIComponent(dish.key))}" ${!disabled && state.autoMenuCandidates[dish.key] !== false ? "checked" : ""} ${disabled ? "disabled" : ""}>
-        <strong title="${escapeHtml(dish.name)}">${escapeHtml(dish.name)}</strong>
+        <strong title="${escapeHtml(displayName)}">${escapeHtml(displayName)}</strong>
         <small>${mainMeal ? `${formatNumber(dish.per_serving.kcal, 0)} kcal · ${formatMoney(dish.per_serving.cost)}` : escapeHtml(translate("not_main_meal"))}</small>
       </label>`;
     }).join("") || `<p class="auto-menu-dishes-empty">${escapeHtml(translate(query ? "no_matching_dishes" : "no_eligible_dishes"))}</p>`;
@@ -94,7 +102,13 @@ export function createAutoMenuFeature({
       return;
     }
     const people = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
-    const items = new Map(state.snapshot.item_options.map((item) => [item.key, item.name]));
+    const dishes = new Map(state.snapshot.dishes.map((dish) => [dish.key, dish]));
+    const items = new Map(state.snapshot.item_options.map((item) => [
+      item.key,
+      item.kind === "dish" && dishes.has(item.key)
+        ? dishDisplayName(dishes.get(item.key))
+        : item.name,
+    ]));
     container.hidden = false;
     container.innerHTML = `
       <div class="auto-menu-result-summary">

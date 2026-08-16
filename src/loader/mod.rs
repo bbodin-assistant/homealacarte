@@ -53,9 +53,6 @@ fn section_values(documents: &[Document], section: &str) -> Result<Vec<(String, 
 }
 
 pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Dataset, String> {
-    if language != "fr" && language != "en" {
-        return Err(format!("unsupported language: {language}"));
-    }
     sources.sort_by(|a, b| a.path.cmp(&b.path));
     let mut hasher = Sha256::new();
     let mut documents = Vec::new();

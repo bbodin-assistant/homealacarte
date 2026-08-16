@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   autoMenuSettingKey,
   buildAutoMenuRequest,
@@ -33,4 +34,8 @@ assert.deepEqual(request, {
   candidate_dish_keys: ["curry"],
 });
 
-console.log("Automatic-menu feature builds a day-scoped solver request.");
+const feature = await readFile(new URL("../www/features/auto-menu.js", import.meta.url), "utf8");
+assert.match(feature, /countryFlag/);
+assert.match(feature, /function dishDisplayName/);
+
+console.log("Automatic-menu feature builds day-scoped requests and displays dish origin flags.");

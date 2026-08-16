@@ -51,6 +51,10 @@
 .new-dish-content { min-height: 0; display: grid; gap: 20px; padding: 22px 24px; overflow: auto; overscroll-behavior: contain; }
 .new-dish-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .new-dish-fields textarea { width: 100%; resize: vertical; padding: 10px 11px; color: var(--ink); background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 9px; outline: 0; font: inherit; }
+.dish-origin-input { display: flex; align-items: center; gap: 8px; }
+.dish-origin-input input { min-width: 0; flex: 1 1 auto; text-transform: uppercase; }
+.dish-origin-input strong { min-width: 34px; font-size: 24px; line-height: 1; text-align: center; }
+.new-dish-auto-menu-control { align-self: end; min-height: 42px; }
 .new-dish-components { display: grid; gap: 10px; }
 .new-dish-components-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .new-dish-components-heading h3 { margin: 0; color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }

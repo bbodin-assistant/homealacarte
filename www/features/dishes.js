@@ -1,13 +1,8 @@
+import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
 
-export function countryFlag(countryCode) {
-  const code = String(countryCode || "").trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(code)) return "";
-  return String.fromCodePoint(
-    ...[...code].map((letter) => 0x1F1E6 + letter.charCodeAt(0) - 65),
-  );
-}
+export { countryFlag };
 
 export function dishRangeMaximums(dishes) {
   return {

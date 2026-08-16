@@ -1,7 +1,9 @@
 import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-77";
+import { patchConsolidatedRecord } from "./core/data-localization.js?v=homealacarte-80";
 
 let engine;
 let readyPromise;
+let activeLanguage = "";
 
 async function ensureEngine() {
   if (!readyPromise) {
@@ -22,6 +24,24 @@ function currentState(snapshot) {
     snapshot,
     serializedData: engine.export_data("consolidated"),
   };
+}
+
+function applyRecordMetadata(snapshot, section, key, changes) {
+  const hasLocalizedName = Boolean(changes?.name_i18n);
+  const hasOriginCountry = Object.hasOwn(changes || {}, "origin_country");
+  if (!hasLocalizedName && !hasOriginCountry) return snapshot;
+  const content = patchConsolidatedRecord(
+    engine.export_data("consolidated"),
+    section,
+    key,
+    changes,
+  );
+  let reloaded = engine.load(
+    [{ path: "homealacarte_data.json", content }],
+    { language: activeLanguage },
+  );
+  if (snapshot.profile) reloaded = engine.set_profile(snapshot.profile);
+  return reloaded;
 }
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -62,10 +82,12 @@ self.onmessage = async ({ data }) => {
     respond(requestId, "status", { code: "calculating" });
     let snapshot;
     if (type === "load-bundled") {
-      snapshot = engine.load(await loadBundled(data.manifestUrl), { language: data.language });
+      activeLanguage = data.language || activeLanguage;
+      snapshot = engine.load(await loadBundled(data.manifestUrl), { language: activeLanguage });
       respond(requestId, "ready", { ...currentState(snapshot), source: "bundled" });
     } else if (type === "load-files") {
-      snapshot = engine.load(data.files, { language: data.language });
+      activeLanguage = data.language || activeLanguage;
+      snapshot = engine.load(data.files, { language: activeLanguage });
       respond(requestId, "ready", { ...currentState(snapshot), source: data.source || "imported" });
     } else if (type === "replace-menu") {
       snapshot = engine.replace_menu(data.rows);
@@ -90,29 +112,43 @@ self.onmessage = async ({ data }) => {
       snapshot = engine.replace_custom_grocery(data.rows);
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "save-dish") {
+      const { name_i18n, origin_country, ...dish } = data.dish;
       snapshot = engine.save_dish_with_custom_ingredients(
-        data.dish,
+        dish,
         data.customIngredients || [],
         Boolean(data.replacing),
       );
+      snapshot = applyRecordMetadata(snapshot, "dishes", dish.key, {
+        name_i18n,
+        origin_country,
+      });
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "replace-ingredient") {
-      snapshot = engine.replace_ingredient(data.ingredient);
+      const { name_i18n, ...ingredient } = data.ingredient;
+      snapshot = engine.replace_ingredient(ingredient);
+      snapshot = applyRecordMetadata(snapshot, "items", ingredient.key, { name_i18n });
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "add-ingredient") {
-      snapshot = engine.add_ingredient(data.ingredient);
+      const { name_i18n, ...ingredient } = data.ingredient;
+      snapshot = engine.add_ingredient(ingredient);
+      snapshot = applyRecordMetadata(snapshot, "items", ingredient.key, { name_i18n });
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "replace-household-item") {
-      snapshot = engine.replace_household_item(data.item);
+      const { name_i18n, ...item } = data.item;
+      snapshot = engine.replace_household_item(item);
+      snapshot = applyRecordMetadata(snapshot, "items", item.key, { name_i18n });
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "add-household-item") {
-      snapshot = engine.add_household_item(data.item);
+      const { name_i18n, ...item } = data.item;
+      snapshot = engine.add_household_item(item);
+      snapshot = applyRecordMetadata(snapshot, "items", item.key, { name_i18n });
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "delete-item") {
       snapshot = engine.delete_item(data.key);
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "set-language") {
-      snapshot = engine.set_language(data.language);
+      activeLanguage = data.language;
+      snapshot = engine.set_language(activeLanguage);
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "set-profile") {
       snapshot = engine.set_profile(data.profile || undefined);

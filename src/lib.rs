@@ -1,6 +1,7 @@
 mod engine;
 mod grocery;
 mod loader;
+mod locale;
 mod menu_math;
 mod model;
 mod optimizer;
@@ -17,11 +18,18 @@ pub use personal_data::{
     PersonalDataReport, PersonalMergeAudit, consolidate_personal_sources,
     merge_personal_documents,
 };
-pub use pdf::generate_grocery_pdf;
 pub use snapshot::build_snapshot;
 
 pub use loader::MenuInput;
 use wasm_bindgen::prelude::*;
+
+pub fn default_locale() -> String {
+    locale::fallback_locale()
+}
+
+pub fn generate_grocery_pdf(grocery: &GroceryResult, language: &str) -> Vec<u8> {
+    pdf::generate_grocery_pdf(grocery, language)
+}
 
 #[derive(serde::Deserialize)]
 struct PriceHistoryPresence {
@@ -218,7 +226,7 @@ impl HomeALaCarteEngine {
         let dataset = self.inner.dataset.as_ref().ok_or_else(|| js_error("no dataset loaded"))?;
         let grocery = crate::grocery::build_grocery(dataset).map_err(js_error)?;
         let grocery = crate::grocery::exclude_grocery_items(grocery, excluded_ids);
-        Ok(crate::pdf::generate_grocery_pdf(
+        Ok(generate_grocery_pdf(
             &grocery,
             language.as_deref().unwrap_or(&self.inner.language),
         ))

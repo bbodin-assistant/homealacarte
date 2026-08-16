@@ -204,9 +204,13 @@
         </div>
         <div class="new-dish-content">
           <div class="new-dish-fields">
-            <label class="dialog-field">
-              <span data-i18n="dish_name">Nom du plat</span>
-              <input id="new-dish-name" required>
+            <div id="new-dish-name-fields" style="display: contents"></div>
+            <label class="dialog-field dish-origin-field">
+              <span>🌍 ISO</span>
+              <div class="dish-origin-input">
+                <input id="new-dish-origin-country" maxlength="2" pattern="[A-Za-z]{2}" autocomplete="off" placeholder="FR" aria-label="ISO 3166-1 alpha-2">
+                <strong id="new-dish-origin-flag" aria-hidden="true"></strong>
+              </div>
             </label>
             <label class="dialog-field">
               <span data-i18n="recipe_servings">Nombre de portions</span>
@@ -232,7 +236,7 @@
               </select>
               <small id="new-dish-nutri-status" class="field-hint"></small>
             </label>
-            <label class="dialog-field dialog-field-wide show-only-control">
+            <label class="show-only-control new-dish-auto-menu-control">
               <input id="new-dish-auto-menu-main" type="checkbox" checked>
               <span data-i18n="auto_menu_main_dish">Peut être proposé comme déjeuner ou dîner</span>
             </label>

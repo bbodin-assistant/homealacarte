@@ -26,7 +26,13 @@ export function options(values, selected) {
 }
 
 export function createFormatters(getLanguage, translate) {
-  const locale = () => getLanguage() === "fr" ? "fr-FR" : "en-GB";
+  const locale = () => {
+    try {
+      return Intl.getCanonicalLocales(String(getLanguage() || ""))[0];
+    } catch {
+      return undefined;
+    }
+  };
   const formatNumber = (value, digits = 1) => new Intl.NumberFormat(
     locale(),
     { maximumFractionDigits: digits },

@@ -1,0 +1,88 @@
+{
+  "fallback": "en",
+  "locales": {
+    "en": {
+      "days": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+      },
+      "meals": {
+        "breakfast": "Breakfast",
+        "morning_snack": "Morning snack",
+        "lunch": "Lunch",
+        "afternoon_snack_1": "Afternoon snack 1",
+        "afternoon_snack_2": "Afternoon snack 2",
+        "dinner": "Dinner",
+        "anytime": "Anytime"
+      },
+      "pdf": {
+        "grocery_title": "Grocery list",
+        "decimal_separator": "."
+      }
+    },
+    "fr": {
+      "days": {
+        "monday": "Lundi",
+        "tuesday": "Mardi",
+        "wednesday": "Mercredi",
+        "thursday": "Jeudi",
+        "friday": "Vendredi",
+        "saturday": "Samedi",
+        "sunday": "Dimanche"
+      },
+      "meals": {
+        "breakfast": "Petit dejeuner",
+        "morning_snack": "Encas matin",
+        "lunch": "Dejeuner",
+        "afternoon_snack_1": "Encas apres-midi 1",
+        "afternoon_snack_2": "Encas apres-midi 2",
+        "dinner": "Diner",
+        "anytime": "A tout moment"
+      },
+      "pdf": {
+        "grocery_title": "Liste de courses",
+        "decimal_separator": ","
+      }
+    },
+    "es": {
+      "days": {
+        "monday": "Lunes",
+        "tuesday": "Martes",
+        "wednesday": "Miércoles",
+        "thursday": "Jueves",
+        "friday": "Viernes",
+        "saturday": "Sábado",
+        "sunday": "Domingo"
+      },
+      "meals": {
+        "breakfast": "Desayuno",
+        "morning_snack": "Tentempié de la mañana",
+        "lunch": "Almuerzo",
+        "afternoon_snack_1": "Merienda 1",
+        "afternoon_snack_2": "Merienda 2",
+        "dinner": "Cena",
+        "anytime": "En cualquier momento"
+      },
+      "pdf": {
+        "grocery_title": "Lista de la compra",
+        "decimal_separator": ","
+      }
+    }
+  },
+  "aliases": {
+    "days": {},
+    "meals": {
+      "Petit déjeuner": "breakfast",
+      "Déjeuner": "lunch",
+      "Encas après-midi 1": "afternoon_snack_1",
+      "Encas après-midi 2": "afternoon_snack_2",
+      "Dîner": "dinner",
+      "À tout moment": "anytime"
+    }
+  }
+}

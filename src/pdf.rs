@@ -1,3 +1,4 @@
+use crate::locale;
 use crate::model::{GroceryItem, GroceryResult};
 
 const PAGE_WIDTH: f64 = 595.28;
@@ -271,15 +272,11 @@ fn page_streams(grocery: &GroceryResult, language: &str) -> Vec<Vec<u8>> {
     let (placements, page_count) = layout(grocery);
     let column_width = (PAGE_WIDTH - MARGIN * 2.0 - GAP) / 2.0;
     let mut streams = vec![Vec::new(); page_count];
-    let title = if language == "en" {
-        "Grocery list"
-    } else {
-        "Liste de courses"
-    };
-    let total = if language == "en" {
-        format!("{:.2} EUR", grocery.estimated_purchase_total)
-    } else {
-        format!("{:.2} EUR", grocery.estimated_purchase_total).replace('.', ",")
+    let strings = locale::pdf_strings(language).expect("PDF locale registry cannot be empty");
+    let total = format!("{:.2} EUR", grocery.estimated_purchase_total);
+    let total = match strings.decimal_separator.as_str() {
+        "." => total,
+        separator => total.replace('.', separator),
     };
 
     for (index, stream) in streams.iter_mut().enumerate() {
@@ -290,7 +287,7 @@ fn page_streams(grocery: &GroceryResult, language: &str) -> Vec<Vec<u8>> {
             MARGIN,
             PAGE_HEIGHT - MARGIN + 3.0,
             (0.18, 0.16, 0.14),
-            &format!("{title} - {total}"),
+            &format!("{} - {total}", strings.grocery_title),
         );
         push_text(
             stream,
@@ -472,4 +469,3 @@ pub fn generate_grocery_pdf(grocery: &GroceryResult, language: &str) -> Vec<u8> 
     );
     pdf
 }
-

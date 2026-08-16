@@ -14,7 +14,7 @@ pub struct AppConfig {
 }
 
 pub fn default_language() -> String {
-    "fr".to_string()
+    String::new()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
