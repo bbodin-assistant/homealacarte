@@ -30,7 +30,8 @@ const source = JSON.stringify({
 
 assert.equal(isLanguageTag("es"), true);
 assert.equal(isLanguageTag("zh-CN"), true);
-assert.equal(isLanguageTag("cn"), true);
+assert.equal(isLanguageTag("en-GB"), true);
+assert.equal(isLanguageTag("en_US"), false);
 assert.equal(isLanguageTag("english"), false);
 
 assert.deepEqual(
