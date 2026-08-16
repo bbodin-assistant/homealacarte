@@ -35,7 +35,7 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-77";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-79";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 
 document.documentElement.dataset.appModuleLoaded = "true";
