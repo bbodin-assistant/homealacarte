@@ -212,8 +212,7 @@ function openDishForm(dish = null) {
   select("#new-dish-form").reset();
   state.dishFormKey = dish?.key || null;
   select("#new-dish-title").textContent = translate(dish ? "edit_dish" : "new_dish");
-  select("#new-dish-intro").textContent = t(
-    state.language,
+  select("#new-dish-intro").textContent = translate(
     dish ? "edit_dish_intro" : "new_dish_intro",
   );
   select("#new-dish-save").textContent = translate(dish ? "save_changes" : "save_dish");

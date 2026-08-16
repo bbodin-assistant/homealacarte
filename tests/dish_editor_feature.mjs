@@ -14,5 +14,7 @@ assert.match(feature, /#new-dish-form.*addEventListener/);
 assert.match(feature, /send\("save-dish"/);
 assert.match(feature, /customIngredients/);
 assert.match(feature, /setDishComponentMode/);
+assert.match(feature, /#new-dish-intro"\)\.textContent = translate\(/);
+assert.doesNotMatch(feature, /\bt\s*\(/);
 
-console.log("Dish editor owns form rendering, validation, events, and save payloads.");
+console.log("Dish editor owns form rendering, validation, events, save payloads, and injected translation.");
