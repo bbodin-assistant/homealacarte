@@ -256,6 +256,12 @@ fn dish_from_input(
     if dataset.ingredients.iter().any(|item| item.key == key) {
         return Err(format!("dish key conflicts with an ingredient: {key}"));
     }
+    let existing_origin_country = dataset
+        .dishes
+        .iter()
+        .find(|dish| dish.key == key)
+        .map(|dish| dish.origin_country.clone())
+        .unwrap_or_default();
     let exists = dataset.dishes.iter().any(|dish| dish.key == key);
     if !replacing && exists {
         return Err(format!("dish key already exists: {key}"));
@@ -325,6 +331,7 @@ fn dish_from_input(
     Ok(Dish {
         key,
         name,
+        origin_country: existing_origin_country,
         auto_menu_main: input.auto_menu_main,
         servings: input.servings,
         recipe_url: input.recipe_url.trim().to_string(),

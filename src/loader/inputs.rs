@@ -132,6 +132,8 @@ fn bool_true() -> bool {
 pub(crate) struct DishInput {
     pub(crate) key: String,
     pub(crate) name: String,
+    #[serde(default)]
+    pub(crate) origin_country: String,
     #[serde(default = "bool_true")]
     pub(crate) auto_menu_main: bool,
     #[serde(default = "one")]

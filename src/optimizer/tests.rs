@@ -36,6 +36,7 @@ fn dish(key: &str, ingredient: &str) -> Dish {
     Dish {
         key: key.to_string(),
         name: key.to_string(),
+        origin_country: String::new(),
         auto_menu_main: true,
         servings: 1.0,
         recipe_url: String::new(),

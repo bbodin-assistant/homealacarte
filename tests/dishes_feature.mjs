@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  countryFlag,
   dishRangeMaximums,
   filterDishes,
 } from "../www/features/dishes.js";
@@ -12,6 +13,10 @@ const dishes = [
 
 assert.deepEqual(dishRangeMaximums(dishes), { cost: 4.5, kcal: 800 });
 assert.deepEqual(dishRangeMaximums([]), { cost: 0.01, kcal: 1 });
+assert.equal(countryFlag("fr"), "🇫🇷");
+assert.equal(countryFlag("JP"), "🇯🇵");
+assert.equal(countryFlag(""), "");
+assert.equal(countryFlag("France"), "");
 
 assert.deepEqual(
   filterDishes(dishes, {

@@ -125,6 +125,7 @@ pub fn build_snapshot(
         dish_views.push(DishView {
             key: dish.key.clone(),
             name: dish.name.clone(),
+            origin_country: dish.origin_country.clone(),
             auto_menu_main: dish.auto_menu_main,
             servings: dish.servings,
             recipe_url: dish.recipe_url.clone(),
