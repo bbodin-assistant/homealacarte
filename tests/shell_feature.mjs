@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [app, shell] = await Promise.all([
+const [app, shell, entry] = await Promise.all([
   readFile(new URL("../www/app/feature-composition.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/shell.js", import.meta.url), "utf8"),
+  readFile(new URL("../www/index.html", import.meta.url), "utf8"),
 ]);
 
 assert.match(app, /createShellFeature/);
@@ -17,9 +18,12 @@ assert.match(shell, /#confirm-dialog.*addEventListener/);
 assert.match(shell, /function renderLanguageOptions/);
 assert.match(shell, /locales\.map/);
 assert.match(shell, /localeLabel/);
+assert.match(shell, /requested\.split\("-"\)\[0\]/);
 assert.match(shell, /function applyTranslations/);
 assert.match(shell, /function switchTab/);
 assert.match(shell, /dialogClosers\.forEach/);
 assert.doesNotMatch(shell, /\bcloseFamilyDialog\b/);
+assert.match(entry, /<select id="language-select"><\/select>/);
+assert.doesNotMatch(entry, /<option value="(?:en|fr)">/);
 
-console.log("The application shell owns navigation, locale-driven language selection, rendering, and shared dialogs.");
+console.log("The application shell generates language selection from the translation catalogue and owns shared navigation/dialog behavior.");
