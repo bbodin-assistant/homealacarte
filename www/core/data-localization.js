@@ -8,52 +8,53 @@ function parseDocument(serializedData) {
   }
 }
 
-function localizedLanguageValue(value, language) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
-  const exact = Object.entries(value)
-    .find(([key, entry]) => key.toLowerCase() === language && typeof entry === "string");
-  if (exact) return exact[1];
-  const regional = Object.entries(value)
-    .find(([key, entry]) => key.toLowerCase().startsWith(`${language}-`) && typeof entry === "string");
-  return regional?.[1] || "";
+export function isLanguageTag(value) {
+  const parts = String(value || "").trim().split("-");
+  if (!/^[A-Za-z]{2}$/.test(parts[0] || "")) return false;
+  return parts.slice(1).every((part) => /^[A-Za-z0-9]{2,8}$/.test(part));
 }
 
-function normalizedLanguageValues(values = {}) {
-  return {
-    en: String(values.en || "").trim(),
-    fr: String(values.fr || "").trim(),
-  };
+function localePrimary(value) {
+  return String(value || "").trim().toLowerCase().split("-")[0];
 }
 
-function mergeLocalizedName(existing, values) {
-  const requested = normalizedLanguageValues(values);
-  if (!existing || typeof existing !== "object" || Array.isArray(existing)) {
-    return normalizeLocalizedName(requested);
-  }
+function exactLocaleKey(values, locale) {
+  const target = String(locale || "").trim();
+  return Object.keys(values || {}).find((key) => key.localeCompare(target, undefined, {
+    sensitivity: "accent",
+  }) === 0 || key.toLowerCase() === target.toLowerCase());
+}
 
-  const current = {
-    en: localizedLanguageValue(existing, "en").trim(),
-    fr: localizedLanguageValue(existing, "fr").trim(),
-  };
-  if (requested.en === current.en && requested.fr === current.fr) return existing;
+function uniqueLocales(locales = []) {
+  const seen = new Set();
+  return locales
+    .map((locale) => String(locale || "").trim())
+    .filter((locale) => {
+      const normalized = locale.toLowerCase();
+      if (!isLanguageTag(locale) || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+}
 
-  const next = { ...existing };
-  for (const language of ["en", "fr"]) {
-    if (requested[language] === current[language]) continue;
-    const exactKey = Object.keys(next)
-      .find((candidate) => candidate.toLowerCase() === language);
-    if (requested[language]) {
-      next[exactKey || language] = requested[language];
-    } else {
-      Object.keys(next)
-        .filter((candidate) => {
-          const normalized = candidate.toLowerCase();
-          return normalized === language || normalized.startsWith(`${language}-`);
-        })
-        .forEach((candidate) => delete next[candidate]);
-    }
+function localizedObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([locale, entry]) => isLanguageTag(locale) && typeof entry === "string")
+      .map(([locale, entry]) => [locale, entry.trim()]),
+  );
+}
+
+export function localeLabel(locale, displayLocale = locale) {
+  const code = String(locale || "").trim();
+  if (!code) return "";
+  try {
+    const label = new Intl.DisplayNames([displayLocale], { type: "language" }).of(code);
+    return label ? `${label} · ${code.toUpperCase()}` : code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
   }
-  return next;
 }
 
 export function localizedNameValues(
@@ -61,37 +62,114 @@ export function localizedNameValues(
   section,
   key,
   fallbackName = "",
+  supportedLocales = [],
 ) {
   const document = parseDocument(serializedData);
   const row = document?.[section]?.find?.((candidate) => candidate?.key === key);
   const value = row?.name;
+  const existing = localizedObject(value);
+  const locales = uniqueLocales([...supportedLocales, ...Object.keys(existing)]);
   if (typeof value === "string") {
     const neutral = value.trim();
-    return { en: neutral, fr: neutral };
+    return Object.fromEntries(locales.map((locale) => [locale, neutral]));
   }
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return {
-      en: localizedLanguageValue(value, "en").trim(),
-      fr: localizedLanguageValue(value, "fr").trim(),
-    };
+  if (Object.keys(existing).length) {
+    const result = { ...existing };
+    for (const locale of locales) {
+      if (!exactLocaleKey(result, locale)) result[locale] = "";
+    }
+    return result;
   }
   const neutral = String(fallbackName || "").trim();
-  return { en: neutral, fr: neutral };
+  return Object.fromEntries(locales.map((locale) => [locale, neutral]));
+}
+
+export function localizedFormValues(container) {
+  return Object.fromEntries(
+    [...container.querySelectorAll("[data-locale]")]
+      .map((input) => [input.dataset.locale, input.value.trim()])
+      .filter(([locale]) => isLanguageTag(locale)),
+  );
+}
+
+export function renderLocalizedInputs(
+  container,
+  supportedLocales,
+  values = {},
+  displayLocale = "en",
+) {
+  const locales = uniqueLocales([...supportedLocales, ...Object.keys(values)]);
+  const documentRef = container.ownerDocument;
+  const fields = locales.map((locale) => {
+    const label = documentRef.createElement("label");
+    label.className = "dialog-field localized-name-field";
+    const caption = documentRef.createElement("span");
+    caption.textContent = localeLabel(locale, displayLocale);
+    const input = documentRef.createElement("input");
+    input.autocomplete = "off";
+    input.dataset.locale = locale;
+    input.lang = locale;
+    const key = exactLocaleKey(values, locale);
+    input.value = key ? String(values[key] || "") : "";
+    label.append(caption, input);
+    return label;
+  });
+  container.replaceChildren(...fields);
+  return locales;
+}
+
+function normalizedLocalizedEntries(values = {}) {
+  return Object.entries(values)
+    .map(([locale, value]) => [String(locale || "").trim(), String(value || "").trim()])
+    .filter(([locale]) => isLanguageTag(locale));
 }
 
 export function normalizeLocalizedName(values = {}) {
-  const { en, fr } = normalizedLanguageValues(values);
-  if (en && fr && en === fr) return en;
-  if (en && fr) return { en, fr };
-  if (en) return { en };
-  if (fr) return { fr };
-  return "";
+  const entries = normalizedLocalizedEntries(values).filter(([, value]) => value);
+  if (!entries.length) return "";
+  const distinctValues = new Set(entries.map(([, value]) => value));
+  if (distinctValues.size === 1) return entries[0][1];
+  return Object.fromEntries(entries);
 }
 
-export function displayLocalizedName(values = {}, language = "en") {
-  const primary = String(language || "en").toLowerCase().split("-")[0];
-  const { en, fr } = normalizedLanguageValues(values);
-  return primary === "fr" ? fr || en : en || fr;
+function localizedMatch(values, locale) {
+  const requested = String(locale || "").trim();
+  if (!requested) return "";
+  const exact = exactLocaleKey(values, requested);
+  if (exact && values[exact]) return values[exact];
+  const primary = localePrimary(requested);
+  const exactPrimary = exactLocaleKey(values, primary);
+  if (exactPrimary && values[exactPrimary]) return values[exactPrimary];
+  const regional = Object.entries(values)
+    .find(([key, value]) => localePrimary(key) === primary && value);
+  return regional?.[1] || "";
+}
+
+export function displayLocalizedName(values = {}, language = "en", fallbackLocales = []) {
+  const normalized = Object.fromEntries(
+    normalizedLocalizedEntries(values).filter(([, value]) => value),
+  );
+  return localizedMatch(normalized, language)
+    || uniqueLocales(fallbackLocales)
+      .map((locale) => localizedMatch(normalized, locale))
+      .find(Boolean)
+    || Object.values(normalized).find(Boolean)
+    || "";
+}
+
+function mergeLocalizedName(existing, values) {
+  const requested = normalizedLocalizedEntries(values);
+  if (!existing || typeof existing !== "object" || Array.isArray(existing)) {
+    return normalizeLocalizedName(Object.fromEntries(requested));
+  }
+
+  const next = { ...existing };
+  for (const [locale, value] of requested) {
+    const currentKey = exactLocaleKey(next, locale);
+    if (value) next[currentKey || locale] = value;
+    else if (currentKey) delete next[currentKey];
+  }
+  return normalizeLocalizedName(next);
 }
 
 export function normalizeOriginCountry(value) {
