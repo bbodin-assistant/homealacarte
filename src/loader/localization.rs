@@ -25,13 +25,20 @@ const MEALS_EN: [&str; 7] = [
     "Anytime",
 ];
 
+fn is_french(language: &str) -> bool {
+    language
+        .split('-')
+        .next()
+        .is_some_and(|primary| primary.eq_ignore_ascii_case("fr"))
+}
+
 pub(crate) fn localized_days(language: &str) -> Vec<String> {
-    let values = if language == "en" { &DAYS_EN } else { &DAYS_FR };
+    let values = if is_french(language) { &DAYS_FR } else { &DAYS_EN };
     values.iter().map(|value| value.to_string()).collect()
 }
 
 pub(crate) fn localized_meals(language: &str) -> Vec<String> {
-    let values = if language == "en" { &MEALS_EN } else { &MEALS_FR };
+    let values = if is_french(language) { &MEALS_FR } else { &MEALS_EN };
     values.iter().map(|value| value.to_string()).collect()
 }
 
@@ -46,10 +53,10 @@ fn localized_value(
         .position(|candidate| *candidate == value)
         .or_else(|| english.iter().position(|candidate| *candidate == value))
         .ok_or_else(|| format!("unknown localized value: {value}"))?;
-    Ok(if language == "en" {
-        english[index].to_string()
-    } else {
+    Ok(if is_french(language) {
         french[index].to_string()
+    } else {
+        english[index].to_string()
     })
 }
 
