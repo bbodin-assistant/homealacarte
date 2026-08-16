@@ -1,8 +1,10 @@
 import {
   countryFlag,
   displayLocalizedName,
+  localizedFormValues,
   localizedNameValues,
   normalizeOriginCountry,
+  renderLocalizedInputs,
   validOriginCountry,
 } from "../core/data-localization.js?v=homealacarte-80";
 
@@ -12,6 +14,7 @@ export function createDishEditorFeature({
   selectAll,
   documentRef,
   translate,
+  locales,
   escapeHtml,
   formatInputNumber,
   enhanceSearchableSelect,
@@ -67,10 +70,17 @@ function ingredientOptions(selectedKey = "") {
 }
 
 function dishNameValues() {
-  return {
-    en: select("#new-dish-name-en").value.trim(),
-    fr: select("#new-dish-name-fr").value.trim(),
-  };
+  return localizedFormValues(select("#new-dish-name-fields"));
+}
+
+function focusCurrentDishName() {
+  const inputs = [...select("#new-dish-name-fields").querySelectorAll("[data-locale]")];
+  const language = String(state.language || "").toLowerCase();
+  const primary = language.split("-")[0];
+  const input = inputs.find((candidate) => candidate.dataset.locale.toLowerCase() === language)
+    || inputs.find((candidate) => candidate.dataset.locale.toLowerCase().split("-")[0] === primary)
+    || inputs[0];
+  input?.focus();
 }
 
 function updateOriginCountryPreview() {
@@ -207,7 +217,7 @@ function dishFormSignature() {
 function dishFormIsValid() {
   const servings = Number(select("#new-dish-servings").value);
   const rows = selectAll("#new-dish-component-list .new-dish-component-row");
-  return Boolean(displayLocalizedName(dishNameValues(), state.language))
+  return Boolean(displayLocalizedName(dishNameValues(), state.language, locales))
     && validOriginCountry(select("#new-dish-origin-country").value)
     && Number.isFinite(servings)
     && servings > 0
@@ -247,9 +257,9 @@ function openDishForm(dish = null) {
     "dishes",
     dish?.key,
     dish?.name || "",
+    locales,
   );
-  select("#new-dish-name-en").value = names.en;
-  select("#new-dish-name-fr").value = names.fr;
+  renderLocalizedInputs(select("#new-dish-name-fields"), locales, names, state.language);
   select("#new-dish-origin-country").value = dish?.origin_country || "";
   select("#new-dish-servings").value = formatInputNumber(dish?.servings || 4);
   select("#new-dish-url").value = dish?.recipe_url || "";
@@ -272,7 +282,7 @@ function openDishForm(dish = null) {
   updateDishFormSaveState();
   const dialog = select("#new-dish-dialog");
   if (!dialog.open) dialog.showModal();
-  select(state.language === "fr" ? "#new-dish-name-fr" : "#new-dish-name-en").focus();
+  focusCurrentDishName();
 }
 
 function openNewDishDialog() {
@@ -320,7 +330,7 @@ select("#new-dish-notes-list").addEventListener("click", (event) => {
 select("#new-dish-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const nameI18n = dishNameValues();
-  const name = displayLocalizedName(nameI18n, state.language);
+  const name = displayLocalizedName(nameI18n, state.language, locales);
   const servings = Number(select("#new-dish-servings").value);
   if (!dishFormIsValid()) {
     select("#new-dish-error").textContent = translate("new_dish_invalid");
