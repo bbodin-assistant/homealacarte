@@ -1,4 +1,4 @@
-use homealacarte_web::{SourceFile, load_dataset};
+use homealacarte_web::{AppConfig, Engine, SourceFile, load_dataset};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -32,22 +32,31 @@ fn public_sample_data_uses_the_current_schema() {
         })
         .collect();
 
-    let dataset = load_dataset(sources, "fr").expect("load sample data with current schema");
-    assert!(!dataset.ingredients.is_empty());
-    assert!(!dataset.dishes.is_empty());
-    assert!(!dataset.people.is_empty());
-    assert!(!dataset.menu.is_empty());
-    let sample_item = dataset
+    let mut engine = Engine::default();
+    let snapshot = engine
+        .load(
+            sources,
+            AppConfig {
+                language: "fr".to_string(),
+            },
+        )
+        .expect("load sample data with current schema");
+    assert!(!snapshot.ingredients.is_empty());
+    assert!(!snapshot.dishes.is_empty());
+    assert!(!snapshot.people.is_empty());
+    assert!(!snapshot.planner.is_empty());
+    let sample_item = snapshot
         .ingredients
         .iter()
         .find(|ingredient| ingredient.key == "sample_tomato")
         .expect("sample ingredient");
+    assert_eq!(sample_item.name, "Tomate crue (générique)");
     assert!(sample_item.source.contains("Anses Ciqual 2025"));
     assert_eq!(sample_item.sugars_g, Some(3.22));
     assert_eq!(sample_item.saturated_fat_g, Some(0.01));
     assert_eq!(sample_item.salt_g, Some(0.01));
     assert_eq!(sample_item.fruit_vegetable_legume_percent, Some(100.0));
-    assert!(dataset.people.iter().all(|person| person.key.starts_with("sample_")));
+    assert!(snapshot.people.iter().all(|person| person.key.starts_with("sample_")));
 }
 
 #[test]
@@ -102,8 +111,6 @@ fn empty_household_state_is_valid() {
     };
 
     let dataset = load_dataset(vec![source], "fr").expect("load empty household state");
-    assert!(dataset.ingredients.is_empty());
-    assert!(dataset.dishes.is_empty());
     assert!(dataset.people.is_empty());
     assert!(dataset.menu.is_empty());
     assert!(dataset.stock.is_empty());

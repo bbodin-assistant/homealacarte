@@ -2,7 +2,10 @@
   "items": [
     {
       "key": "sample_tomato",
-      "name": "Tomato, raw (generic)",
+      "name": {
+        "en": "Tomato, raw (generic)",
+        "fr": "Tomate crue (générique)"
+      },
       "grams": 100,
       "kcal": 19.2,
       "protein_g": 0.6,
@@ -13,18 +16,33 @@
       "saturated_fat_g": 0.01,
       "salt_g": 0.01,
       "fruit_vegetable_legume_percent": 100,
-      "category": "Produce::Vegetables",
-      "source": "Anses Ciqual 2025, food code 20385; price estimate from Carrefour France checked 2026-07-30",
+      "category": {
+        "en": "Produce::Vegetables",
+        "fr": "Fruits et légumes::Légumes"
+      },
+      "source": {
+        "en": "Anses Ciqual 2025, food code 20385; price estimate from Carrefour France checked 2026-07-30",
+        "fr": "Anses Ciqual 2025, code aliment 20385 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
+      },
       "url": "https://ciqual.anses.fr/#/aliments/20385/tomate-sans-precision-crue-(aliment-moyen)",
       "price_per_kg": 1.99,
-      "measure_unit": "piece",
+      "measure_unit": {
+        "en": "piece",
+        "fr": "pièce"
+      },
       "grams_per_measure_unit": 120,
-      "purchase_unit": "500 g pack",
+      "purchase_unit": {
+        "en": "500 g pack",
+        "fr": "barquette de 500 g"
+      },
       "purchase_quantity_grams": 500
     },
     {
       "key": "sample_bread",
-      "name": "Wholemeal bread (T150 flour)",
+      "name": {
+        "en": "Wholemeal bread (T150 flour)",
+        "fr": "Pain complet (farine T150)"
+      },
       "grams": 100,
       "kcal": 234,
       "protein_g": 8.66,
@@ -35,18 +53,33 @@
       "saturated_fat_g": 0.56,
       "salt_g": 1.17,
       "fruit_vegetable_legume_percent": 0,
-      "category": "Bakery::Bread",
-      "source": "Anses Ciqual 2025, food code 7110; price estimate from Carrefour France checked 2026-07-30",
+      "category": {
+        "en": "Bakery::Bread",
+        "fr": "Boulangerie::Pain"
+      },
+      "source": {
+        "en": "Anses Ciqual 2025, food code 7110; price estimate from Carrefour France checked 2026-07-30",
+        "fr": "Anses Ciqual 2025, code aliment 7110 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
+      },
       "url": "https://ciqual.anses.fr/#/aliments/7110/pain-complet-ou-integral-(a-la-farine-t150)",
       "price_per_kg": 2.98,
-      "measure_unit": "slice",
+      "measure_unit": {
+        "en": "slice",
+        "fr": "tranche"
+      },
       "grams_per_measure_unit": 30,
-      "purchase_unit": "500 g loaf",
+      "purchase_unit": {
+        "en": "500 g loaf",
+        "fr": "pain de 500 g"
+      },
       "purchase_quantity_grams": 500
     },
     {
       "key": "sample_cheese",
-      "name": "Grated Emmental",
+      "name": {
+        "en": "Grated Emmental",
+        "fr": "Emmental râpé"
+      },
       "grams": 100,
       "kcal": 368,
       "protein_g": 27.6,
@@ -57,57 +90,114 @@
       "saturated_fat_g": 18.1,
       "salt_g": 0.68,
       "fruit_vegetable_legume_percent": 0,
-      "category": "Dairy::Cheese",
-      "source": "Anses Ciqual 2025, food code 12118; price estimate from Carrefour France checked 2026-07-30",
+      "category": {
+        "en": "Dairy::Cheese",
+        "fr": "Produits laitiers::Fromage"
+      },
+      "source": {
+        "en": "Anses Ciqual 2025, food code 12118; price estimate from Carrefour France checked 2026-07-30",
+        "fr": "Anses Ciqual 2025, code aliment 12118 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
+      },
       "url": "https://ciqual.anses.fr/#/aliments/12118/emmental-ou-emmenthal-rape",
       "price_per_kg": 7.75,
       "measure_unit": "g",
       "grams_per_measure_unit": 1,
-      "purchase_unit": "200 g bag",
+      "purchase_unit": {
+        "en": "200 g bag",
+        "fr": "sachet de 200 g"
+      },
       "purchase_quantity_grams": 200
     },
     {
       "key": "sample_hand_soap",
-      "name": "Liquid hand soap",
-      "category": "Household::Hygiene",
+      "name": {
+        "en": "Liquid hand soap",
+        "fr": "Savon liquide pour les mains"
+      },
+      "category": {
+        "en": "Household::Hygiene",
+        "fr": "Maison::Hygiène"
+      },
       "estimated_price": 1.05,
-      "purchase_unit": "300 ml bottle",
+      "purchase_unit": {
+        "en": "300 ml bottle",
+        "fr": "flacon de 300 ml"
+      },
       "purchase_quantity": 1,
-      "measure_unit": "bottle",
-      "notes": "Current French retail estimate based on a Carrefour own-brand 300 ml liquid hand soap, checked 2026-07-30; price varies by store and fulfilment method."
+      "measure_unit": {
+        "en": "bottle",
+        "fr": "flacon"
+      },
+      "notes": {
+        "en": "Current French retail estimate based on a Carrefour own-brand 300 ml liquid hand soap, checked 2026-07-30; price varies by store and fulfilment method.",
+        "fr": "Estimation actuelle du prix de détail en France basée sur un savon liquide Carrefour de marque distributeur de 300 ml, vérifiée le 2026-07-30 ; le prix varie selon le magasin et le mode de retrait ou de livraison."
+      }
     }
   ],
   "dishes": [
     {
       "key": "sample_tomato_toast",
-      "name": "Tomato and Emmental toast",
+      "name": {
+        "en": "Tomato and Emmental toast",
+        "fr": "Tartine tomate-emmental"
+      },
       "servings": 2,
       "recipe_url": "",
-      "source": "Internal sample recipe; nutrition calculated from Anses Ciqual 2025 ingredient values",
+      "source": {
+        "en": "Internal sample recipe; nutrition calculated from Anses Ciqual 2025 ingredient values",
+        "fr": "Recette d'exemple interne ; nutrition calculée à partir des valeurs des ingrédients Anses Ciqual 2025"
+      },
       "source_notes": [
-        "Toast the bread, add sliced tomato and grated Emmental, then grill briefly.",
-        "Calculated recipe weight: 440 g total, or approximately 220 g per serving.",
-        "Approximate nutrition per serving: 311 kcal, 17.0 g protein, 29.4 g carbohydrates, 12.9 g fat, 5.6 g fibre, 5.3 g sugars, 7.6 g saturated fat and 0.99 g salt.",
-        "Nutri-Score B calculated with the updated solid-food algorithm in force in France since 16 March 2025."
+        {
+          "en": "Toast the bread, add sliced tomato and grated Emmental, then grill briefly.",
+          "fr": "Faire griller le pain, ajouter la tomate en tranches et l'emmental râpé, puis passer brièvement sous le gril."
+        },
+        {
+          "en": "Calculated recipe weight: 440 g total, or approximately 220 g per serving.",
+          "fr": "Poids calculé de la recette : 440 g au total, soit environ 220 g par portion."
+        },
+        {
+          "en": "Approximate nutrition per serving: 311 kcal, 17.0 g protein, 29.4 g carbohydrates, 12.9 g fat, 5.6 g fibre, 5.3 g sugars, 7.6 g saturated fat and 0.99 g salt.",
+          "fr": "Nutrition approximative par portion : 311 kcal, 17,0 g de protéines, 29,4 g de glucides, 12,9 g de lipides, 5,6 g de fibres, 5,3 g de sucres, 7,6 g de graisses saturées et 0,99 g de sel."
+        },
+        {
+          "en": "Nutri-Score B calculated with the updated solid-food algorithm in force in France since 16 March 2025.",
+          "fr": "Nutri-Score B calculé avec l'algorithme actualisé pour les aliments solides, en vigueur en France depuis le 16 mars 2025."
+        }
       ],
       "nutri_score": "B",
       "components": [
         {
           "item_key": "sample_bread",
           "quantity": 4,
-          "quantity_unit": "slice",
-          "source_quantity": "4 slices (120 g)"
+          "quantity_unit": {
+            "en": "slice",
+            "fr": "tranche"
+          },
+          "source_quantity": {
+            "en": "4 slices (120 g)",
+            "fr": "4 tranches (120 g)"
+          }
         },
         {
           "item_key": "sample_tomato",
           "quantity": 2,
-          "quantity_unit": "piece",
-          "source_quantity": "2 medium tomatoes (240 g)"
+          "quantity_unit": {
+            "en": "piece",
+            "fr": "pièce"
+          },
+          "source_quantity": {
+            "en": "2 medium tomatoes (240 g)",
+            "fr": "2 tomates moyennes (240 g)"
+          }
         },
         {
           "item_key": "sample_cheese",
           "grams": 80,
-          "source_quantity": "80 g grated Emmental"
+          "source_quantity": {
+            "en": "80 g grated Emmental",
+            "fr": "80 g d'emmental râpé"
+          }
         }
       ]
     }
@@ -118,20 +208,32 @@
       "name": "Alex",
       "kind": "adult",
       "kcal_target": 2100,
-      "description": "Illustrative adult profile for the public demo; the energy target is not individualized."
+      "description": {
+        "en": "Illustrative adult profile for the public demo; the energy target is not individualized.",
+        "fr": "Profil adulte illustratif pour la démonstration publique ; l'objectif énergétique n'est pas individualisé."
+      }
     },
     {
       "key": "sample_sam",
       "name": "Sam",
       "kind": "child",
       "kcal_target": 1700,
-      "description": "Illustrative child profile for the public demo; an accurate energy target requires age, sex, body size and activity level."
+      "description": {
+        "en": "Illustrative child profile for the public demo; an accurate energy target requires age, sex, body size and activity level.",
+        "fr": "Profil enfant illustratif pour la démonstration publique ; un objectif énergétique précis nécessite l'âge, le sexe, la corpulence et le niveau d'activité."
+      }
     }
   ],
   "menu": [
     {
-      "day": "Lundi",
-      "meal": "Déjeuner",
+      "day": {
+        "en": "Monday",
+        "fr": "Lundi"
+      },
+      "meal": {
+        "en": "Lunch",
+        "fr": "Dejeuner"
+      },
       "item_key": "sample_tomato_toast",
       "people": [
         "sample_alex",
