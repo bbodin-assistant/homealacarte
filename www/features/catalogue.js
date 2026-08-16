@@ -1,7 +1,9 @@
 import { latestPriceTrend } from "../core/item-details.js?v=homealacarte-77";
 import {
   displayLocalizedName,
+  localizedFormValues,
   localizedNameValues,
+  renderLocalizedInputs,
 } from "../core/data-localization.js?v=homealacarte-80";
 import {
   catalogueCategories,
@@ -14,6 +16,7 @@ export function createCatalogueFeature({
   selectAll,
   translate,
   translatedTemplate,
+  locales,
   escapeHtml,
   formatInputNumber,
   formatMoney,
@@ -88,16 +91,28 @@ function addPriceHistoryFormRow(selector) {
 }
 
 function itemNameFormValues(prefix) {
-  return {
-    en: select(`#${prefix}-name-en`).value.trim(),
-    fr: select(`#${prefix}-name-fr`).value.trim(),
-  };
+  return localizedFormValues(select(`#${prefix}-name-fields`));
 }
 
 function setItemNameFormValues(prefix, key, fallbackName) {
-  const names = localizedNameValues(state.serializedData, "items", key, fallbackName);
-  select(`#${prefix}-name-en`).value = names.en;
-  select(`#${prefix}-name-fr`).value = names.fr;
+  const names = localizedNameValues(
+    state.serializedData,
+    "items",
+    key,
+    fallbackName,
+    locales,
+  );
+  renderLocalizedInputs(select(`#${prefix}-name-fields`), locales, names, state.language);
+}
+
+function focusItemName(prefix) {
+  const inputs = [...select(`#${prefix}-name-fields`).querySelectorAll("[data-locale]")];
+  const language = String(state.language || "").toLowerCase();
+  const primary = language.split("-")[0];
+  const input = inputs.find((candidate) => candidate.dataset.locale.toLowerCase() === language)
+    || inputs.find((candidate) => candidate.dataset.locale.toLowerCase().split("-")[0] === primary)
+    || inputs[0];
+  input?.focus();
 }
 
 function ingredientFormPayload() {
@@ -105,7 +120,7 @@ function ingredientFormPayload() {
     .find((ingredient) => ingredient.key === state.ingredientSelectedKey);
   if (!existing && !state.itemEditorCreating) return null;
   const nameI18n = itemNameFormValues("ingredient");
-  const name = displayLocalizedName(nameI18n, state.language);
+  const name = displayLocalizedName(nameI18n, state.language, locales);
   return {
     key: existing?.key || customIngredientKey(name),
     name,
@@ -236,7 +251,7 @@ function householdItemFormPayload() {
     .find((item) => item.key === state.ingredientSelectedKey);
   if (!existing && !state.itemEditorCreating) return null;
   const nameI18n = itemNameFormValues("household-item");
-  const name = displayLocalizedName(nameI18n, state.language);
+  const name = displayLocalizedName(nameI18n, state.language, locales);
   const lastingDays = select("#household-item-lasting-days").value;
   return {
     key: existing?.key || customIngredientKey(name),
@@ -341,8 +356,7 @@ function openNewCatalogueItem() {
     select("#ingredient-editor-name").textContent = translate("new_food_item");
     select("#ingredient-delete").hidden = true;
     select("#ingredient-save").textContent = translate("add_catalogue_item");
-    select("#ingredient-name-en").value = "";
-    select("#ingredient-name-fr").value = "";
+    setItemNameFormValues("ingredient", "", "");
     select("#ingredient-category").value = selectedCategory;
     select("#ingredient-measure-unit").value = "g";
     select("#ingredient-grams-per-unit").value = "1";
@@ -370,14 +384,13 @@ function openNewCatalogueItem() {
     select("#ingredient-form-message").textContent = "";
     state.ingredientOriginal = "";
     updateIngredientSaveState();
-    select(state.language === "fr" ? "#ingredient-name-fr" : "#ingredient-name-en").focus();
+    focusItemName("ingredient");
     return;
   }
   select("#household-item-editor-name").textContent = translate("new_general_item");
   select("#household-item-delete").hidden = true;
   select("#household-item-save").textContent = translate("add_catalogue_item");
-  select("#household-item-name-en").value = "";
-  select("#household-item-name-fr").value = "";
+  setItemNameFormValues("household-item", "", "");
   select("#household-item-category").value = selectedCategory || translate("other");
   select("#household-item-measure-unit").value = translate("units");
   select("#household-item-purchase-unit").value = translate("units");
@@ -390,7 +403,7 @@ function openNewCatalogueItem() {
   select("#household-item-form-message").textContent = "";
   state.householdItemOriginal = "";
   updateHouseholdItemSaveState();
-  select(state.language === "fr" ? "#household-item-name-fr" : "#household-item-name-en").focus();
+  focusItemName("household-item");
 }
 
 function configureItemCategoryFilter(items) {
