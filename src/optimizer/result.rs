@@ -1,5 +1,6 @@
 use super::solver::DishDecision;
 use crate::grocery::build_grocery;
+use crate::locale::message_label;
 use crate::model::{AutoMenuDailyResult, AutoMenuProposal, AutoMenuSlot, Dataset, MenuRow};
 use microlp::Solution;
 use std::collections::{BTreeMap, BTreeSet};
@@ -43,15 +44,12 @@ pub(crate) fn assemble_result(
                 people,
                 quantity: steps as f64 * portion_step,
                 quantity_unit: "portion".to_string(),
-                notes: if language == "fr" {
-                    "Généré automatiquement".to_string()
-                } else {
-                    "Generated automatically".to_string()
-                },
+                notes: message_label(language, "generated_automatically")
+                    .unwrap_or_else(|| "generated_automatically".to_string()),
             });
         }
     }
-    
+
     let mut daily_results = Vec::new();
     for (person_index, day) in availability {
         let Some(target_kcal) = dataset.people[*person_index].kcal_target else {
@@ -92,7 +90,7 @@ pub(crate) fn assemble_result(
             total_kcal: existing + generated,
         });
     }
-    
+
     let original_total = build_grocery(dataset)?.estimated_purchase_total;
     let mut generated_dataset = dataset.clone();
     generated_dataset.menu.extend(rows.iter().cloned());

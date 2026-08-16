@@ -88,6 +88,23 @@ const STRINGS = {
   },
 };
 
+function localeTable(language) {
+  const entries = Object.entries(STRINGS);
+  const requested = String(language || "").trim().toLowerCase();
+  const primary = requested.split("-")[0];
+  return entries.find(([locale]) => locale.toLowerCase() === requested)?.[1]
+    || entries.find(([locale]) => locale.toLowerCase().split("-")[0] === primary)?.[1]
+    || entries[0]?.[1]
+    || {};
+}
+
+function localizedString(language, key) {
+  const selected = localeTable(language);
+  return selected[key]
+    || Object.values(STRINGS).map((table) => table[key]).find(Boolean)
+    || key;
+}
+
 function normalizeName(value) {
   return String(value || "")
     .normalize("NFD")
@@ -292,8 +309,7 @@ function template(value, values = {}) {
 }
 
 export function createAiDishFeature({ state, select, documentRef, storage, locationRef, send }) {
-  const language = () => (state.language === "en" ? "en" : "fr");
-  const t = (key, values) => template(STRINGS[language()][key] || STRINGS.en[key] || key, values);
+  const t = (key, values) => template(localizedString(state.language, key), values);
   let controller = null;
   let timer = null;
   let startedAt = 0;

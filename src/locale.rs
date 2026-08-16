@@ -12,6 +12,8 @@ pub(crate) struct PdfLocaleStrings {
 struct LocaleStrings {
     days: BTreeMap<String, String>,
     meals: BTreeMap<String, String>,
+    #[serde(default)]
+    messages: BTreeMap<String, String>,
     pdf: PdfLocaleStrings,
 }
 
@@ -122,6 +124,10 @@ pub(crate) fn day_label(language: &str, key: &str) -> Option<String> {
 
 pub(crate) fn meal_label(language: &str, key: &str) -> Option<String> {
     localized_value(language, key, |strings| &strings.meals)
+}
+
+pub(crate) fn message_label(language: &str, key: &str) -> Option<String> {
+    localized_value(language, key, |strings| &strings.messages)
 }
 
 pub(crate) fn day_key(value: &str) -> Option<String> {

@@ -1,6 +1,7 @@
 use crate::loader::{
     FOOD_RULE_DAYS, food_rule_meal_name, localized_days, merge_menu_rows,
 };
+use crate::locale::message_label;
 use crate::model::{AutoMenuAvailability, Dataset, Dish, MenuRow, Person};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
@@ -97,11 +98,8 @@ pub(crate) fn routine_rows(
                 people: vec![person.key.clone()],
                 quantity: rule.quantity,
                 quantity_unit: rule.quantity_unit.clone(),
-                notes: if language == "fr" {
-                    "Routine quotidienne".to_string()
-                } else {
-                    "Daily routine".to_string()
-                },
+                notes: message_label(language, "daily_routine")
+                    .unwrap_or_else(|| "daily_routine".to_string()),
             });
         }
     }

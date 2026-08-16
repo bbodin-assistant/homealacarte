@@ -18,6 +18,9 @@ for (const [locale, strings] of Object.entries(registry.locales)) {
     "breakfast", "morning_snack", "lunch", "afternoon_snack_1",
     "afternoon_snack_2", "dinner", "anytime",
   ]);
+  assert.deepEqual(Object.keys(strings.messages), [
+    "generated_automatically", "daily_routine",
+  ]);
   assert.equal(typeof strings.pdf.grocery_title, "string");
   assert.ok(strings.pdf.grocery_title);
   assert.equal(typeof strings.pdf.decimal_separator, "string");

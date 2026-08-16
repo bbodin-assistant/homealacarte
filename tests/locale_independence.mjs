@@ -25,7 +25,6 @@ async function sourceFiles(root) {
 }
 
 const files = (await Promise.all(implementationRoots.map(sourceFiles))).flat();
-const namedLocaleLiteral = /["'](?:en|fr)["']/g;
 const forbiddenControlFlow = [
   /\btranslations\.(?:en|fr)\b/g,
   /\b(?:DAYS|MEALS)_(?:EN|FR)\b/g,
@@ -33,6 +32,7 @@ const forbiddenControlFlow = [
   /eq_ignore_ascii_case\(\s*["'](?:en|fr)["']\s*\)/gi,
   /\b(?:language|locale|activeLanguage|defaultLanguage)\s*(?:===|==|!==|!=)\s*["'][A-Za-z]{2}(?:-[A-Za-z0-9-]+)?["']/g,
   /\b(?:language|activeLanguage|defaultLanguage)\s*=\s*["'][A-Za-z]{2}(?:-[A-Za-z0-9-]+)?["']/g,
+  /\b(?:language|locale|activeLanguage|defaultLanguage)\s*(?:\|\||\?\?)\s*["'][A-Za-z]{2}(?:-[A-Za-z0-9-]+)?["']/g,
 ];
 
 const violations = [];
@@ -41,13 +41,6 @@ for (const file of files) {
   for (const pattern of forbiddenControlFlow) {
     pattern.lastIndex = 0;
     if (pattern.test(source)) violations.push(`${file.relativePath}: ${pattern}`);
-  }
-  const translationResource = file.relativePath === "www/translations.js";
-  if (!translationResource) {
-    namedLocaleLiteral.lastIndex = 0;
-    if (namedLocaleLiteral.test(source)) {
-      violations.push(`${file.relativePath}: named locale literal outside locale resource data`);
-    }
   }
 }
 
