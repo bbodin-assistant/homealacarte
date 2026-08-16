@@ -13,6 +13,8 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+    outputs:
+      deploy_pages: ${{ steps.supabase_config.outputs.enabled }}
     defaults:
       run:
         shell: bash
@@ -36,29 +38,38 @@ jobs:
       - name: Check Python
         run: python3 --version
 
+      - name: Test, build, and scan the public release
+        run: make release-check DATA_DIR=./sample-data
+
       - name: Configure Supabase for the public deployment
+        id: supabase_config
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           SUPABASE_PROJECT_URL: ${{ vars.SUPABASE_PROJECT_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-        run: python3 scripts/write_supabase_config.py
-
-      - name: Test, build, and scan the public release
-        run: make release-check DATA_DIR=./sample-data
+          HOMEALACARTE_CONFIG_OUTPUT: ${{ github.workspace }}/dist/supabase-config.js
+        run: |
+          if [[ -z "$SUPABASE_PROJECT_URL" || -z "$SUPABASE_PUBLISHABLE_KEY" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Supabase repository settings are missing; checks completed, Pages deployment skipped."
+            exit 0
+          fi
+          python3 scripts/write_supabase_config.py
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Configure GitHub Pages
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: steps.supabase_config.outputs.enabled == 'true'
         uses: actions/configure-pages@v5
 
       - name: Upload GitHub Pages artifact
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: steps.supabase_config.outputs.enabled == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
     name: Deploy public site
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: needs.build.outputs.deploy_pages == 'true'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
