@@ -165,6 +165,8 @@ pub(crate) struct ComponentInput {
 pub struct MenuInput {
     #[serde(default)]
     pub id: Option<String>,
+    #[serde(default)]
+    pub date: String,
     pub day: String,
     pub meal: String,
     pub item_key: String,

@@ -4,6 +4,7 @@ import { buildScheduledDishRow } from "../www/features/menu/scheduling.js";
 
 assert.deepEqual(buildScheduledDishRow({
   dishKey: "vegetable_curry",
+  date: "2026-08-17",
   day: "Monday",
   meal: "Dinner",
   people: ["alex", "sam"],
@@ -11,6 +12,7 @@ assert.deepEqual(buildScheduledDishRow({
   quantityUnit: "portion",
   notes: "Serve warm",
 }), {
+  date: "2026-08-17",
   day: "Monday",
   meal: "Dinner",
   item_key: "vegetable_curry",
@@ -47,8 +49,9 @@ assert.match(index, /id="dish-menu-notes"/);
 assert.match(index, /id="new-dish-notes-list"/);
 assert.match(menu, /openDishScheduleEditor/);
 assert.match(menu, /state\.draft\.push\(scheduledRow\)/);
+assert.match(menu, /date: menuDateForDay/);
 assert.match(editor, /source_notes: dishSourceNotesPayload\(\)/);
 assert.match(editor, /data-component-source-quantity/);
 assert.match(editor, /source_quantity: row\.querySelector\("\[data-component-source-quantity\]"\)/);
 
-console.log("Dish details can build and append a validated scheduled menu row.");
+console.log("Dish details can build and append a validated dated menu row.");

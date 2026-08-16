@@ -93,9 +93,17 @@ self.onmessage = async ({ data }) => {
       snapshot = engine.replace_menu(data.rows);
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "generate-menu") {
-      if (data.rows) engine.replace_menu(data.rows);
-      if (data.stock) engine.replace_stock(data.stock);
-      respond(requestId, "menu-generated", { proposal: engine.generate_menu(data.request) });
+      const rows = data.rows || null;
+      if (data.generationRows) engine.replace_menu(data.generationRows);
+      else if (rows) engine.replace_menu(rows);
+      let proposal;
+      try {
+        if (data.stock) engine.replace_stock(data.stock);
+        proposal = engine.generate_menu(data.request);
+      } finally {
+        if (data.generationRows && rows) engine.replace_menu(rows);
+      }
+      respond(requestId, "menu-generated", { proposal });
     } else if (type === "replace-people") {
       snapshot = engine.replace_people(data.rows);
       respond(requestId, "result", currentState(snapshot));

@@ -155,9 +155,11 @@ pub(crate) fn normalize_menu(
                 ));
             }
         }
+        let date = input.date.trim().to_string();
         let supplied_id = input.id.unwrap_or_default().trim().to_string();
         let id = if supplied_id.is_empty() {
             let identity = serde_json::json!({
+                "date": date,
                 "day": input.day,
                 "meal": input.meal,
                 "item_key": input.item_key,
@@ -183,6 +185,7 @@ pub(crate) fn normalize_menu(
         }
         rows.push(MenuRow {
             id,
+            date,
             day: localize_day(&input.day, language)
                 .map_err(|error| format!("menu item {}: {error}", index + 1))?,
             meal: localize_meal(&input.meal, language)
@@ -204,7 +207,8 @@ pub(crate) fn merge_menu_rows(rows: Vec<MenuRow>) -> Vec<MenuRow> {
     let mut merged: Vec<MenuRow> = Vec::new();
     'rows: for row in rows {
         for candidate in &mut merged {
-            let same_entry = candidate.day == row.day
+            let same_entry = candidate.date == row.date
+                && candidate.day == row.day
                 && candidate.meal == row.meal
                 && candidate.item_key == row.item_key
                 && candidate.quantity == row.quantity
@@ -229,9 +233,10 @@ mod tests {
     use super::merge_menu_rows;
     use crate::model::MenuRow;
 
-    fn row(people: &[&str], quantity: f64, notes: &str) -> MenuRow {
+    fn row(date: &str, people: &[&str], quantity: f64, notes: &str) -> MenuRow {
         MenuRow {
             id: String::new(),
+            date: date.to_string(),
             day: "Monday".to_string(),
             meal: "Dinner".to_string(),
             item_key: "vegetable_curry".to_string(),
@@ -245,17 +250,19 @@ mod tests {
     #[test]
     fn compatible_rows_merge_without_collapsing_repeated_person_portions() {
         let merged = merge_menu_rows(vec![
-            row(&["alex"], 1.0, "Serve warm"),
-            row(&["sam"], 1.0, "Serve warm"),
-            row(&["alex"], 1.0, "Serve warm"),
-            row(&["jo"], 2.0, "Serve warm"),
-            row(&["pat"], 1.0, "No chilli"),
+            row("2026-08-17", &["alex"], 1.0, "Serve warm"),
+            row("2026-08-17", &["sam"], 1.0, "Serve warm"),
+            row("2026-08-17", &["alex"], 1.0, "Serve warm"),
+            row("2026-08-17", &["jo"], 2.0, "Serve warm"),
+            row("2026-08-17", &["pat"], 1.0, "No chilli"),
+            row("2026-08-24", &["lee"], 1.0, "Serve warm"),
         ]);
 
-        assert_eq!(merged.len(), 4);
+        assert_eq!(merged.len(), 5);
         assert_eq!(merged[0].people, vec!["alex", "sam"]);
         assert_eq!(merged[1].people, vec!["alex"]);
         assert_eq!(merged[2].quantity, 2.0);
         assert_eq!(merged[3].notes, "No chilli");
+        assert_eq!(merged[4].date, "2026-08-24");
     }
 }

@@ -1,4 +1,11 @@
 import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
+import {
+  dateMenuRowsForWeek,
+  menuDateForDay,
+  menuRowsForWeek,
+  menuWeek,
+  migrateUndatedMenuRows,
+} from "./menu/week.js?v=homealacarte-81";
 
 export const autoMenuSettingKey = (...parts) => JSON.stringify(parts);
 
@@ -32,6 +39,13 @@ export function createAutoMenuFeature({
 }) {
   const meals = () => [state.snapshot.meals[2], state.snapshot.meals[5]].filter(Boolean);
 
+  function currentWeekContext() {
+    const migration = migrateUndatedMenuRows(state.draft, state.snapshot.days);
+    state.draft = migration.rows;
+    const week = menuWeek(state.snapshot.days, 0);
+    return { week, rows: menuRowsForWeek(state.draft, week) };
+  }
+
   function dishDisplayName(dish) {
     const flag = countryFlag(dish?.origin_country);
     return flag ? `${flag} ${dish.name}` : dish?.name || "";
@@ -39,9 +53,10 @@ export function createAutoMenuFeature({
 
   function initializeSettings() {
     const people = state.snapshot.people;
+    const { week, rows } = currentWeekContext();
     const signature = JSON.stringify([
       state.language,
-      state.snapshot.days,
+      week.map((entry) => entry.date),
       people.map((person) => person.key),
     ]);
     if (state.autoMenuSignature === signature) return;
@@ -50,30 +65,31 @@ export function createAutoMenuFeature({
     state.autoMenuSlots = {};
     state.autoMenuCandidates = {};
     state.autoMenuProposal = null;
-    const hasMenu = state.draft.length > 0;
+    const hasMenu = rows.length > 0;
     for (const person of people) {
-      for (const day of state.snapshot.days) {
+      for (const { day } of week) {
         state.autoMenuAvailability[autoMenuSettingKey(person.key, day)] = !hasMenu
-          || state.draft.some((row) => row.day === day && row.people.includes(person.key));
+          || rows.some((row) => row.day === day && row.people.includes(person.key));
         if (person.kcal_target == null) {
           state.autoMenuAvailability[autoMenuSettingKey(person.key, day)] = false;
         }
       }
     }
-    for (const day of state.snapshot.days) {
+    for (const { day } of week) {
       for (const meal of meals()) {
-        state.autoMenuSlots[autoMenuSettingKey(day, meal)] = !state.draft
+        state.autoMenuSlots[autoMenuSettingKey(day, meal)] = !rows
           .some((row) => row.day === day && row.meal === meal);
       }
     }
-    const used = new Set(state.draft.map((row) => row.item_key));
+    const used = new Set(rows.map((row) => row.item_key));
     for (const dish of state.snapshot.dishes) {
       state.autoMenuCandidates[dish.key] = !used.has(dish.key);
     }
   }
 
   function renderDishes() {
-    const usedDishes = new Set(state.draft.map((row) => row.item_key));
+    const { rows } = currentWeekContext();
+    const usedDishes = new Set(rows.map((row) => row.item_key));
     const query = select("#auto-dish-search").value
       .trim()
       .toLocaleLowerCase(state.language);
@@ -101,6 +117,7 @@ export function createAutoMenuFeature({
       container.innerHTML = "";
       return;
     }
+    const week = menuWeek(state.snapshot.days, 0);
     const people = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
     const dishes = new Map(state.snapshot.dishes.map((dish) => [dish.key, dish]));
     const items = new Map(state.snapshot.item_options.map((item) => [
@@ -120,7 +137,7 @@ export function createAutoMenuFeature({
         <h2>${escapeHtml(translate("generated_menu_preview"))}</h2>
         <div class="auto-menu-preview-grid">${proposal.rows.map((row) => `
           <div class="auto-menu-preview-card">
-            <strong>${escapeHtml(`${row.day} · ${row.meal}`)}</strong>
+            <strong>${escapeHtml(`${menuDateForDay(week, row.day)} · ${row.day} · ${row.meal}`)}</strong>
             <span>${escapeHtml(items.get(row.item_key) || row.item_key)} · ${formatNumber(row.quantity, 2)} ${escapeHtml(row.quantity_unit)}</span>
             <span>${escapeHtml(row.people.map((key) => people.get(key) || key).join(", "))}</span>
           </div>`).join("")}</div>
@@ -132,7 +149,7 @@ export function createAutoMenuFeature({
           <th>${escapeHtml(translate("existing_kcal"))}</th><th>${escapeHtml(translate("generated_kcal"))}</th>
           <th>${escapeHtml(translate("total_kcal"))}</th><th>${escapeHtml(translate("target_kcal"))}</th>
         </tr></thead><tbody>${proposal.daily_results.map((row) => `<tr>
-          <td>${escapeHtml(`${people.get(row.person_key) || row.person_key} · ${row.day}`)}</td>
+          <td>${escapeHtml(`${people.get(row.person_key) || row.person_key} · ${menuDateForDay(week, row.day)} · ${row.day}`)}</td>
           <td>${formatNumber(row.existing_kcal, 0)}</td><td>${formatNumber(row.generated_kcal, 0)}</td>
           <td><strong>${formatNumber(row.total_kcal, 0)}</strong></td><td>${formatNumber(row.target_kcal, 0)}</td>
         </tr>`).join("")}</tbody></table>
@@ -146,6 +163,7 @@ export function createAutoMenuFeature({
   function render() {
     initializeSettings();
     const people = state.snapshot.people;
+    const { week, rows } = currentWeekContext();
     select("#auto-kcal-threshold").value = formatInputNumber(state.autoMenuOptions.kcalThreshold);
     select("#auto-min-portions").value = formatInputNumber(state.autoMenuOptions.minPortions);
     select("#auto-max-portions").value = formatInputNumber(state.autoMenuOptions.maxPortions);
@@ -154,21 +172,21 @@ export function createAutoMenuFeature({
 
     select("#auto-menu-availability").innerHTML = `
       <table class="auto-menu-availability">
-        <thead><tr><th>${escapeHtml(translate("people"))}</th>${state.snapshot.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("")}</tr></thead>
+        <thead><tr><th>${escapeHtml(translate("people"))}</th>${week.map(({ day, date }) => `<th>${escapeHtml(day)}<br><small>${escapeHtml(date)}</small></th>`).join("")}</tr></thead>
         <tbody>${people.map((person) => `<tr>
           <td><strong>${escapeHtml(person.name)}</strong><span>${person.kcal_target == null ? escapeHtml(translate("excluded_without_calorie_target")) : `${formatNumber(person.kcal_target, 0)} kcal`}</span></td>
-          ${state.snapshot.days.map((day) => {
+          ${week.map(({ day }) => {
             const key = autoMenuSettingKey(person.key, day);
             return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" ${state.autoMenuAvailability[key] ? "checked" : ""} ${person.kcal_target == null ? "disabled" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
           }).join("")}
         </tr>`).join("")}</tbody>
       </table>`;
 
-    select("#auto-menu-slots").innerHTML = state.snapshot.days.map((day) => `
+    select("#auto-menu-slots").innerHTML = week.map(({ day, date }) => `
       <div class="auto-menu-slot-day">
-        <h3>${escapeHtml(day)}</h3>
+        <h3>${escapeHtml(day)}<br><small>${escapeHtml(date)}</small></h3>
         ${meals().map((meal) => {
-          const occupied = state.draft.some((row) => row.day === day && row.meal === meal);
+          const occupied = rows.some((row) => row.day === day && row.meal === meal);
           const key = autoMenuSettingKey(day, meal);
           return `<label class="auto-menu-slot ${occupied ? "unavailable" : ""}">
             <input type="checkbox" data-auto-slot-day="${escapeHtml(encodeURIComponent(day))}" data-auto-slot-meal="${escapeHtml(encodeURIComponent(meal))}" ${!occupied && state.autoMenuSlots[key] ? "checked" : ""} ${occupied ? "disabled" : ""}>
@@ -247,10 +265,12 @@ export function createAutoMenuFeature({
     }));
     const candidateDishKeys = selectAll("#auto-menu-dishes input:checked").map((input) =>
       decodeURIComponent(input.dataset.autoDishKey));
+    const { rows } = currentWeekContext();
     clearTimeout(state.editTimer);
     clearProposal();
     send("generate-menu", {
       rows: state.draft,
+      generationRows: rows,
       stock: stockPayload(),
       request: buildAutoMenuRequest(
         state.autoMenuOptions,
@@ -266,7 +286,11 @@ export function createAutoMenuFeature({
       return;
     }
     if (!event.target.closest("#auto-menu-apply") || !state.autoMenuProposal) return;
-    const rows = structuredClone(state.autoMenuProposal.rows);
+    const rows = dateMenuRowsForWeek(
+      structuredClone(state.autoMenuProposal.rows),
+      menuWeek(state.snapshot.days, 0),
+    );
+    state.menuWeekOffset = 0;
     state.autoMenuProposal = null;
     applyProposal(rows);
   });
