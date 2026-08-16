@@ -11,7 +11,7 @@ import { createCatalogueFeature } from "../features/catalogue.js?v=homealacarte-
 import { createFamilyFeature } from "../features/family.js?v=homealacarte-77";
 import { createMenuFeature } from "../features/menu.js?v=homealacarte-80";
 import { createDataAccountFeature } from "../features/data-account.js?v=homealacarte-77";
-import { createShellFeature } from "../features/shell.js?v=homealacarte-77";
+import { createShellFeature } from "../features/shell.js?v=homealacarte-80";
 
 export function createFeatureComposition({
   state,
@@ -66,6 +66,7 @@ export function createFeatureComposition({
   const history = historyRef;
   const location = locationRef;
   const localStorage = storage;
+  const locales = Object.keys(translations);
   const t = (_language, key) => translate(key);
   const searchableSelect = createSearchableSelect({
     getLanguage: () => state.language,
@@ -85,6 +86,7 @@ export function createFeatureComposition({
     storage: localStorage,
     translate: (key) => t(state.language, key),
     hasLanguage: (language) => Boolean(translations[language]),
+    locales,
     randomizeColorTheme,
     renderStorageStatus: (...args) => dataAccountFeature.renderStorageStatus(...args),
     renderDataOverview: (...args) => dataAccountFeature.renderDataOverview(...args),
@@ -175,6 +177,7 @@ export function createFeatureComposition({
     selectAll: $$,
     translate: (key) => t(state.language, key),
     translatedTemplate,
+    locales,
     escapeHtml,
     formatInputNumber,
     formatMoney,
@@ -256,6 +259,7 @@ export function createFeatureComposition({
     selectAll: $$,
     documentRef: document,
     translate: (key) => t(state.language, key),
+    locales,
     escapeHtml,
     formatInputNumber,
     enhanceSearchableSelect,
