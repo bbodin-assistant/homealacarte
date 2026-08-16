@@ -20,18 +20,6 @@ pub(super) fn is_language_tag(value: &str) -> bool {
     })
 }
 
-fn loader_language(language: &str) -> &'static str {
-    if language
-        .split('-')
-        .next()
-        .is_some_and(|primary| primary.eq_ignore_ascii_case("fr"))
-    {
-        "fr"
-    } else {
-        "en"
-    }
-}
-
 pub(super) fn localized_dataset(
     sources: &[SourceFile],
     language: &str,
@@ -40,7 +28,7 @@ pub(super) fn localized_dataset(
         return Err(format!("unsupported language: {language}"));
     }
     let localized_sources = localize_sources(sources, language)?;
-    let mut dataset = load_dataset(localized_sources, loader_language(language))?;
+    let mut dataset = load_dataset(localized_sources, language)?;
     dataset.source_hash = source_hash(sources);
     Ok(dataset)
 }
