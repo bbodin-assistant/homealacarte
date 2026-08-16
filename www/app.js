@@ -15,7 +15,7 @@ import {
   submitPrivacyRequest,
   synchronizePrivateState,
 } from "./storage.js?v=homealacarte-77";
-import { t, translations } from "./translations.js?v=homealacarte-77";
+import { translations } from "./translations.js?v=homealacarte-77";
 import {
   createFormatters,
   displayCategory,
@@ -56,6 +56,31 @@ const themeController = createThemeController(state, localStorage, document.docu
 const applyColorTheme = themeController.apply;
 const randomizeColorTheme = themeController.randomize;
 
+function translationTable(language) {
+  const requested = String(language || "").toLowerCase();
+  const primary = requested.split("-")[0];
+  return Object.entries(translations)
+    .find(([locale]) => locale.toLowerCase() === requested)?.[1]
+    || Object.entries(translations)
+      .find(([locale]) => locale.toLowerCase() === primary)?.[1]
+    || null;
+}
+
+function uiText(language, key) {
+  const selected = translationTable(language);
+  if (selected?.[key]) return selected[key];
+  if (translations.en?.[key]) return translations.en[key];
+  return Object.values(translations).find((table) => table?.[key])?.[key] || key;
+}
+
+function hasUiText(language, key) {
+  return Boolean(
+    translationTable(language)?.[key]
+    || translations.en?.[key]
+    || Object.values(translations).some((table) => table?.[key]),
+  );
+}
+
 const { select: $, selectAll: $$, optionalInputNumber } = createDom(document);
 const {
   formatBytes,
@@ -65,48 +90,52 @@ const {
   translatedTemplate,
 } = createFormatters(
   () => state.language,
-  (key) => t(state.language, key),
+  (key) => uiText(state.language, key),
 );
 const dishNutriScoreDetail = createDishNutriScoreDetail(translatedTemplate);
 
 function setBusy(busy, message = "") {
   const status = $("#status");
   status.classList.toggle("ready", !busy);
-  const busyMessage = message || t(state.language, "loading");
+  const busyMessage = message || uiText(state.language, "loading");
   if (busy) status.lastElementChild.textContent = busyMessage;
   state.engineBusy = busy;
   state.engineMessage = busy ? busyMessage : "";
   application?.renderHeaderStatus();
   const saveState = $("#save-state");
-  if (saveState) saveState.textContent = busy ? t(state.language, "saving") : t(state.language, "saved");
+  if (saveState) {
+    saveState.textContent = busy
+      ? uiText(state.language, "saving")
+      : uiText(state.language, "saved");
+  }
   $$("#grocery-grid input[data-id]").forEach((input) => {
     input.disabled = busy;
   });
 }
 
 function localizeError(message, code = "") {
-  if (code && translations[state.language]?.[code]) return t(state.language, code);
+  if (code && hasUiText(state.language, code)) return uiText(state.language, code);
   const rawMessage = String(message || "");
-  if (translations[state.language]?.[rawMessage]) return t(state.language, rawMessage);
+  if (hasUiText(state.language, rawMessage)) return uiText(state.language, rawMessage);
   const prefixedKey = rawMessage.match(/^([a-z0-9_]+)(?::|$)/)?.[1];
-  if (prefixedKey && translations[state.language]?.[prefixedKey]) {
-    return t(state.language, prefixedKey);
+  if (prefixedKey && hasUiText(state.language, prefixedKey)) {
+    return uiText(state.language, prefixedKey);
   }
   const failedAsset = rawMessage.match(/Cannot load\s+(.+)/i);
   if (failedAsset) {
     return translatedTemplate("asset_load_error", { path: failedAsset[1] });
   }
   if (/failed to fetch|load failed|networkerror|network request failed/i.test(rawMessage)) {
-    return t(state.language, "network_error");
+    return uiText(state.language, "network_error");
   }
   if (/script error|module script|worker/i.test(rawMessage)) {
-    return t(state.language, "worker_error");
+    return uiText(state.language, "worker_error");
   }
   if (/account deletion is (?:already )?pending/i.test(rawMessage)) {
-    return t(state.language, "delete_data_already_pending");
+    return uiText(state.language, "delete_data_already_pending");
   }
   if (/account not found/i.test(rawMessage)) {
-    return t(state.language, "delete_data_account_not_found");
+    return uiText(state.language, "delete_data_account_not_found");
   }
   return rawMessage;
 }
@@ -129,7 +158,7 @@ function clearError() {
 const handleWorkerMessage = createWorkerResponseHandler({
   state,
   select: $,
-  translate: (key) => t(state.language, key),
+  translate: (key) => uiText(state.language, key),
   setBusy,
   showError,
   clearError,
@@ -162,7 +191,7 @@ const application = createFeatureComposition({
   historyRef: history,
   locationRef: location,
   storage: localStorage,
-  translate: (key) => t(state.language, key),
+  translate: (key) => uiText(state.language, key),
   translations,
   randomizeColorTheme,
   applyColorTheme,
