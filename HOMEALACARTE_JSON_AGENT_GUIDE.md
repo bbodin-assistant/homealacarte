@@ -1,4 +1,6 @@
-# HomeAlacarte JSON Format
+# Home à la Carte JSON Agent Guide
+
+This guide describes the JSON format agents should generate or update for Home à la Carte. Prefer valid, conservative data over guessed metadata: preserve stable identifiers, provide translations when they are reliable, and omit optional values when they are unknown.
 
 ## 1. Full database
 
@@ -32,14 +34,55 @@ Rules:
 - `menu`: the complete newly generated menu.
 - Never copy existing items or dishes into the export.
 - Do not include `people`, `stock`, or `extra_needs` in the export.
+- For newly created user-facing items and dishes, use localized names when reliable translations are available.
 
-## 3. Item
+## 3. Localized text
+
+Home à la Carte accepts either a plain JSON string or a localized string object for textual data.
+
+Plain language-neutral value:
 
 ```json
 {
-  "key": "ingredient_key",
-  "name": "Ingredient name",
-  "category": "Category::Subcategory",
+  "name": "Emmental"
+}
+```
+
+Localized value:
+
+```json
+{
+  "name": {
+    "en": "Tomato",
+    "fr": "Tomate"
+  }
+}
+```
+
+Agent rules:
+
+- The current application languages are `en` and `fr`.
+- For new item and dish names, prefer an object containing both `en` and `fr` when both translations are reliable.
+- Do not invent a translation only to fill both languages. A normal string remains valid and is treated as language-neutral.
+- The same localized representation may be used for other user-facing text such as `category`, `source`, `measure_unit`, `purchase_unit`, dish `source_notes`, component `source_quantity`, person descriptions, and notes.
+- Locale keys may include a region suffix such as `en-GB` or `fr-FR`.
+- Resolution tries the requested locale, then its base language, then English, then French, then the first available localized value.
+- Keep identifiers and machine-readable codes stable. Do **not** localize fields such as `key`, `item_key`, person keys, `origin_country`, `nutri_score`, booleans, or numeric values.
+- Food-rule `kind`, `meal`, and `days` values are semantic codes and must remain the documented codes rather than translated display text.
+
+## 4. Item
+
+```json
+{
+  "key": "tomato",
+  "name": {
+    "en": "Tomato",
+    "fr": "Tomate"
+  },
+  "category": {
+    "en": "Produce::Vegetables",
+    "fr": "Fruits et légumes::Légumes"
+  },
   "custom": false,
   "measure_unit": "g",
   "grams": 100.0,
@@ -69,19 +112,24 @@ Notes:
 
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
-- Keys use lowercase `snake_case`.
+- Keys use lowercase `snake_case` and must remain identical in every language.
+- Localize the display `name` rather than creating separate English and French item records.
 
-## 4. Dish
+## 5. Dish
 
 ```json
 {
-  "key": "plat_dish_key",
-  "name": "Dish name",
+  "key": "tomato_emmental_toast",
+  "name": {
+    "en": "Tomato and Emmental toast",
+    "fr": "Tartine tomate-emmental"
+  },
+  "origin_country": "FR",
   "auto_menu_main": true,
   "servings": 4.0,
   "components": [
     {
-      "item_key": "ingredient_key",
+      "item_key": "tomato",
       "quantity": 500.0,
       "quantity_unit": "g",
       "source_quantity": "500 g"
@@ -100,15 +148,26 @@ Rules:
 - `auto_menu_main` defaults to `true`. Set it to `false` for breakfasts, snacks, desserts, and drinks so automatic generation does not use them as lunch or dinner.
 - `servings` and component quantities must be positive.
 - Common component units: `g`, `L`, `pieces`.
+- Localize the dish `name` rather than creating separate records for different languages.
 
-## 5. Menu entry
+### Dish country flag
+
+`origin_country` is optional metadata used to display a country flag for the dish.
+
+- Prefer an ISO 3166-1 alpha-2 country code such as `FR`, `IT`, `JP`, or `MX`.
+- The loader accepts exactly two ASCII letters and normalizes them to uppercase.
+- Use the code only when the dish has a reasonably clear country of origin. If the origin is uncertain, omit `origin_country` or leave it empty rather than guessing.
+- Do not use a country name (`"France"`), nationality (`"French"`), or emoji (`"🇫🇷"`) in this field.
+- Do not localize `origin_country`; the same stable code is used in every language.
+
+## 6. Menu entry
 
 ```json
 {
   "id": "menu_entry_stable_id",
   "day": "Monday",
   "meal": "Dinner",
-  "item_key": "plat_dish_key",
+  "item_key": "tomato_emmental_toast",
   "people": ["person_key"],
   "quantity": 1.0,
   "quantity_unit": "portion",
@@ -118,14 +177,14 @@ Rules:
 
 Rules:
 
-- `id` is optional on import. HomeAlacarte assigns one when absent and preserves it on export for incremental synchronization.
+- `id` is optional on import. Home à la Carte assigns one when absent and preserves it on export for incremental synchronization.
 - `item_key` may reference an item or dish.
 - Use `portion` for dishes.
 - Use `g` or `unit` for direct items.
 - `people` contains existing person keys.
 - Quantities must be positive.
 
-## 6. Person
+## 7. Person
 
 ```json
 {
@@ -159,18 +218,18 @@ Food rules:
 - `never`: exclude the listed dishes and any dish containing the listed ingredients. Use `meal: "any"` for every meal.
 - Meal codes are `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, and `anytime`.
 
-## 7. Stock entry
+## 8. Stock entry
 
 ```json
 {
-  "item_key": "ingredient_key",
+  "item_key": "tomato",
   "quantity": 500.0,
   "quantity_unit": "g",
   "notes": ""
 }
 ```
 
-## 8. Extra need
+## 9. Extra need
 
 ```json
 {
@@ -181,7 +240,7 @@ Food rules:
 }
 ```
 
-## 9. Required validation
+## 10. Required validation
 
 - JSON must parse.
 - Every key must be unique.
@@ -190,3 +249,6 @@ Food rules:
 - Every menu entry must resolve to an item or dish.
 - Every menu person must resolve to a person.
 - Existing records must not be duplicated in the export.
+- Localized text objects must use language-tag keys with string values.
+- Stable identifiers and references must remain strings and must not vary by language.
+- If `origin_country` is present and non-empty, it must contain exactly two ASCII letters.
