@@ -34,7 +34,12 @@ export function createShellFeature({
       option.textContent = localeLabel(locale, state.language);
       return option;
     }));
-    languageSelect.value = state.language;
+    const requested = String(state.language || "").toLowerCase();
+    const primary = requested.split("-")[0];
+    languageSelect.value = locales.find((locale) => locale.toLowerCase() === requested)
+      || locales.find((locale) => locale.toLowerCase() === primary)
+      || locales[0]
+      || "";
   }
 
   function applyTranslations() {
