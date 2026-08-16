@@ -20,6 +20,10 @@
         "dinner": "Dinner",
         "anytime": "Anytime"
       },
+      "messages": {
+        "generated_automatically": "Generated automatically",
+        "daily_routine": "Daily routine"
+      },
       "pdf": {
         "grocery_title": "Grocery list",
         "decimal_separator": "."
@@ -44,6 +48,10 @@
         "dinner": "Diner",
         "anytime": "A tout moment"
       },
+      "messages": {
+        "generated_automatically": "Généré automatiquement",
+        "daily_routine": "Routine quotidienne"
+      },
       "pdf": {
         "grocery_title": "Liste de courses",
         "decimal_separator": ","
@@ -67,6 +75,10 @@
         "afternoon_snack_2": "Merienda 2",
         "dinner": "Cena",
         "anytime": "En cualquier momento"
+      },
+      "messages": {
+        "generated_automatically": "Generado automáticamente",
+        "daily_routine": "Rutina diaria"
       },
       "pdf": {
         "grocery_title": "Lista de la compra",

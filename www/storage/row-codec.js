@@ -98,7 +98,7 @@ export function privateStateToRecords(value) {
     position: 0,
     payload: {
       version: Number(value.version || 11),
-      language: String(value.language || "fr"),
+      language: String(value.language || ""),
     },
     version: 0,
   }];
@@ -149,7 +149,7 @@ export function recordsToPrivateState(sourceRecords) {
   }
   return {
     version: Number(settings.version || 11),
-    language: String(settings.language || "fr"),
+    language: String(settings.language || ""),
     sources: [{
       path: "homealacarte_data.json",
       content: `${JSON.stringify(document, null, 2)}\n`,

@@ -280,7 +280,7 @@ export function createDataAccountFeature({
     Object.keys(storage)
       .filter((key) => key.startsWith(storagePrefix))
       .forEach((key) => storage.removeItem(key));
-    state.language = "fr";
+    state.language = state.language || "";
     state.groceryMode = "list";
     state.menuSelectedOnly = false;
     state.groceryHideStocked = false;
@@ -389,8 +389,7 @@ export function createDataAccountFeature({
     select("#account-message").textContent = "";
     try {
       const result = await signUp(
-        select("#account-email").value.trim(),
-        select("#account-password").value,
+        select("#account-email").value.trim(), select("#account-password").value,
       );
       if (result.confirmationRequired) {
         select("#account-message").textContent = translate("confirmation_required");
