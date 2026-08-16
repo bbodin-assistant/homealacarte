@@ -1,5 +1,5 @@
 use homealacarte_web::{
-    SourceFile, consolidate_personal_sources, merge_personal_documents,
+    SourceFile, consolidate_personal_sources, default_locale, merge_personal_documents,
 };
 use std::env;
 use std::fs;
@@ -78,8 +78,9 @@ fn atomic_write(output_path: &Path, content: &str) -> Result<(), String> {
         .map_err(|error| format!("cannot replace {}: {error}", output_path.display()))
 }
 
-fn convert(source_directory: &Path, output_path: &Path) -> Result<(), String> {
-    let (content, report) = consolidate_personal_sources(load_directory(source_directory)?, "fr")?;
+fn convert(source_directory: &Path, output_path: &Path, language: &str) -> Result<(), String> {
+    let (content, report) =
+        consolidate_personal_sources(load_directory(source_directory)?, language)?;
     atomic_write(output_path, &content)?;
 
     println!("Personal import written to {}", output_path.display());
@@ -105,12 +106,13 @@ fn merge(
     overlay_directory: &Path,
     output_path: &Path,
     audit_path: &Path,
+    language: &str,
 ) -> Result<(), String> {
     let (base_content, _) =
-        consolidate_personal_sources(load_directory(base_directory)?, "fr")?;
+        consolidate_personal_sources(load_directory(base_directory)?, language)?;
     let (overlay_content, _) =
-        consolidate_personal_sources(load_directory(overlay_directory)?, "fr")?;
-    let (content, audit) = merge_personal_documents(&base_content, &overlay_content, "fr")?;
+        consolidate_personal_sources(load_directory(overlay_directory)?, language)?;
+    let (content, audit) = merge_personal_documents(&base_content, &overlay_content, language)?;
     atomic_write(output_path, &content)?;
     atomic_write(
         audit_path,
@@ -139,10 +141,21 @@ fn merge(
 }
 
 fn run() -> Result<(), String> {
-    let arguments = env::args().skip(1).collect::<Vec<_>>();
+    let mut arguments = env::args().skip(1).collect::<Vec<_>>();
+    let language = if arguments.first().is_some_and(|argument| argument == "--locale") {
+        if arguments.len() < 2 || arguments[1].trim().is_empty() {
+            return Err("--locale requires a language tag".to_string());
+        }
+        let language = arguments[1].clone();
+        arguments.drain(0..2);
+        language
+    } else {
+        default_locale()
+    };
+
     match arguments.as_slice() {
         [source_directory, output_path] => {
-            convert(Path::new(source_directory), Path::new(output_path))
+            convert(Path::new(source_directory), Path::new(output_path), &language)
         }
         [command, base_directory, overlay_directory, output_path, audit_path]
             if command == "merge" =>
@@ -152,10 +165,11 @@ fn run() -> Result<(), String> {
                 Path::new(overlay_directory),
                 Path::new(output_path),
                 Path::new(audit_path),
+                &language,
             )
         }
         _ => Err(
-            "usage: personal-data <source-directory> <output.json>\n       personal-data merge <base-directory> <overlay-directory> <output.json> <audit.json>"
+            "usage: personal-data [--locale <tag>] <source-directory> <output.json>\n       personal-data [--locale <tag>] merge <base-directory> <overlay-directory> <output.json> <audit.json>"
                 .to_string(),
         ),
     }

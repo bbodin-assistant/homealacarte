@@ -182,8 +182,8 @@ fn localized_data_accepts_new_language_tags_without_engine_changes() {
     assert_eq!(spanish.dishes[0].source_notes, vec!["Cortar y servir."]);
     assert_eq!(spanish.household_items[0].name, "Jabón de manos");
     assert_eq!(spanish.people[0].name, "Alejandro");
-    assert_eq!(spanish.planner[0].day, "Monday");
-    assert_eq!(spanish.planner[0].meal, "Dinner");
+    assert_eq!(spanish.planner[0].day, "Lunes");
+    assert_eq!(spanish.planner[0].meal, "Cena");
     assert_eq!(spanish.planner[0].notes, "Servir frío");
     assert_eq!(spanish.stock[0].notes, "Queda uno");
     assert_eq!(spanish.custom_grocery[0].notes.as_deref(), Some("Comprar esta semana"));

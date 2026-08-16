@@ -50,7 +50,7 @@ export function localeLabel(locale, displayLocale = locale) {
   const code = String(locale || "").trim();
   if (!code) return "";
   try {
-    const label = new Intl.DisplayNames([displayLocale], { type: "language" }).of(code);
+    const label = new Intl.DisplayNames([displayLocale || code], { type: "language" }).of(code);
     return label ? `${label} · ${code.toUpperCase()}` : code.toUpperCase();
   } catch {
     return code.toUpperCase();
@@ -96,7 +96,7 @@ export function renderLocalizedInputs(
   container,
   supportedLocales,
   values = {},
-  displayLocale = "en",
+  displayLocale = "",
 ) {
   const locales = uniqueLocales([...supportedLocales, ...Object.keys(values)]);
   const documentRef = container.ownerDocument;
@@ -104,7 +104,7 @@ export function renderLocalizedInputs(
     const label = documentRef.createElement("label");
     label.className = "dialog-field localized-name-field";
     const caption = documentRef.createElement("span");
-    caption.textContent = localeLabel(locale, displayLocale);
+    caption.textContent = localeLabel(locale, displayLocale || locale);
     const input = documentRef.createElement("input");
     input.autocomplete = "off";
     input.dataset.locale = locale;
@@ -145,7 +145,7 @@ function localizedMatch(values, locale) {
   return regional?.[1] || "";
 }
 
-export function displayLocalizedName(values = {}, language = "en", fallbackLocales = []) {
+export function displayLocalizedName(values = {}, language = "", fallbackLocales = []) {
   const normalized = Object.fromEntries(
     normalizedLocalizedEntries(values).filter(([, value]) => value),
   );

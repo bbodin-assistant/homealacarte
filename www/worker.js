@@ -3,7 +3,7 @@ import { patchConsolidatedRecord } from "./core/data-localization.js?v=homealaca
 
 let engine;
 let readyPromise;
-let activeLanguage = "fr";
+let activeLanguage = "";
 
 async function ensureEngine() {
   if (!readyPromise) {

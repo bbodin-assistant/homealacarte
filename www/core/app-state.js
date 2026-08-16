@@ -6,14 +6,14 @@ function storedJson(storage, key, fallback = null) {
   }
 }
 
-export function createAppState(storage, getStorageStatus) {
+export function createAppState(storage, getStorageStatus, defaultLanguage = "") {
   const autoMenu = storedJson(storage, "homealacarte-auto-menu-options", {});
   const autoMenuNumber = (key, fallback) => {
     const value = Number(autoMenu[key]);
     return Number.isFinite(value) ? value : fallback;
   };
   return {
-    language: storage.getItem("homealacarte-language") || "fr",
+    language: storage.getItem("homealacarte-language") || defaultLanguage,
     snapshot: null,
     familyDraft: [],
     familyEditKey: null,

@@ -72,7 +72,7 @@ fn localize_sources(sources: &[SourceFile], language: &str) -> Result<Vec<Source
         .collect()
 }
 
-fn localized_string(value: &Value, language: &str) -> Option<String> {
+fn localized_object(value: &Value) -> Option<&serde_json::Map<String, Value>> {
     let object = value.as_object()?;
     if object.is_empty()
         || !object
@@ -81,7 +81,11 @@ fn localized_string(value: &Value, language: &str) -> Option<String> {
     {
         return None;
     }
+    Some(object)
+}
 
+fn localized_string(value: &Value, language: &str) -> Option<String> {
+    let object = localized_object(value)?;
     let language = language.to_ascii_lowercase();
     let primary = language.split('-').next().unwrap_or(language.as_str());
     let find = |candidate: &str| {
@@ -104,13 +108,11 @@ fn localized_string(value: &Value, language: &str) -> Option<String> {
     };
     find(&language)
         .or_else(|| find_primary(primary))
-        .or_else(|| find("en"))
-        .or_else(|| find_primary("en"))
         .or_else(|| object.values().find_map(Value::as_str).map(str::to_string))
 }
 
 fn contains_localized_value(value: &Value) -> bool {
-    if localized_string(value, "en").is_some() {
+    if localized_object(value).is_some() {
         return true;
     }
     match value {

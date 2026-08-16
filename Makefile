@@ -38,6 +38,7 @@ test-web:
 	node --check www/app/feature-composition.js
 	node --check www/storage.js
 	node --check www/core/data-localization.js
+	node --check www/core/ui-i18n.js
 	node --check www/core/stock-availability.js
 	node --check www/translations.js
 	node --check www/worker.js
@@ -48,6 +49,9 @@ test-web:
 	node tests/profile_rules.mjs
 	node tests/format.mjs
 	node tests/data_localization_ui.mjs
+	node tests/ui_i18n.mjs
+	node tests/locale_registry.mjs
+	node tests/locale_independence.mjs
 	node tests/downloads.mjs
 	node tests/theme.mjs
 	node tests/app_state.mjs

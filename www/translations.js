@@ -656,5 +656,13 @@ export const translations = {
 };
 
 export function t(language, key) {
-  return translations[language]?.[key] || translations.fr[key] || key;
+  const entries = Object.entries(translations);
+  const requested = String(language || "").trim().toLowerCase();
+  const primary = requested.split("-")[0];
+  const table = entries.find(([locale]) => locale.toLowerCase() === requested)?.[1]
+    || entries.find(([locale]) => locale.toLowerCase().split("-")[0] === primary)?.[1]
+    || entries[0]?.[1];
+  return table?.[key]
+    || entries.map(([, candidate]) => candidate?.[key]).find(Boolean)
+    || key;
 }

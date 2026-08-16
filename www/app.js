@@ -17,6 +17,11 @@ import {
 } from "./storage.js?v=homealacarte-77";
 import { translations } from "./translations.js?v=homealacarte-77";
 import {
+  defaultLocale,
+  hasTranslation,
+  translate as translateUi,
+} from "./core/ui-i18n.js?v=homealacarte-80";
+import {
   createFormatters,
   displayCategory,
   externalHttpUrl,
@@ -51,35 +56,12 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   extra_needs: [],
 }, null, 2)}\n`;
 const worker = new Worker("./worker.js?v=homealacarte-80", { type: "module" });
-const state = createAppState(localStorage, getStorageStatus);
+const state = createAppState(localStorage, getStorageStatus, defaultLocale(translations));
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;
 const randomizeColorTheme = themeController.randomize;
-
-function translationTable(language) {
-  const requested = String(language || "").toLowerCase();
-  const primary = requested.split("-")[0];
-  return Object.entries(translations)
-    .find(([locale]) => locale.toLowerCase() === requested)?.[1]
-    || Object.entries(translations)
-      .find(([locale]) => locale.toLowerCase() === primary)?.[1]
-    || null;
-}
-
-function uiText(language, key) {
-  const selected = translationTable(language);
-  if (selected?.[key]) return selected[key];
-  if (translations.en?.[key]) return translations.en[key];
-  return Object.values(translations).find((table) => table?.[key])?.[key] || key;
-}
-
-function hasUiText(language, key) {
-  return Boolean(
-    translationTable(language)?.[key]
-    || translations.en?.[key]
-    || Object.values(translations).some((table) => table?.[key]),
-  );
-}
+const uiText = (language, key) => translateUi(translations, language, key);
+const hasUiText = (language, key) => hasTranslation(translations, language, key);
 
 const { select: $, selectAll: $$, optionalInputNumber } = createDom(document);
 const {

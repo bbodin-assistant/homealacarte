@@ -20,7 +20,7 @@ impl Default for Engine {
     fn default() -> Self {
         Self {
             dataset: None,
-            language: "fr".to_string(),
+            language: String::new(),
             profile: None,
             source_files: Vec::new(),
         }
@@ -29,8 +29,13 @@ impl Default for Engine {
 
 impl Engine {
     pub fn load(&mut self, sources: Vec<SourceFile>, config: AppConfig) -> Result<AppSnapshot, String> {
-        let dataset = data_i18n::localized_dataset(&sources, &config.language)?;
-        self.language = config.language;
+        let language = if config.language.trim().is_empty() {
+            crate::locale::fallback_locale()
+        } else {
+            config.language
+        };
+        let dataset = data_i18n::localized_dataset(&sources, &language)?;
+        self.language = language;
         self.profile = dataset
             .people
             .iter()
