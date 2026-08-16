@@ -1,3 +1,4 @@
+use super::data_i18n::rehydrate_localized_data;
 use crate::engine::Engine;
 use crate::model::*;
 use serde_json::{Value, json};
@@ -17,7 +18,7 @@ fn quantity_row(key: &str, quantity: f64, quantity_unit: &str, note: Option<&Str
 impl Engine {
     pub fn export_data(&self, kind: &str) -> Result<String, String> {
         let dataset = self.dataset.as_ref().ok_or("no dataset loaded")?;
-        let value = if kind == "menu" {
+        let mut value = if kind == "menu" {
             json!({ "menu": dataset.menu })
         } else if kind == "consolidated" {
             let mut stock: Vec<Value> = dataset
@@ -78,6 +79,7 @@ impl Engine {
         } else {
             return Err(format!("unsupported export kind: {kind}"));
         };
+        rehydrate_localized_data(&mut value, &self.source_files, &self.language)?;
         serde_json::to_string_pretty(&value).map_err(|error| error.to_string())
     }
 
@@ -140,7 +142,8 @@ impl Engine {
         ];
         values
             .into_iter()
-            .map(|(path, value)| {
+            .map(|(path, mut value)| {
+                rehydrate_localized_data(&mut value, &self.source_files, &self.language)?;
                 Ok(SourceFile {
                     path: path.to_string(),
                     content: format!(
