@@ -14,7 +14,9 @@ IGNORED_PARTS = {"dist", "pkg", "target", "__pycache__"}
 
 # These coordinators intentionally keep their direct dependencies visible.
 # New exceptions require an architectural rationale here and code review.
-SIZE_EXCEPTIONS = {}
+SIZE_EXCEPTIONS = {
+    "www/features/catalogue.js": (750, "coordinates catalogue rendering and both item editors"),
+}
 
 
 def default_limit(relative: str) -> int:
