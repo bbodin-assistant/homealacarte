@@ -9,6 +9,7 @@ import {
   catalogueCategories,
   filterCatalogueItems,
 } from "./catalogue/filters.js?v=homealacarte-77";
+import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-83";
 
 export function createCatalogueFeature({
   state,
@@ -435,6 +436,21 @@ function itemPriceTrendMarkup(item) {
   </span>`;
 }
 
+function ingredientUsageMarkup(item) {
+  const { dishCount, stockQuantity } = ingredientCatalogueStats(
+    item.key,
+    state.snapshot.dishes || [],
+    state.stockDraft || [],
+    item.measure_unit,
+  );
+  return `<span class="item-catalogue-usage">
+    <small>${escapeHtml(`${translate("nav_dishes")}: ${formatNumber(dishCount, 0)}`)}</small>
+    ${stockQuantity
+      ? `<small class="in-stock">${escapeHtml(`${translate("current_stock")}: ${formatNumber(stockQuantity.quantity, 2)} ${stockQuantity.unit}`)}</small>`
+      : ""}
+  </span>`;
+}
+
 function renderItemsCatalogue() {
   const ingredients = state.snapshot.ingredients || [];
   const householdItems = state.snapshot.household_items || [];
@@ -475,6 +491,7 @@ function renderItemsCatalogue() {
       <div class="item-catalogue-row" role="button" tabindex="0" data-item-details="${escapeHtml(encodeURIComponent(item.key))}" data-item-kind="${item.item_kind}" aria-label="${escapeHtml(`${translate("details")}: ${item.name}`)}">
         <strong class="item-catalogue-name">
           <span class="item-catalogue-name-line"><span>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>${item.item_kind === "food" ? itemPriceTrendMarkup(item) : ""}</span>
+          ${item.item_kind === "food" ? ingredientUsageMarkup(item) : ""}
           ${item.item_kind === "food" && ingredientNutriScoreMissing(item)
             ? `<small>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: ingredientNutriScoreMissing(item) }))}</small>`
             : ""}
