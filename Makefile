@@ -44,6 +44,11 @@ test-web:
 	node --check www/worker.js
 	node --check www/features/ai-dish.js
 	node --check www/features/ai-dish/ollama.js
+	node --check www/features/ai-list.js
+	node --check www/features/ai-list/dialog.js
+	node --check www/features/ai-list/strings.js
+	node --check www/features/ai-list/ollama.js
+	node --check www/features/ai-list/payload.js
 	node tests/menu_rows.mjs
 	node tests/food_rules.mjs
 	node tests/profile_rules.mjs
@@ -70,6 +75,8 @@ test-web:
 	node tests/dish_editor_feature.mjs
 	node tests/ai_dish_ollama.mjs
 	node tests/ai_dish_feature.mjs
+	node tests/ai_list_ollama.mjs
+	node tests/ai_list_feature.mjs
 	node tests/auto_menu_feature.mjs
 	node tests/menu_feature.mjs
 	node tests/data_account_feature.mjs

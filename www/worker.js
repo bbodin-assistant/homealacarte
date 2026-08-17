@@ -110,6 +110,15 @@ self.onmessage = async ({ data }) => {
     } else if (type === "replace-stock") {
       snapshot = engine.replace_stock(data.rows);
       respond(requestId, "result", currentState(snapshot));
+    } else if (type === "save-ai-stock") {
+      for (const ingredient of data.customIngredients || []) {
+        engine.add_ingredient(ingredient);
+      }
+      for (const item of data.customHouseholdItems || []) {
+        engine.add_household_item(item);
+      }
+      snapshot = engine.replace_stock(data.rows || []);
+      respond(requestId, "result", currentState(snapshot));
     } else if (type === "set-grocery-stock") {
       if (data.rows) engine.replace_menu(data.rows);
       if (data.stock) engine.replace_stock(data.stock);
