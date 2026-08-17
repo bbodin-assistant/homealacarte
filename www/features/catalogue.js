@@ -443,11 +443,13 @@ function ingredientUsageMarkup(item) {
     state.stockDraft || [],
     item.measure_unit,
   );
+  const dishSummary = `${translate("nav_dishes")}: ${formatNumber(dishCount, 0)}`;
+  const stockSummary = stockQuantity
+    ? `${translate("current_stock")}: ${formatNumber(stockQuantity.quantity, 2)} ${stockQuantity.unit}`
+    : "";
   return `<span class="item-catalogue-usage">
-    <small>${escapeHtml(`${translate("nav_dishes")}: ${formatNumber(dishCount, 0)}`)}</small>
-    ${stockQuantity
-      ? `<small class="in-stock">${escapeHtml(`${translate("current_stock")}: ${formatNumber(stockQuantity.quantity, 2)} ${stockQuantity.unit}`)}</small>`
-      : ""}
+    <small>${escapeHtml(dishSummary)}</small>
+    ${stockQuantity ? `<small class="in-stock">${escapeHtml(stockSummary)}</small>` : ""}
   </span>`;
 }
 
