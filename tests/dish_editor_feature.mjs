@@ -30,7 +30,7 @@ assert.match(dialogs, /id="new-dish-origin-country"/);
 assert.match(dialogs, /class="show-only-control new-dish-auto-menu-control"/);
 assert.doesNotMatch(dialogs, /dialog-field-wide show-only-control/);
 assert.match(app, /const locales = Object\.keys\(translations\)/);
-assert.match(index, /app\.js\?v=homealacarte-84/);
+assert.match(index, /app\.js\?v=homealacarte-85/);
 assert.match(entry, /app\/feature-composition\.js\?v=homealacarte-84/);
 assert.match(entry, /worker\.js\?v=homealacarte-83/);
 assert.match(app, /features\/dish-editor\.js\?v=homealacarte-80/);
