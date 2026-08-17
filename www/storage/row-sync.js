@@ -9,6 +9,8 @@ import {
   writeLocalState,
 } from "./local-store.js?v=homealacarte-78";
 
+const POLL_INTERVAL_MS = 5_000;
+
 function sameValue(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
@@ -18,7 +20,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
   let conflict = null;
   let pollingTimer = null;
 
-  async function pullRemoteChanges(activeSession, notify = true) {
+  async function pullRemoteChanges(activeSession, notify = true, ignoredChangeIds = new Set()) {
     const meta = await readSyncMeta();
     let cursor = Number(meta.cursor || 0);
     let changed = false;
@@ -26,13 +28,16 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
       const changes = await remoteClient.fetchRemoteChanges(cursor);
       if (!changes.length) break;
       const nextCursor = Number(changes.at(-1).change_id || cursor);
+      const remoteChanges = changes.filter(
+        (change) => !ignoredChangeIds.has(Number(change.change_id || 0)),
+      );
       const conflicts = await applyRemoteChanges(
-        changes,
+        remoteChanges,
         nextCursor,
         activeSession.user.id,
       );
       cursor = nextCursor;
-      changed = changed || changes.length > conflicts.length;
+      changed = changed || remoteChanges.length > conflicts.length;
       if (conflicts.length) {
         conflict = { kind: "rows", rows: conflicts };
         emitStatus({ state: "conflict", message: "Online and local records both changed." });
@@ -45,15 +50,21 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
   }
 
   async function pushPending(activeSession) {
+    const appliedChangeIds = new Set();
     while (true) {
       const operations = await readPendingOperations();
-      if (!operations.length) return true;
+      if (!operations.length) return appliedChangeIds;
       emitStatus({ state: "saving", message: "" });
+      const meta = await readSyncMeta();
       const result = await remoteClient.applyRemoteOperations(operations);
+      for (const change of result?.applied || []) {
+        const changeId = Number(change?.change_id || 0);
+        if (changeId > 0) appliedChangeIds.add(changeId);
+      }
       await acknowledgeOperations(
         operations,
         result?.applied || [],
-        result?.cursor || 0,
+        Number(meta.cursor || 0),
         activeSession.user.id,
       );
       if (result?.conflicts?.length) {
@@ -65,7 +76,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
           })),
         };
         emitStatus({ state: "conflict", message: "The same records changed on another device." });
-        return false;
+        return null;
       }
     }
   }
@@ -78,8 +89,9 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     }
     try {
       await remoteClient.touchAccountActivity();
-      if (!await pushPending(activeSession)) return null;
-      if (!await pullRemoteChanges(activeSession, notify)) return null;
+      const appliedChangeIds = await pushPending(activeSession);
+      if (!appliedChangeIds) return null;
+      if (!await pullRemoteChanges(activeSession, notify, appliedChangeIds)) return null;
       emitStatus({ state: "synced", message: "" });
       return readLocalState();
     } catch (error) {
@@ -203,7 +215,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     pollingTimer = setInterval(() => {
       if (globalThis.document?.visibilityState === "hidden" || conflict) return;
       synchronize(true).catch(() => {});
-    }, 20_000);
+    }, POLL_INTERVAL_MS);
   }
 
   function stop() {
