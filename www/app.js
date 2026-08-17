@@ -42,6 +42,7 @@ import {
 } from "./core/nutrition.js?v=homealacarte-77";
 import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-81";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
+import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -55,7 +56,7 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   stock: [],
   extra_needs: [],
 }, null, 2)}\n`;
-const worker = new Worker("./worker.js?v=homealacarte-81", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-82", { type: "module" });
 const state = createAppState(localStorage, getStorageStatus, defaultLocale(translations));
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;
@@ -220,8 +221,17 @@ const aiDishFeature = createAiDishFeature({
   locationRef: location,
   send,
 });
+const aiListFeature = createAiListFeature({
+  state,
+  select: $,
+  documentRef: document,
+  storage: localStorage,
+  locationRef: location,
+  send,
+});
 application.mount();
 aiDishFeature.mount();
+aiListFeature.mount();
 
 onStorageStatus(application.renderStorageStatus);
 onPrivateStateChange(() => location.reload());
