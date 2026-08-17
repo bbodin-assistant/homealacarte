@@ -16,6 +16,7 @@ fn menu_replacement_normalizes_localized_rows() {
     let snapshot = engine
         .replace_menu(vec![MenuInput {
             id: None,
+            date: "2026-08-18".to_string(),
             day: "Mardi".to_string(),
             meal: "Diner".to_string(),
             item_key: "bread_test".to_string(),
@@ -29,6 +30,7 @@ fn menu_replacement_normalizes_localized_rows() {
         .unwrap();
 
     assert_eq!(snapshot.planner.len(), 1);
+    assert_eq!(snapshot.planner[0].date, "2026-08-18");
     assert_eq!(snapshot.planner[0].day, "Tuesday");
     assert_eq!(snapshot.planner[0].meal, "Dinner");
     assert_eq!(snapshot.planner[0].people, ["test_person"]);
@@ -39,4 +41,5 @@ fn menu_replacement_normalizes_localized_rows() {
         exported["menu"][0]["id"].as_str(),
         Some(snapshot.planner[0].id.as_str())
     );
+    assert_eq!(exported["menu"][0]["date"].as_str(), Some("2026-08-18"));
 }

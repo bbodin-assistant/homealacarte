@@ -1,5 +1,6 @@
 function mergeKey(row) {
   return JSON.stringify([
+    String(row.date || ""),
     String(row.day || ""),
     String(row.meal || ""),
     String(row.item_key || ""),
