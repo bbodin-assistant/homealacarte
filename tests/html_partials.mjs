@@ -23,4 +23,13 @@ for (const partial of partials) {
 }
 assert.equal(template.match(/\{\{ include:/g)?.length, partials.length);
 
-console.log("HTML partials are bounded and composed in deterministic document order.");
+const visibleVersion = template.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
+const appModuleVersion = template.match(/src="\.\/app\.js\?v=homealacarte-(\d+)"/)?.[1];
+assert.ok(visibleVersion, "index must expose an application version");
+assert.equal(
+  appModuleVersion,
+  visibleVersion,
+  "app.js cache version must match the visible application version",
+);
+
+console.log("HTML partials are bounded, ordered, and load the current app module version.");
