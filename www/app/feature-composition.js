@@ -1,15 +1,15 @@
-import { mergeCompatibleMenuRows } from "../features/menu/rows.js?v=homealacarte-77";
+import { mergeCompatibleMenuRows } from "../features/menu/rows.js?v=homealacarte-81";
 import { createSearchableSelect } from "../core/searchable-select.js?v=homealacarte-77";
 import { createStockFeature } from "../features/stock.js?v=homealacarte-77";
 import { createExtraNeedsFeature } from "../features/extra-needs.js?v=homealacarte-77";
 import { createGroceryFeature } from "../features/grocery.js?v=homealacarte-77";
 import { createDishesFeature } from "../features/dishes.js?v=homealacarte-80";
-import { createAutoMenuFeature } from "../features/auto-menu.js?v=homealacarte-80";
+import { createAutoMenuFeature } from "../features/auto-menu.js?v=homealacarte-81";
 import { createItemDetailsFeature } from "../features/item-details.js?v=homealacarte-77";
 import { createDishEditorFeature } from "../features/dish-editor.js?v=homealacarte-80";
 import { createCatalogueFeature } from "../features/catalogue.js?v=homealacarte-80";
 import { createFamilyFeature } from "../features/family.js?v=homealacarte-77";
-import { createMenuFeature } from "../features/menu.js?v=homealacarte-80";
+import { createMenuFeature } from "../features/menu.js?v=homealacarte-81";
 import { createDataAccountFeature } from "../features/data-account.js?v=homealacarte-77";
 import { createShellFeature } from "../features/shell.js?v=homealacarte-80";
 

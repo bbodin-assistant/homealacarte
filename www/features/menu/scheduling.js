@@ -1,5 +1,6 @@
 export function buildScheduledDishRow({
   dishKey,
+  date = "",
   day,
   meal,
   people,
@@ -22,6 +23,7 @@ export function buildScheduledDishRow({
     throw new Error("Unsupported quantity unit.");
   }
   return {
+    ...(String(date || "").trim() ? { date: String(date).trim() } : {}),
     day,
     meal,
     item_key: dishKey,

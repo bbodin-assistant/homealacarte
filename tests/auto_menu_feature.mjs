@@ -34,8 +34,17 @@ assert.deepEqual(request, {
   candidate_dish_keys: ["curry"],
 });
 
-const feature = await readFile(new URL("../www/features/auto-menu.js", import.meta.url), "utf8");
+const [feature, worker] = await Promise.all([
+  readFile(new URL("../www/features/auto-menu.js", import.meta.url), "utf8"),
+  readFile(new URL("../www/worker.js", import.meta.url), "utf8"),
+]);
 assert.match(feature, /countryFlag/);
 assert.match(feature, /function dishDisplayName/);
+assert.match(feature, /menuWeek\(state\.snapshot\.days, 0\)/);
+assert.match(feature, /generationRows: rows/);
+assert.match(feature, /dateMenuRowsForWeek/);
+assert.match(worker, /data\.generationRows/);
+assert.match(worker, /finally/);
+assert.match(worker, /engine\.replace_menu\(rows\)/);
 
-console.log("Automatic-menu feature builds day-scoped requests and displays dish origin flags.");
+console.log("Automatic-menu feature builds day-scoped requests and limits generation to the current dated week.");

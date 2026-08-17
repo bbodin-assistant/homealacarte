@@ -1,6 +1,13 @@
 import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
-import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-77";
-import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-77";
+import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-81";
+import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-81";
+import {
+  menuDateForDay,
+  menuNutritionByDate,
+  menuRowsForWeek,
+  menuWeek,
+  migrateUndatedMenuRows,
+} from "./menu/week.js?v=homealacarte-81";
 
 export function createMenuFeature({
   state,
@@ -23,6 +30,16 @@ export function createMenuFeature({
   send,
   setMenuMode,
 }) {
+  function visibleWeek() {
+    return menuWeek(state.snapshot.days, state.menuWeekOffset);
+  }
+
+  function dayOptions(selected = "") {
+    return visibleWeek()
+      .map(({ day, date }) => `<option value="${escapeHtml(day)}" ${day === selected ? "selected" : ""}>${escapeHtml(`${day} · ${date}`)}</option>`)
+      .join("");
+  }
+
   function itemDisplayName(item) {
     if (!item) return "";
     if (item.kind !== "dish") return item.name;
@@ -73,7 +90,7 @@ export function createMenuFeature({
     const current = state.snapshot.item_options.find((item) => item.key === row.item_key);
     state.pendingReplacementIndex = index;
     select("#meal-replace-context").textContent =
-      `${itemDisplayName(current) || row.item_key} · ${row.day} · ${row.meal}`;
+      `${itemDisplayName(current) || row.item_key} · ${row.date} · ${row.day} · ${row.meal}`;
     select("#meal-replace-select").innerHTML = itemOptions("", row.item_key);
     const search = enhanceSearchableSelect(
       select("#meal-replace-select"),
@@ -93,7 +110,11 @@ export function createMenuFeature({
   }
 
   function renderMenu() {
-    state.draft = mergeCompatibleMenuRows(state.draft);
+    const migration = migrateUndatedMenuRows(state.draft, state.snapshot.days);
+    state.draft = mergeCompatibleMenuRows(migration.rows);
+    const week = visibleWeek();
+    const weekDates = new Set(week.map((entry) => entry.date));
+    const rows = menuRowsForWeek(state.draft, week);
     const profileSelect = select("#profile-select");
     const peopleNames = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
     const itemNames = new Map(state.snapshot.item_options.map((item) => [item.key, itemDisplayName(item)]));
@@ -103,25 +124,29 @@ export function createMenuFeature({
       .map((person) => `<option value="${escapeHtml(person.key)}" ${person.key === state.snapshot.profile ? "selected" : ""}>${escapeHtml(person.name)}</option>`)
       .join("");
     select("#show-selected-only").checked = state.menuSelectedOnly;
-    select("#empty-menu").disabled = state.draft.length === 0;
+    select("#empty-menu").disabled = rows.length === 0;
+    select("#menu-week-range").textContent = week.length
+      ? `${week[0].date} — ${week[week.length - 1].date}`
+      : "";
     const cells = new Map();
     state.draft.forEach((row, index) => {
+      if (!weekDates.has(row.date)) return;
       if (
         state.menuSelectedOnly
         && state.snapshot.profile
         && !row.people.includes(state.snapshot.profile)
       ) return;
-      const key = `${row.meal}|${row.day}`;
+      const key = `${row.meal}|${row.date}`;
       if (!cells.has(key)) cells.set(key, []);
       cells.get(key).push({ row, index });
     });
-    const nutrition = new Map(state.snapshot.daily_nutrition.map((row) => [row.day, row.nutrients]));
-    let html = `<thead><tr><th>${translate("meal")}</th>${state.snapshot.days.map((day) => `<th>${escapeHtml(day)}</th>`).join("")}</tr></thead><tbody>`;
+    const nutrition = menuNutritionByDate(state.snapshot, rows);
+    let html = `<thead><tr><th>${translate("meal")}</th>${week.map(({ day, date }) => `<th>${escapeHtml(day)}<br><small>${escapeHtml(date)}</small></th>`).join("")}</tr></thead><tbody>`;
     for (const meal of state.snapshot.meals) {
       html += `<tr><td>${escapeHtml(meal)}</td>`;
-      for (const day of state.snapshot.days) {
-        const entries = cells.get(`${meal}|${day}`) || [];
-        html += `<td data-menu-drop-day="${escapeHtml(day)}" data-menu-drop-meal="${escapeHtml(meal)}"><div class="menu-cell">
+      for (const { day, date } of week) {
+        const entries = cells.get(`${meal}|${date}`) || [];
+        html += `<td data-menu-drop-date="${escapeHtml(date)}" data-menu-drop-day="${escapeHtml(day)}" data-menu-drop-meal="${escapeHtml(meal)}"><div class="menu-cell">
           <div class="menu-cell-entries">${entries.map(({ row, index }) => {
             const name = itemNames.get(row.item_key) || row.item_key;
             const dish = dishes.get(row.item_key);
@@ -138,7 +163,7 @@ export function createMenuFeature({
               </div>`;
           }).join("")}</div>
           <div class="menu-drop-placeholder" aria-hidden="true">${escapeHtml(translate("drop_here"))}</div>
-          <button type="button" class="menu-cell-add" data-day="${escapeHtml(day)}" data-meal="${escapeHtml(meal)}" aria-label="${escapeHtml(translate("add_menu_item"))}">
+          <button type="button" class="menu-cell-add" data-date="${escapeHtml(date)}" data-day="${escapeHtml(day)}" data-meal="${escapeHtml(meal)}" aria-label="${escapeHtml(translate("add_menu_item"))}">
             <span aria-hidden="true">+</span>
           </button>
         </div></td>`;
@@ -146,12 +171,13 @@ export function createMenuFeature({
       html += "</tr>";
     }
     html += `<tr class="nutrition-row"><td>${translate("total_person")}</td>`;
-    for (const day of state.snapshot.days) {
-      const value = nutrition.get(day) || {};
+    for (const { date } of week) {
+      const value = nutrition.get(date) || {};
       html += `<td><strong>${formatNumber(value.kcal, 0)} kcal</strong><span>${formatNumber(value.protein_g)} g P · ${formatNumber(value.carbs_g)} g G<br>${formatNumber(value.fat_g)} g L · ${formatNumber(value.fiber_g)} g F</span></td>`;
     }
     html += "</tr></tbody>";
     select("#weekly-menu").innerHTML = html;
+    if (migration.changed) scheduleMenuUpdate();
   }
 
   function openDishDetails(dishKey, menuIndex) {
@@ -167,7 +193,7 @@ export function createMenuFeature({
     const peopleNames = new Map(state.snapshot.people.map((person) => [person.key, person.name]));
     const context = row
       ? [
-        `${row.day} · ${row.meal}`,
+        `${row.date} · ${row.day} · ${row.meal}`,
         `${formatNumber(row.quantity)} ${row.quantity_unit}`,
         row.people.map((key) => peopleNames.get(key) || key).join(", "),
       ].filter(Boolean).join(" · ")
@@ -188,9 +214,7 @@ export function createMenuFeature({
       select("#dish-menu-editor-title").textContent = translate("edit_menu_item");
       select("#dish-menu-editor-intro").textContent = translate("edit_menu_intro");
       select("#dish-details-save").textContent = translate("save_changes");
-      select("#dish-menu-day").innerHTML = state.snapshot.days
-        .map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
-        .join("");
+      select("#dish-menu-day").innerHTML = dayOptions(row.day);
       select("#dish-menu-day").value = row.day;
       select("#dish-menu-meal").innerHTML = state.snapshot.meals
         .map((meal) => `<option value="${escapeHtml(meal)}">${escapeHtml(meal)}</option>`)
@@ -334,9 +358,7 @@ export function createMenuFeature({
     select("#dish-menu-editor").hidden = false;
     select("#dish-menu-editor-title").textContent = translate("schedule_dish");
     select("#dish-menu-editor-intro").textContent = translate("schedule_dish_intro");
-    select("#dish-menu-day").innerHTML = state.snapshot.days
-      .map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`)
-      .join("");
+    select("#dish-menu-day").innerHTML = dayOptions();
     select("#dish-menu-meal").innerHTML = state.snapshot.meals
       .map((meal) => `<option value="${escapeHtml(meal)}">${escapeHtml(meal)}</option>`)
       .join("");
@@ -376,9 +398,9 @@ export function createMenuFeature({
     select("#menu-item-unit").value = selected?.kind === "dish" ? "portion" : "g";
   }
 
-  function openMenuItemDialog(day, meal) {
-    state.menuCellDraft = { day, meal };
-    select("#menu-item-context").textContent = `${day} · ${meal}`;
+  function openMenuItemDialog(day, meal, date) {
+    state.menuCellDraft = { date, day, meal };
+    select("#menu-item-context").textContent = `${date} · ${day} · ${meal}`;
     select("#menu-item-select").innerHTML = itemOptions("");
     const firstDish = state.snapshot.item_options.find((item) => item.kind === "dish");
     select("#menu-item-select").value = firstDish?.key || state.snapshot.item_options[0]?.key || "";
@@ -413,6 +435,14 @@ export function createMenuFeature({
   selectAll('[data-menu-mode]').forEach((button) => button.addEventListener("click", () => {
     setMenuMode(button.dataset.menuMode);
   }));
+  select("#menu-previous-week").addEventListener("click", () => {
+    state.menuWeekOffset -= 1;
+    renderMenu();
+  });
+  select("#menu-next-week").addEventListener("click", () => {
+    state.menuWeekOffset += 1;
+    renderMenu();
+  });
   select("#profile-select").addEventListener("change", (event) => send("set-profile", { profile: event.target.value }));
   select("#show-selected-only").addEventListener("change", (event) => {
     state.menuSelectedOnly = event.target.checked;
@@ -420,13 +450,14 @@ export function createMenuFeature({
     renderMenu();
   });
   select("#empty-menu").addEventListener("click", () => {
-    if (!state.draft.length) return;
+    const dates = new Set(visibleWeek().map((entry) => entry.date));
+    if (!state.draft.some((row) => dates.has(row.date))) return;
     openConfirmation({
       title: translate("empty_menu_confirm_title"),
       message: translate("empty_menu_confirm_message"),
       confirmLabel: translate("empty_menu"),
       action: () => {
-        state.draft = [];
+        state.draft = state.draft.filter((row) => !dates.has(row.date));
         renderMenu();
         scheduleMenuUpdate();
       },
@@ -449,7 +480,7 @@ export function createMenuFeature({
       return;
     }
     const addButton = event.target.closest(".menu-cell-add");
-    if (addButton) openMenuItemDialog(addButton.dataset.day, addButton.dataset.meal);
+    if (addButton) openMenuItemDialog(addButton.dataset.day, addButton.dataset.meal, addButton.dataset.date);
   });
   select("#weekly-menu").addEventListener("dragstart", (event) => {
     const entry = event.target.closest("[data-menu-drag-index]");
@@ -480,6 +511,7 @@ export function createMenuFeature({
     const row = state.draft[index];
     if (!cell || !row) return;
     event.preventDefault();
+    row.date = cell.dataset.menuDropDate;
     row.day = cell.dataset.menuDropDay;
     row.meal = cell.dataset.menuDropMeal;
     state.draggedMenuIndex = null;
@@ -529,9 +561,11 @@ export function createMenuFeature({
       return;
     }
     if (state.dishDetailsScheduling) {
+      const day = select("#dish-menu-day").value;
       const scheduledRow = buildScheduledDishRow({
         dishKey: state.dishDetailsDishKey,
-        day: select("#dish-menu-day").value,
+        date: menuDateForDay(visibleWeek(), day),
+        day,
         meal: select("#dish-menu-meal").value,
         people,
         quantity,
@@ -548,6 +582,7 @@ export function createMenuFeature({
     if (!row) return;
     row.people = people;
     row.day = select("#dish-menu-day").value;
+    row.date = menuDateForDay(visibleWeek(), row.day);
     row.meal = select("#dish-menu-meal").value;
     row.quantity = quantity;
     row.quantity_unit = select("#dish-menu-unit").value;
@@ -594,6 +629,7 @@ export function createMenuFeature({
       return;
     }
     state.draft.push({
+      date: state.menuCellDraft.date,
       day: state.menuCellDraft.day,
       meal: state.menuCellDraft.meal,
       item_key: select("#menu-item-select").value,

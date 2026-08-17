@@ -161,6 +161,8 @@ pub struct Person {
 pub struct MenuRow {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub id: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub date: String,
     pub day: String,
     pub meal: String,
     pub item_key: String,
