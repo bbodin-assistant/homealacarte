@@ -64,6 +64,9 @@
 .item-price-trend.down { color: var(--green); background: var(--green-soft); }
 .item-price-trend.down svg { transform: rotate(45deg); }
 .item-catalogue-name small { color: #8a5b14; font-size: 9px; font-weight: 700; }
+.item-catalogue-usage { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.item-catalogue-name .item-catalogue-usage small { color: var(--muted); }
+.item-catalogue-name .item-catalogue-usage .in-stock { color: var(--green); }
 .item-catalogue-row > span:not(.item-catalogue-actions) { color: var(--muted); font-size: 10px; }
 .item-type-badge { width: max-content; padding: 4px 7px; color: var(--accent-dark) !important; background: var(--accent-soft); border-radius: 999px; font-size: 8px !important; font-weight: 900; text-transform: uppercase; }
 .item-catalogue-actions { display: flex; justify-content: flex-end; gap: 6px; }
