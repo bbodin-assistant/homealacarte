@@ -16,6 +16,10 @@ assert.equal(state.autoMenuOptions.kcalThreshold, 200);
 assert.equal(state.autoMenuOptions.samePortionForEveryone, true);
 assert.deepEqual(state.storageStatus, { state: "local" });
 
+values.set("homealacarte-item-catalogue-tab", "all");
+const allItems = createAppState(storage, () => ({ state: "local" }), "de");
+assert.equal(allItems.itemCatalogueTab, "all");
+
 values.delete("homealacarte-language");
 const defaulted = createAppState(storage, () => ({ state: "local" }), "de");
 assert.equal(defaulted.language, "de");
