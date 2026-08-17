@@ -1,5 +1,6 @@
 const SESSION_KEY = "homealacarte-supabase-session";
 const REQUEST_TIMEOUT_MS = 6000;
+const SYNC_REQUEST_TIMEOUT_MS = 20000;
 
 export function createRemoteClient({
   emitStatus,
@@ -8,6 +9,8 @@ export function createRemoteClient({
   historyRef = history,
   fetchFn = fetch,
   configValue,
+  requestTimeoutMs = REQUEST_TIMEOUT_MS,
+  syncRequestTimeoutMs = SYNC_REQUEST_TIMEOUT_MS,
 }) {
   let configPromise;
   let session = readSession();
@@ -86,10 +89,27 @@ export function createRemoteClient({
   captureCallbackSession();
 
   async function request(url, options = {}) {
+    const { timeoutMs = requestTimeoutMs, ...requestOptions } = options;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await fetchFn(url, { ...options, signal: controller.signal });
+      return await fetchFn(url, { ...requestOptions, signal: controller.signal });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        let pathname = String(url);
+        try {
+          pathname = new URL(url).pathname;
+        } catch {}
+        const method = String(requestOptions.method || "GET").toUpperCase();
+        const duration = timeoutMs >= 1000 && timeoutMs % 1000 === 0
+          ? `${timeoutMs / 1000}s`
+          : `${timeoutMs}ms`;
+        const timeoutError = new Error(`Request timed out after ${duration}: ${method} ${pathname}`);
+        timeoutError.name = "TimeoutError";
+        timeoutError.cause = error;
+        throw timeoutError;
+      }
+      throw error;
     } finally {
       clearTimeout(timeout);
     }
@@ -136,7 +156,7 @@ export function createRemoteClient({
       saveSession(refreshed);
       return refreshed;
     } catch (error) {
-      if (error instanceof TypeError || error?.name === "AbortError") {
+      if (error instanceof TypeError || error?.name === "AbortError" || error?.name === "TimeoutError") {
         emitStatus({ state: "offline", message: error.message });
         return null;
       }
@@ -192,6 +212,7 @@ export function createRemoteClient({
     return restRequest("rpc/get_household_sync_snapshot", {
       method: "POST",
       body: "{}",
+      timeoutMs: syncRequestTimeoutMs,
     });
   }
 
@@ -220,6 +241,7 @@ export function createRemoteClient({
     return restRequest("rpc/apply_household_sync_operations", {
       method: "POST",
       body: JSON.stringify({ operations: rows }),
+      timeoutMs: syncRequestTimeoutMs,
     });
   }
 
@@ -236,6 +258,7 @@ export function createRemoteClient({
   function isNetworkError(error) {
     return error instanceof TypeError
       || error?.name === "AbortError"
+      || error?.name === "TimeoutError"
       || /failed to fetch|load failed|network/i.test(String(error?.message || ""));
   }
 

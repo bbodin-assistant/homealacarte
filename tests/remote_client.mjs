@@ -67,10 +67,45 @@ assert.deepEqual(JSON.parse(requests[1].options.body).operations[0], {
 assert.match(requests[2].url, /household_changes.*change_id=gt\.4/);
 assert.equal(requests[3].options.method, "DELETE");
 
+const timeoutValues = new Map([["homealacarte-supabase-session", JSON.stringify({
+  access_token: "header.payload.signature",
+  refresh_token: "refresh",
+  expires_at: Math.floor(Date.now() / 1000) + 3600,
+  user: { id: "user-timeout", email: "timeout@example.com" },
+})]]);
+const timeoutClient = createRemoteClient({
+  emitStatus: () => {},
+  configValue: { projectUrl: "https://project.example", publishableKey: "publishable" },
+  syncRequestTimeoutMs: 1,
+  storage: {
+    getItem: (key) => timeoutValues.get(key) ?? null,
+    setItem: (key, value) => timeoutValues.set(key, value),
+    removeItem: (key) => timeoutValues.delete(key),
+  },
+  locationRef: { hash: "", pathname: "/", search: "" },
+  historyRef: { replaceState: () => {} },
+  fetchFn: async (_url, options) => new Promise((resolve, reject) => {
+    options.signal.addEventListener("abort", () => {
+      const error = new Error("The operation was aborted.");
+      error.name = "AbortError";
+      reject(error);
+    }, { once: true });
+  }),
+});
+await assert.rejects(timeoutClient.fetchRemoteSnapshot(), (error) => {
+  assert.equal(error.name, "TimeoutError");
+  assert.match(
+    error.message,
+    /Request timed out after 1ms: POST \/rest\/v1\/rpc\/get_household_sync_snapshot/,
+  );
+  assert.equal(timeoutClient.isNetworkError(error), true);
+  return true;
+});
+
 const coordinator = await readFile(new URL("../www/storage.js", import.meta.url), "utf8");
 assert.match(coordinator, /createRemoteClient/);
 assert.doesNotMatch(coordinator, /function authRequest/);
 assert.doesNotMatch(coordinator, /function restRequest/);
 assert.doesNotMatch(coordinator, /function ensureSession/);
 
-console.log("Remote configuration, sessions, authentication, and REST transport have one client owner.");
+console.log("Remote configuration, sessions, timeouts, authentication, and REST transport have one client owner.");

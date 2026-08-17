@@ -68,7 +68,15 @@
       nextState.sources[0].content = JSON.stringify(restored);
       await writeLocalState(nextState, { userId: "browser-test" });
       let notified = 0;
-      let remoteChanges = [];
+      let remoteChanges = [{
+        change_id: 4,
+        entity_type: "people",
+        entity_id: "alex",
+        position: 0,
+        payload: { key: "alex", name: "Alex", kind: "adult", kcal_target: 2000 },
+        record_version: 1,
+        operation: "upsert",
+      }];
       const session = { user: { id: "browser-test", email: "test@example.com" } };
       const sync = createRowSync({
         emitStatus: () => {},
@@ -78,36 +86,44 @@
           getSession: () => session,
           isNetworkError: () => false,
           touchAccountActivity: async () => {},
-          applyRemoteOperations: async (operations) => ({
-            cursor: 4,
-            conflicts: [],
-            applied: operations.map((operation) => ({
-              change_id: 4,
+          applyRemoteOperations: async (operations) => {
+            const applied = operations.map((operation) => ({
+              change_id: 5,
               entity_type: operation.entityType,
               entity_id: operation.entityId,
               position: operation.position,
               payload: operation.payload,
               record_version: 3,
               operation: operation.operation,
-            })),
-          }),
+            }));
+            remoteChanges.push(...applied);
+            return { cursor: 5, conflicts: [], applied };
+          },
           fetchRemoteChanges: async (cursor) => remoteChanges.filter((row) => row.change_id > cursor),
         },
       });
       await sync.synchronize(false);
       if ((await readPendingOperations()).length !== 0) throw new Error("row sync did not drain the outbox");
-      remoteChanges = [{
-        change_id: 5,
+      const afterConcurrentPull = JSON.parse((await readLocalState()).sources[0].content);
+      if (afterConcurrentPull.people[0]?.key !== "alex") {
+        throw new Error("remote change preceding the local upload was skipped by the cursor");
+      }
+      if (afterConcurrentPull.items[0]?.name !== "Synced rice") {
+        throw new Error("local upload echo changed the acknowledged record");
+      }
+
+      remoteChanges = [...remoteChanges, {
+        change_id: 6,
         entity_type: "people",
-        entity_id: "alex",
-        position: 0,
-        payload: { key: "alex", name: "Alex", kind: "adult", kcal_target: 2000 },
+        entity_id: "sam",
+        position: 1,
+        payload: { key: "sam", name: "Sam", kind: "adult", kcal_target: 1900 },
         record_version: 1,
         operation: "upsert",
       }];
       await sync.synchronize(true);
       const afterPull = JSON.parse((await readLocalState()).sources[0].content);
-      if (afterPull.people[0].key !== "alex" || notified !== 1) {
+      if (!afterPull.people.some((person) => person.key === "sam") || notified !== 1) {
         throw new Error("incremental remote pull was not applied and announced");
       }
       body.dataset.result = "passed";
