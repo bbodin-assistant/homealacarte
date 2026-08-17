@@ -31,7 +31,7 @@ import {
 } from "./core/format.js?v=homealacarte-77";
 import { buildZip, downloadBytes, downloadText } from "./core/downloads.js?v=homealacarte-77";
 import { createThemeController } from "./core/theme.js?v=homealacarte-77";
-import { createAppState } from "./core/app-state.js?v=homealacarte-81";
+import { createAppState } from "./core/app-state.js?v=homealacarte-84";
 import { createWorkerClient } from "./core/worker-client.js?v=homealacarte-77";
 import { createWorkerResponseHandler } from "./core/worker-responses.js?v=homealacarte-77";
 import { bootstrapApplication } from "./core/bootstrap.js?v=homealacarte-77";
@@ -40,7 +40,7 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-83";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-84";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
 

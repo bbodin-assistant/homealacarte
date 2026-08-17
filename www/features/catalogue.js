@@ -7,8 +7,10 @@ import {
 } from "../core/data-localization.js?v=homealacarte-80";
 import {
   catalogueCategories,
+  catalogueItemIsIncomplete,
   filterCatalogueItems,
-} from "./catalogue/filters.js?v=homealacarte-77";
+  sortCatalogueItems,
+} from "./catalogue/filters.js?v=homealacarte-84";
 import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-83";
 
 export function createCatalogueFeature({
@@ -349,7 +351,7 @@ function openNewCatalogueItem() {
   select("#add-catalogue-item").hidden = true;
   select("#item-filter-panel").hidden = true;
   select("#item-catalogue").hidden = true;
-  const food = state.itemCatalogueTab === "food";
+  const food = state.itemCatalogueTab !== "other";
   select("#ingredient-form").hidden = !food;
   select("#household-item-form").hidden = food;
   const selectedCategory = displayCategory(select("#item-category-filter").value);
@@ -410,14 +412,44 @@ function openNewCatalogueItem() {
 function configureItemCategoryFilter(items) {
   const categorySelect = select("#item-category-filter");
   const categories = catalogueCategories(items);
-  const selected = categories.includes(select.value) ? select.value : "";
-  select.innerHTML = `
+  const selected = categories.includes(categorySelect.value) ? categorySelect.value : "";
+  categorySelect.innerHTML = `
     <option value="">${escapeHtml(translate("all_categories"))}</option>
     ${categories.map((category) =>
     `<option value="${escapeHtml(category)}">${escapeHtml(displayCategory(category))}</option>`)
     .join("")}`;
-  select.value = selected;
+  categorySelect.value = selected;
   return selected;
+}
+
+function updateItemSortDirectionControl() {
+  const button = select("#item-sort-direction");
+  if (!button) return;
+  const descending = button.dataset.direction === "desc";
+  button.textContent = descending ? "↓" : "↑";
+  const label = select("#item-sort")?.selectedOptions?.[0]?.textContent || "";
+  button.setAttribute("aria-label", `${label} ${button.textContent}`.trim());
+}
+
+function configureItemFilterControls() {
+  if (select("#item-sort")) return;
+  select("#item-category-filter").closest("label").insertAdjacentHTML("afterend", `
+    <label class="item-category-filter">
+      <span aria-hidden="true">↕</span>
+      <select id="item-sort">
+        <option value="name" data-i18n="name">${escapeHtml(translate("name"))}</option>
+        <option value="type" data-i18n="item_type">${escapeHtml(translate("item_type"))}</option>
+        <option value="category" data-i18n="category">${escapeHtml(translate("category"))}</option>
+        <option value="dishes" data-i18n="nav_dishes">${escapeHtml(translate("nav_dishes"))}</option>
+      </select>
+    </label>
+    <button id="item-sort-direction" class="button ghost compact" type="button" data-direction="asc">↑</button>
+    <label class="ingredient-incomplete-control">
+      <input id="item-incomplete-filter" type="checkbox">
+      <span data-i18n="ingredient_incomplete">${escapeHtml(translate("ingredient_incomplete"))}</span>
+    </label>
+  `);
+  updateItemSortDirectionControl();
 }
 
 function itemPriceTrendMarkup(item) {
@@ -437,43 +469,69 @@ function itemPriceTrendMarkup(item) {
 }
 
 function ingredientUsageMarkup(item) {
-  const { dishCount, stockQuantity } = ingredientCatalogueStats(
-    item.key,
-    state.snapshot.dishes || [],
-    state.stockDraft || [],
-    item.measure_unit,
-  );
-  const dishSummary = `${translate("nav_dishes")}: ${formatNumber(dishCount, 0)}`;
-  const stockSummary = stockQuantity
-    ? `${translate("current_stock")}: ${formatNumber(stockQuantity.quantity, 2)} ${stockQuantity.unit}`
+  const dishSummary = `${translate("nav_dishes")}: ${formatNumber(item.dish_count, 0)}`;
+  const stockSummary = item.stock_quantity
+    ? `${translate("current_stock")}: ${formatNumber(item.stock_quantity.quantity, 2)} ${item.stock_quantity.unit}`
     : "";
   return `<span class="item-catalogue-usage">
     <small>${escapeHtml(dishSummary)}</small>
-    ${stockQuantity ? `<small class="in-stock">${escapeHtml(stockSummary)}</small>` : ""}
+    ${item.stock_quantity ? `<small class="in-stock">${escapeHtml(stockSummary)}</small>` : ""}
   </span>`;
 }
 
 function renderItemsCatalogue() {
   const ingredients = state.snapshot.ingredients || [];
   const householdItems = state.snapshot.household_items || [];
-  const incompleteCount = ingredients.filter((ingredient) => ingredient.incomplete).length;
+  const ingredientRows = ingredients.map((item) => {
+    const { dishCount, stockQuantity } = ingredientCatalogueStats(
+      item.key,
+      state.snapshot.dishes || [],
+      state.stockDraft || [],
+      item.measure_unit,
+    );
+    const missingNutriScore = ingredientNutriScoreMissing(item);
+    return {
+      ...item,
+      item_kind: "food",
+      dish_count: dishCount,
+      stock_quantity: stockQuantity,
+      missing_nutri_score: missingNutriScore,
+      catalogue_incomplete: catalogueItemIsIncomplete(item, missingNutriScore),
+    };
+  });
+  const householdRows = householdItems.map((item) => ({
+    ...item,
+    item_kind: "general",
+    incomplete: false,
+    catalogue_incomplete: false,
+    dish_count: 0,
+    stock_quantity: null,
+    missing_nutri_score: 0,
+  }));
+  const incompleteCount = ingredientRows.filter((item) => item.catalogue_incomplete).length;
   setCountBadge("#ingredient-incomplete-count", incompleteCount);
   select("#add-catalogue-item-label").textContent = translate("short_add");
   const catalogueRows = state.itemCatalogueTab === "food"
-    ? ingredients.map((item) => ({ ...item, item_kind: "food" }))
-    : householdItems.map((item) => ({
-      ...item,
-      item_kind: "general",
-      incomplete: false,
-    }));
+    ? ingredientRows
+    : state.itemCatalogueTab === "other"
+      ? householdRows
+      : [...ingredientRows, ...householdRows];
   const selectedCategory = configureItemCategoryFilter(catalogueRows);
-  const rows = filterCatalogueItems(catalogueRows, {
+  const rows = sortCatalogueItems(filterCatalogueItems(catalogueRows, {
     name: select("#item-search").value,
     category: selectedCategory,
-  })
-    .sort((left, right) => left.name.localeCompare(right.name, state.language));
+    incomplete: select("#item-incomplete-filter").checked,
+  }), {
+    key: select("#item-sort").value,
+    direction: select("#item-sort-direction").dataset.direction,
+    locale: state.language,
+  });
   select("#item-catalogue").innerHTML = `
     <div class="item-catalogue-tabs" role="tablist" aria-label="${escapeHtml(translate("item_type"))}">
+      <button class="item-catalogue-tab${state.itemCatalogueTab === "all" ? " active" : ""}" type="button" role="tab" aria-selected="${state.itemCatalogueTab === "all"}" data-item-catalogue-tab="all">
+        <span>${escapeHtml(translate("items_title"))}</span>
+        <span class="item-catalogue-tab-count">${ingredients.length + householdItems.length}</span>
+      </button>
       <button class="item-catalogue-tab${state.itemCatalogueTab === "food" ? " active" : ""}" type="button" role="tab" aria-selected="${state.itemCatalogueTab === "food"}" data-item-catalogue-tab="food">
         <span>${escapeHtml(translate("food_items_tab"))}</span>
         <span class="item-catalogue-tab-count">${ingredients.length}</span>
@@ -492,10 +550,10 @@ function renderItemsCatalogue() {
     ${rows.map((item) => `
       <div class="item-catalogue-row" role="button" tabindex="0" data-item-details="${escapeHtml(encodeURIComponent(item.key))}" data-item-kind="${item.item_kind}" aria-label="${escapeHtml(`${translate("details")}: ${item.name}`)}">
         <strong class="item-catalogue-name">
-          <span class="item-catalogue-name-line"><span>${item.incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>${item.item_kind === "food" ? itemPriceTrendMarkup(item) : ""}</span>
+          <span class="item-catalogue-name-line"><span>${item.catalogue_incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>${item.item_kind === "food" ? itemPriceTrendMarkup(item) : ""}</span>
           ${item.item_kind === "food" ? ingredientUsageMarkup(item) : ""}
-          ${item.item_kind === "food" && ingredientNutriScoreMissing(item)
-            ? `<small>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: ingredientNutriScoreMissing(item) }))}</small>`
+          ${item.item_kind === "food" && item.missing_nutri_score
+            ? `<small>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: item.missing_nutri_score }))}</small>`
             : ""}
         </strong>
         <span class="item-type-badge">${escapeHtml(translate(item.item_kind === "food" ? "food_item" : "general_item"))}</span>
@@ -507,7 +565,7 @@ function renderItemsCatalogue() {
           </button>
         </span>
       </div>
-    `).join("") || `<p class="item-catalogue-empty">${escapeHtml(translate(catalogueRows.length ? "no_matching_items" : state.itemCatalogueTab === "food" ? "no_food_items" : "no_other_items"))}</p>`}
+    `).join("") || `<p class="item-catalogue-empty">${escapeHtml(translate(catalogueRows.length ? "no_matching_items" : state.itemCatalogueTab === "food" ? "no_food_items" : state.itemCatalogueTab === "other" ? "no_other_items" : "no_matching_items"))}</p>`}
   `;
   if (!select("#ingredient-form").hidden && state.ingredientSelectedKey) {
     const exists = ingredients.some((item) => item.key === state.ingredientSelectedKey);
@@ -534,15 +592,37 @@ function requestItemDeletion(key, name) {
 }
 
   function mount() {
+configureItemFilterControls();
 select("#item-filter-panel").addEventListener("input", (event) => {
   if (event.target.matches("#item-search")) renderItemsCatalogue();
 });
 select("#item-filter-panel").addEventListener("change", (event) => {
-  if (event.target.matches("#item-category-filter")) renderItemsCatalogue();
+  if (event.target.matches("#item-sort")) {
+    select("#item-sort-direction").dataset.direction = event.target.value === "dishes"
+      ? "desc"
+      : "asc";
+    updateItemSortDirectionControl();
+    renderItemsCatalogue();
+    return;
+  }
+  if (event.target.matches("#item-category-filter, #item-incomplete-filter")) {
+    renderItemsCatalogue();
+  }
+});
+select("#item-sort-direction").addEventListener("click", (event) => {
+  event.currentTarget.dataset.direction = event.currentTarget.dataset.direction === "desc"
+    ? "asc"
+    : "desc";
+  updateItemSortDirectionControl();
+  renderItemsCatalogue();
 });
 select("#item-clear-filters").addEventListener("click", () => {
   select("#item-search").value = "";
   select("#item-category-filter").value = "";
+  select("#item-incomplete-filter").checked = false;
+  select("#item-sort").value = "name";
+  select("#item-sort-direction").dataset.direction = "asc";
+  updateItemSortDirectionControl();
   renderItemsCatalogue();
   select("#item-search").focus();
 });

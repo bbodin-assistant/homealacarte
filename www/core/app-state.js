@@ -12,6 +12,7 @@ export function createAppState(storage, getStorageStatus, defaultLanguage = "") 
     const value = Number(autoMenu[key]);
     return Number.isFinite(value) ? value : fallback;
   };
+  const storedCatalogueTab = storage.getItem("homealacarte-item-catalogue-tab");
   return {
     language: storage.getItem("homealacarte-language") || defaultLanguage,
     snapshot: null,
@@ -22,8 +23,8 @@ export function createAppState(storage, getStorageStatus, defaultLanguage = "") 
     stockDraft: [],
     customDraft: [],
     activeTab: "family",
-    itemCatalogueTab: storage.getItem("homealacarte-item-catalogue-tab") === "other"
-      ? "other"
+    itemCatalogueTab: ["all", "food", "other"].includes(storedCatalogueTab)
+      ? storedCatalogueTab
       : "food",
     groceryMode: storage.getItem("homealacarte-grocery-mode") || "list",
     menuMode: storage.getItem("homealacarte-menu-mode") || "manual",
