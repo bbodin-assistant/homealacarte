@@ -11,6 +11,7 @@ const partials = [
   "data",
   "dialogs",
 ];
+const composedSources = [template];
 let previous = -1;
 for (const partial of partials) {
   const directive = `{{ include: views/${partial}.html }}`;
@@ -18,6 +19,7 @@ for (const partial of partials) {
   assert.ok(position > previous, `${partial} must preserve document order`);
   previous = position;
   const source = await readFile(new URL(`../www/views/${partial}.html`, import.meta.url), "utf8");
+  composedSources.push(source);
   assert.ok(source.split("\n").length <= 500, `${partial} must stay under 500 lines`);
   assert.doesNotMatch(source, /\{\{ include:/);
 }
@@ -25,11 +27,19 @@ assert.equal(template.match(/\{\{ include:/g)?.length, partials.length);
 
 const visibleVersion = template.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 const appModuleVersion = template.match(/src="\.\/app\.js\?v=homealacarte-(\d+)"/)?.[1];
+const assetVersions = new Set(
+  composedSources.flatMap((source) => [...source.matchAll(/homealacarte-(\d+)/g)].map((match) => match[1])),
+);
 assert.ok(visibleVersion, "index must expose an application version");
 assert.equal(
   appModuleVersion,
   visibleVersion,
   "app.js cache version must match the visible application version",
 );
+assert.deepEqual(
+  [...assetVersions],
+  [visibleVersion],
+  "all public asset cache versions must match the visible application version",
+);
 
-console.log("HTML partials are bounded, ordered, and load the current app module version.");
+console.log("HTML partials are bounded, ordered, and use one public asset version.");
