@@ -11,7 +11,15 @@ function tokenSet(value) {
   return new Set(normalizeText(value).split(/\s+/).filter((token) => token.length >= 3));
 }
 
-export const PURCHASE_LAYOUT_CSS = ".purchase-entry-grid{grid-template-columns:1fr}";
+export const PURCHASE_LAYOUT_CSS = `
+  .purchase-entry-grid{grid-template-columns:1fr}
+  .receipt-review-row.known-item{border-left:4px solid #4f8a65}
+  .receipt-review-row.new-item{border-left:4px solid #4f7eab}
+  .receipt-review-row.problem-item{border-left:4px solid #b45e46}
+  .receipt-review-row.known-item .receipt-review-status{color:#3f7354;font-weight:800}
+  .receipt-review-row.new-item .receipt-review-status{color:#3f6f9b;font-weight:800}
+  .receipt-review-row.problem-item .receipt-review-status{color:#9b4f3b;font-weight:800}
+`;
 
 export function matchReceiptLabelFromHistory(label, candidates = []) {
   const target = normalizeText(label);
@@ -35,6 +43,11 @@ export function matchReceiptLabelFromHistory(label, candidates = []) {
   return best.candidate;
 }
 
+export function purchaseReviewState({ matched = false, invalid = false, warning = false } = {}) {
+  if (invalid || warning) return "problem-item";
+  return matched ? "known-item" : "new-item";
+}
+
 function catalogueCandidates(documentRef) {
   const source = documentRef.querySelector("#purchase-add-item");
   if (!source) return [];
@@ -53,16 +66,41 @@ function catalogueCandidates(documentRef) {
   return candidates;
 }
 
+function applyRowState(row) {
+  const matchSelect = row.querySelector("[data-receipt-match]");
+  const status = row.querySelector("[data-receipt-status]");
+  const nextState = purchaseReviewState({
+    matched: Boolean(matchSelect?.value),
+    invalid: row.classList.contains("invalid"),
+    warning: status?.classList.contains("warning"),
+  });
+  row.classList.remove("known-item", "new-item", "problem-item");
+  row.classList.add(nextState);
+}
+
+function refreshReviewStates(review) {
+  review.querySelectorAll("[data-receipt-row]").forEach(applyRowState);
+}
+
 function applyHistoryFallback(documentRef, review) {
   const candidates = catalogueCandidates(documentRef);
-  if (!candidates.length) return;
+  if (!candidates.length) {
+    refreshReviewStates(review);
+    return;
+  }
 
   review.querySelectorAll("[data-receipt-row]").forEach((row) => {
     const matchSelect = row.querySelector("[data-receipt-match]");
-    if (!matchSelect || matchSelect.value) return;
+    if (!matchSelect || matchSelect.value) {
+      applyRowState(row);
+      return;
+    }
     const label = row.querySelector("[data-receipt-name]")?.value?.trim();
     const match = matchReceiptLabelFromHistory(label, candidates);
-    if (!match || ![...matchSelect.options].some((option) => option.value === match.value)) return;
+    if (!match || ![...matchSelect.options].some((option) => option.value === match.value)) {
+      applyRowState(row);
+      return;
+    }
 
     matchSelect.value = match.value;
     row.classList.remove("invalid");
@@ -71,6 +109,7 @@ function applyHistoryFallback(documentRef, review) {
       status.textContent = match.name;
       status.classList.remove("warning");
     }
+    applyRowState(row);
   });
 }
 
@@ -86,9 +125,14 @@ function attachReview(documentRef, review) {
   if (!review || review.dataset.historyFallbackInstalled === "true") return;
   review.dataset.historyFallbackInstalled = "true";
   const list = review.querySelector(".receipt-review-list") || review;
-  const observer = new MutationObserver(() => applyHistoryFallback(documentRef, review));
+  const refresh = () => applyHistoryFallback(documentRef, review);
+  const observer = new MutationObserver(refresh);
   observer.observe(list, { childList: true, subtree: true });
-  applyHistoryFallback(documentRef, review);
+  review.addEventListener("change", (event) => {
+    const row = event.target.closest?.("[data-receipt-row]");
+    if (row) applyRowState(row);
+  });
+  refresh();
 }
 
 export function installPurchaseReviewEnhancements(documentRef = document) {

@@ -166,12 +166,55 @@ export function createShellFeature({
     });
   }
 
-  function switchTab(tab) {
+  function resetPrimarySubview(tab) {
+    if (tab === "menu") {
+      setMenuMode("manual");
+      return;
+    }
+    if (tab === "grocery") {
+      setGroceryMode("list");
+      storage.setItem("homealacarte-grocery-mode", "list");
+      return;
+    }
+    if (tab === "items") {
+      state.itemCatalogueTab = "all";
+      storage.setItem("homealacarte-item-catalogue-tab", "all");
+      state.ingredientSelectedKey = null;
+      state.itemEditorCreating = false;
+      state.ingredientOriginal = "";
+      state.householdItemOriginal = "";
+      const ingredientForm = select("#ingredient-form");
+      const householdForm = select("#household-item-form");
+      const addButton = select("#add-catalogue-item");
+      const filters = select("#item-filter-panel");
+      const catalogue = select("#item-catalogue");
+      if (ingredientForm) ingredientForm.hidden = true;
+      if (householdForm) householdForm.hidden = true;
+      if (addButton) addButton.hidden = false;
+      if (filters) filters.hidden = false;
+      if (catalogue) catalogue.hidden = false;
+      renderItemsCatalogue();
+    }
+  }
+
+  function scrollPrimaryViewToTop(tab) {
+    const view = select(`.view[data-view="${tab}"]`);
+    if (typeof view?.scrollIntoView === "function") {
+      view.scrollIntoView({ block: "start", inline: "nearest" });
+      return;
+    }
+    const scrollRoot = documentRef.scrollingElement || documentRef.documentElement;
+    if (scrollRoot) scrollRoot.scrollTop = 0;
+  }
+
+  function switchTab(tab, resetSubview = false) {
+    if (resetSubview) resetPrimarySubview(tab);
     state.activeTab = tab;
     selectAll(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.tab === tab));
     selectAll(".view").forEach((view) => view.classList.toggle("active", view.dataset.view === tab));
     historyRef.replaceState(null, "", `#${tab}`);
     if (tab === "data") renderDataOverview();
+    if (resetSubview) scrollPrimaryViewToTop(tab);
   }
 
   function selectLanguage(language) {
@@ -189,7 +232,7 @@ export function createShellFeature({
     const nav = event.target.closest("[data-tab]");
     if (nav) {
       event.preventDefault();
-      switchTab(nav.dataset.tab);
+      switchTab(nav.dataset.tab, true);
     }
     const groceryMode = event.target.closest("[data-grocery-mode]");
     if (groceryMode) {

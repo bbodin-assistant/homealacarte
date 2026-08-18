@@ -3,15 +3,15 @@ import { createSearchableSelect } from "../core/searchable-select.js?v=homealaca
 import { createStockFeature } from "../features/stock.js?v=homealacarte-77";
 import { createExtraNeedsFeature } from "../features/extra-needs.js?v=homealacarte-77";
 import { createGroceryFeature } from "../features/grocery.js?v=homealacarte-78";
-import { createDishesFeature } from "../features/dishes.js?v=homealacarte-80";
+import { createDishesFeature } from "../features/dishes.js?v=homealacarte-91";
 import { createAutoMenuFeature } from "../features/auto-menu.js?v=homealacarte-81";
 import { createItemDetailsFeature } from "../features/item-details.js?v=homealacarte-77";
 import { createDishEditorFeature } from "../features/dish-editor.js?v=homealacarte-80";
 import { createCatalogueFeature } from "../features/catalogue.js?v=homealacarte-84";
-import { createFamilyFeature } from "../features/family.js?v=homealacarte-77";
+import { createFamilyFeature } from "../features/family.js?v=homealacarte-91";
 import { createMenuFeature } from "../features/menu.js?v=homealacarte-81";
 import { createDataAccountFeature } from "../features/data-account.js?v=homealacarte-77";
-import { createShellFeature } from "../features/shell.js?v=homealacarte-81";
+import { createShellFeature } from "../features/shell.js?v=homealacarte-91";
 
 export function createFeatureComposition({
   state,
@@ -165,6 +165,7 @@ export function createFeatureComposition({
     translate: (key) => t(state.language, key),
     translatedTemplate,
     escapeHtml,
+    formatInputNumber,
     formatNumber,
     openConfirmation,
     send,

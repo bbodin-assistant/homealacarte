@@ -20,10 +20,17 @@ assert.match(shell, /locales\.map/);
 assert.match(shell, /localeLabel/);
 assert.match(shell, /requested\.split\("-"\)\[0\]/);
 assert.match(shell, /function applyTranslations/);
+assert.match(shell, /function resetPrimarySubview/);
+assert.match(shell, /setMenuMode\("manual"\)/);
+assert.match(shell, /setGroceryMode\("list"\)/);
+assert.match(shell, /state\.itemCatalogueTab = "all"/);
+assert.match(shell, /scrollPrimaryViewToTop/);
+assert.match(shell, /switchTab\(nav\.dataset\.tab, true\)/);
 assert.match(shell, /function switchTab/);
 assert.match(shell, /dialogClosers\.forEach/);
 assert.doesNotMatch(shell, /\bcloseFamilyDialog\b/);
 assert.match(entry, /<select id="language-select"><\/select>/);
 assert.doesNotMatch(entry, /<option value="(?:en|fr)">/);
+assert.match(entry, /ingredient-incomplete-count[^>]+title="Incomplete catalogue items/);
 
-console.log("The application shell generates language selection from the translation catalogue and owns shared navigation/dialog behavior.");
+console.log("The application shell owns shared navigation and resets main-button navigation to each view's first subtab and top.");
