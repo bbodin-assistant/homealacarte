@@ -196,9 +196,12 @@ assert.equal(matchReceiptLabelFromHistory("UNKNOWN PRODUCT", [
 assert.equal(purchaseReviewState({ matched: true }), "known-item");
 assert.equal(purchaseReviewState({ matched: false }), "new-item");
 assert.equal(purchaseReviewState({ matched: true, warning: true }), "problem-item");
-assert.match(PURCHASE_LAYOUT_CSS, /known-item/);
-assert.match(PURCHASE_LAYOUT_CSS, /new-item/);
-assert.match(PURCHASE_LAYOUT_CSS, /problem-item/);
+assert.match(PURCHASE_LAYOUT_CSS, /known-item\{[^}]*background:#dfeee4/);
+assert.match(PURCHASE_LAYOUT_CSS, /new-item\{[^}]*background:#ddeaf6/);
+assert.match(PURCHASE_LAYOUT_CSS, /problem-item\{[^}]*background:#f5ddd5/);
+assert.match(PURCHASE_LAYOUT_CSS, /known-item \.receipt-review-field input[^}]*background:#eef7f1/);
+assert.match(PURCHASE_LAYOUT_CSS, /new-item \.receipt-review-field input[^}]*background:#edf4fb/);
+assert.match(PURCHASE_LAYOUT_CSS, /problem-item \.receipt-review-field input[^}]*background:#fbeeea/);
 
 const history = collectPurchaseHistory({
   ingredients: withNewItems.items.filter((item) => Object.hasOwn(item, "price_per_kg")),
@@ -223,18 +226,18 @@ assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(shell, /\["list", "stock", "needs", "purchases"\]/);
 assert.match(worker, /type === "record-purchase"/);
 assert.match(worker, /core\/purchases\.js\?v=homealacarte-1/);
-assert.match(worker, /homealacarte_web\.js\?v=homealacarte-92/);
+assert.match(worker, /homealacarte_web\.js\?v=homealacarte-93/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-1/);
 assert.match(composition, /features\/grocery\.js\?v=homealacarte-78/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
 assert.match(app, /feature-composition\.js\?v=homealacarte-91/);
-assert.match(app, /worker\.js\?v=homealacarte-92/);
-assert.match(index, /class="app-version"[^>]*>v92</);
-assert.match(index, /app\.js\?v=homealacarte-92/);
-assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-92/);
-assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-92/);
+assert.match(app, /worker\.js\?v=homealacarte-93/);
+assert.match(index, /class="app-version"[^>]*>v93</);
+assert.match(index, /app\.js\?v=homealacarte-93/);
+assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-93/);
+assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-93/);
 assert.match(index, /Incomplete catalogue items/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
 assert.match(receiptFeature, /purchase-batch-form/);
 
-console.log("Purchases update stock and price history, color-code review states, retain structured batch imports, and keep cache versions aligned.");
+console.log("Purchases update stock and price history, color full review rows, retain structured batch imports, and keep cache versions aligned.");
