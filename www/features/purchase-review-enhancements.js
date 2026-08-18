@@ -13,9 +13,12 @@ function tokenSet(value) {
 
 export const PURCHASE_LAYOUT_CSS = `
   .purchase-entry-grid{grid-template-columns:1fr}
-  .receipt-review-row.known-item{border-left:4px solid #4f8a65}
-  .receipt-review-row.new-item{border-left:4px solid #4f7eab}
-  .receipt-review-row.problem-item{border-left:4px solid #b45e46}
+  .receipt-review-row.known-item{border:2px solid #4f8a65;background:#dfeee4}
+  .receipt-review-row.new-item{border:2px solid #4f7eab;background:#ddeaf6}
+  .receipt-review-row.problem-item{border:2px solid #b45e46;background:#f5ddd5}
+  .receipt-review-row.known-item .receipt-review-field input,.receipt-review-row.known-item .receipt-review-field select{border-color:#7eac8d;background:#eef7f1}
+  .receipt-review-row.new-item .receipt-review-field input,.receipt-review-row.new-item .receipt-review-field select{border-color:#83a7c8;background:#edf4fb}
+  .receipt-review-row.problem-item .receipt-review-field input,.receipt-review-row.problem-item .receipt-review-field select{border-color:#c98d7c;background:#fbeeea}
   .receipt-review-row.known-item .receipt-review-status{color:#3f7354;font-weight:800}
   .receipt-review-row.new-item .receipt-review-status{color:#3f6f9b;font-weight:800}
   .receipt-review-row.problem-item .receipt-review-status{color:#9b4f3b;font-weight:800}
