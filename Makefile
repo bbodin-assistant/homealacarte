@@ -51,6 +51,7 @@ test-web:
 	node --check www/features/ai-list/ollama.js
 	node --check www/features/ai-list/payload.js
 	node --check www/features/grocery.js
+	node --check www/features/receipt-purchases.js
 	node tests/menu_rows.mjs
 	node tests/food_rules.mjs
 	node tests/profile_rules.mjs
@@ -75,6 +76,7 @@ test-web:
 	node tests/extra_needs_feature.mjs
 	node tests/grocery_total.mjs
 	node tests/purchases_feature.mjs
+	node tests/receipt_purchases.mjs
 	node tests/dishes_feature.mjs
 	node tests/dish_editor_feature.mjs
 	node tests/ai_dish_ollama.mjs
