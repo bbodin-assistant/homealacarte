@@ -3,6 +3,7 @@ import {
   looksLikeStructuredPurchase,
   parseSupermarketReceipt,
 } from "../www/features/receipt-purchases.js";
+import { resolvePurchaseReviewWeight } from "../www/features/purchase-review-enhancements.js";
 
 const receipt = `CHIPS
 CHIPS EXT.CRAQ.NATURE U 6X30G 1,60 € 11
@@ -74,8 +75,25 @@ assert.equal(cleaner.quantity, 750);
 assert.equal(cleaner.unit, "ml");
 assert.equal(cleaner.weightNeeded, false);
 
+assert.deepEqual(
+  resolvePurchaseReviewWeight({ matched: false, kind: "food", quantity: 2, unit: "piece" }),
+  { required: true, valid: false, grams: 0 },
+);
+assert.deepEqual(
+  resolvePurchaseReviewWeight({ matched: false, kind: "food", quantity: 2, unit: "piece", weight: 340 }),
+  { required: true, valid: true, grams: 340 },
+);
+assert.deepEqual(
+  resolvePurchaseReviewWeight({ matched: false, kind: "food", quantity: 0.53, unit: "kg" }),
+  { required: true, valid: true, grams: 530 },
+);
+assert.deepEqual(
+  resolvePurchaseReviewWeight({ matched: true, kind: "food", quantity: 2, unit: "piece" }),
+  { required: false, valid: true, grams: 0 },
+);
+
 assert.equal(looksLikeStructuredPurchase("Tomato;2;g;3.00"), true);
 assert.equal(looksLikeStructuredPurchase(receipt), false);
 assert.throws(() => parseSupermarketReceipt("FRUITS\nNOT A PRODUCT", []), /No receipt product lines/);
 
-console.log("Raw supermarket receipts parse sections, packs, weighed products, volumes, household items, and repeated products.");
+console.log("Raw supermarket receipts parse sections and make unresolved new-food weights explicitly resolvable in review.");
