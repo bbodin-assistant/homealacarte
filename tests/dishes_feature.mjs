@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {
+  allergenIcon,
   countryFlag,
+  dishPreferenceBadges,
   dishRangeMaximums,
   filterDishes,
 } from "../www/features/dishes.js";
@@ -17,6 +19,32 @@ assert.equal(countryFlag("fr"), "🇫🇷");
 assert.equal(countryFlag("JP"), "🇯🇵");
 assert.equal(countryFlag(""), "");
 assert.equal(countryFlag("France"), "");
+assert.equal(allergenIcon("Peanut butter"), "🥜");
+assert.equal(allergenIcon("milk"), "🥛");
+assert.equal(allergenIcon("unknown allergen"), "⚠️");
+
+const badges = dishPreferenceBadges({
+  key: "pad_thai",
+  components: [
+    { key: "peanut", name: "Peanuts" },
+    { key: "rice_noodle", name: "Rice noodles" },
+  ],
+}, [
+  {
+    name: "Alex",
+    food_rules: [
+      { kind: "allergy", item_keys: ["peanut"] },
+      { kind: "favorite", item_keys: ["pad_thai"] },
+    ],
+  },
+  {
+    name: "Sam",
+    food_rules: [{ kind: "never", item_keys: ["pad_thai"] }],
+  },
+]);
+assert.deepEqual(badges.map((badge) => badge.kind), ["favorite", "forbidden", "allergy"]);
+assert.equal(badges.find((badge) => badge.kind === "allergy")?.icon, "🥜");
+assert.match(badges.find((badge) => badge.kind === "allergy")?.title || "", /Alex/);
 
 assert.deepEqual(
   filterDishes(dishes, {
@@ -42,4 +70,4 @@ assert.deepEqual(
   ["unknown"],
 );
 
-console.log("Dishes feature owns range calculation and catalogue filtering.");
+console.log("Dishes feature owns range/filter behavior and highlights household allergy, favorite, and forbidden rules.");

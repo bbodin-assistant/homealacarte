@@ -13,6 +13,8 @@ use microlp::{
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::time::Duration;
 
+const FAVORITE_DISH_PENALTY: f64 = 2.0;
+
 #[derive(Clone)]
 pub(crate) struct DishDecision {
     pub(crate) dish_index: usize,
@@ -154,15 +156,15 @@ pub(crate) fn solve_menu_once(
         .iter()
         .map(|dish| dish_kcal(dish, &ingredients_by_key))
         .collect::<Result<Vec<_>, _>>()?;
-    let has_never_rules = availability.iter().any(|(person_index, _)| {
+    let has_preference_rules = availability.iter().any(|(person_index, _)| {
         dataset.people[*person_index]
             .food_rules
             .iter()
-            .any(|rule| rule.kind == "never")
+            .any(|rule| matches!(rule.kind.as_str(), "never" | "allergy" | "favorite"))
     });
-    let candidates_were_shortlisted = !has_never_rules
+    let candidates_were_shortlisted = !has_preference_rules
         && candidates.len() > MAX_DAILY_CANDIDATES.max(slots.len());
-    if !has_never_rules {
+    if !has_preference_rules {
         candidates = shortlist_daily_candidates(
             &candidates,
             slots.len(),
@@ -244,6 +246,12 @@ pub(crate) fn solve_menu_once(
             .filter(|(_, day)| day == &slot.day)
             .map(|(person_index, _)| *person_index)
             .collect::<Vec<_>>();
+        let slot_has_favorites = slot_people.iter().any(|person_index| {
+            dataset.people[*person_index]
+                .food_rules
+                .iter()
+                .any(|rule| rule.kind == "favorite")
+        });
         let mut slot_decisions = Vec::new();
         for dish_index in candidates.iter().filter(|dish_index| {
             slot_people.iter().all(|person_index| {
@@ -256,12 +264,22 @@ pub(crate) fn solve_menu_once(
                 )
             })
         }) {
+            let dish = &dataset.dishes[*dish_index];
+            let favorite_for_slot = slot_people.iter().any(|person_index| {
+                person_favors_item(&dataset.people[*person_index], &dish.key, &dishes_by_key)
+            });
+            let preference_penalty = if slot_has_favorites && !favorite_for_slot {
+                FAVORITE_DISH_PENALTY
+            } else {
+                0.0
+            };
             let chosen = problem.add_binary_var(
                 weekly_uses
-                    .get(&dataset.dishes[*dish_index].key)
+                    .get(&dish.key)
                     .copied()
                     .unwrap_or(0) as f64
-                    * VARIETY_WEIGHT,
+                    * VARIETY_WEIGHT
+                    + preference_penalty,
             );
             let mut portion_groups = HashMap::new();
             let portions = slot_people

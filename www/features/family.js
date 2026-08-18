@@ -1,3 +1,9 @@
+export function foodRuleAcceptsItem(kind, itemKind) {
+  if (kind === "allergy") return itemKind !== "dish";
+  if (kind === "favorite") return itemKind === "dish";
+  return true;
+}
+
 export function createFamilyFeature({
   state,
   select,
@@ -5,6 +11,7 @@ export function createFamilyFeature({
   translate,
   translatedTemplate,
   escapeHtml,
+  formatInputNumber,
   formatNumber,
   openConfirmation,
   send,
@@ -22,6 +29,20 @@ function familyMemberIcon(kind) {
     <path d="M24 108V78c0-19 16-33 36-33s36 14 36 33v30M40 108V76M80 108V76"/>
     <path d="M48 48l12 20 12-20"/>
   </svg>`;
+}
+
+function preferenceText(key) {
+  const french = String(state.language || "").toLowerCase().startsWith("fr");
+  const labels = french ? {
+    allergy: "Allergie",
+    favorite: "Plat favori",
+    forbidden: "Interdit / ne jamais proposer",
+  } : {
+    allergy: "Allergy",
+    favorite: "Favorite dish",
+    forbidden: "Forbidden / never propose",
+  };
+  return labels[key] || key;
 }
 
 function renderFamily() {
@@ -111,11 +132,11 @@ function foodRuleMealOptions(selectedMeal, includeAny = true) {
     </option>`).join("");
 }
 
-function foodRuleItemOptions(selectedKeys = []) {
+function foodRuleItemOptions(selectedKeys = [], ruleKind = "routine") {
   const selected = new Set(selectedKeys);
   return state.snapshot.item_options.map((item) => `
-    <label class="food-rule-choice">
-      <input type="checkbox" value="${escapeHtml(item.key)}" ${selected.has(item.key) ? "checked" : ""}>
+    <label class="food-rule-choice" data-food-rule-item-kind="${escapeHtml(item.kind)}">
+      <input type="checkbox" value="${escapeHtml(item.key)}" data-food-rule-item-kind="${escapeHtml(item.kind)}" ${selected.has(item.key) ? "checked" : ""}>
       <span>${escapeHtml(item.name)}</span>
     </label>`).join("");
 }
@@ -142,17 +163,21 @@ function foodRuleDayOptions(selectedDays = []) {
 }
 
 function foodRuleMarkup(rule = {}) {
-  const kind = rule.kind === "never" ? "never" : "routine";
-  const meal = rule.meal || (kind === "never" ? "any" : "breakfast");
+  const kind = ["routine", "never", "allergy", "favorite"].includes(rule.kind)
+    ? rule.kind
+    : "routine";
+  const meal = rule.meal || (kind === "routine" ? "breakfast" : "any");
   const quantity = Number.isFinite(Number(rule.quantity)) ? Number(rule.quantity) : 1;
   const unit = ["portion", "g", "unit"].includes(rule.quantity_unit)
     ? rule.quantity_unit
     : "portion";
-  return `<div class="family-food-rule ${kind === "never" ? "never-rule" : ""}" data-food-rule>
+  return `<div class="family-food-rule ${kind === "routine" ? "" : "never-rule"}" data-food-rule>
     <label><span>${escapeHtml(translate("food_rule_type"))}</span>
       <select data-food-rule-kind>
         <option value="routine" ${kind === "routine" ? "selected" : ""}>${escapeHtml(translate("food_rule_routine"))}</option>
-        <option value="never" ${kind === "never" ? "selected" : ""}>${escapeHtml(translate("food_rule_never"))}</option>
+        <option value="never" ${kind === "never" ? "selected" : ""}>${escapeHtml(preferenceText("forbidden"))}</option>
+        <option value="allergy" ${kind === "allergy" ? "selected" : ""}>${escapeHtml(preferenceText("allergy"))}</option>
+        <option value="favorite" ${kind === "favorite" ? "selected" : ""}>${escapeHtml(preferenceText("favorite"))}</option>
       </select>
     </label>
     <label><span>${escapeHtml(translate("food_rule_meal"))}</span>
@@ -165,7 +190,7 @@ function foodRuleMarkup(rule = {}) {
           <input type="search" data-food-rule-item-search placeholder="${escapeHtml(translate("search_items"))}" aria-label="${escapeHtml(translate("search_items"))}" autocomplete="off" aria-expanded="false">
         </div>
         <div class="food-rule-item-results" data-food-rule-items role="group" hidden>
-          ${foodRuleItemOptions(rule.item_keys)}
+          ${foodRuleItemOptions(rule.item_keys, kind)}
           <p class="food-rule-items-empty" data-food-rule-items-empty hidden>${escapeHtml(translate("no_matching_items"))}</p>
         </div>
       </div>
@@ -191,12 +216,31 @@ function foodRuleMarkup(rule = {}) {
   </div>`;
 }
 
-function setFoodRuleMode(row) {
-  const routine = row.querySelector("[data-food-rule-kind]").value === "routine";
+function renderFoodRuleSelectedItems(row) {
+  const selectedKeys = [...row.querySelectorAll("[data-food-rule-items] input:checked")]
+    .map((input) => input.value);
+  row.querySelector("[data-food-rule-selected-items]").innerHTML = foodRuleSelectedItems(selectedKeys);
+}
+
+function setFoodRuleMode(row, pruneInvalid = false) {
+  const kind = row.querySelector("[data-food-rule-kind]").value;
+  const routine = kind === "routine";
+  const globalPreference = kind === "allergy" || kind === "favorite";
   row.classList.toggle("never-rule", !routine);
   const meal = row.querySelector("[data-food-rule-meal]");
+  meal.disabled = globalPreference;
   meal.querySelector('option[value="any"]').disabled = routine;
   if (routine && meal.value === "any") meal.value = "breakfast";
+  if (globalPreference) meal.value = "any";
+  row.querySelectorAll("[data-routine-field]").forEach((field) => {
+    field.hidden = !routine;
+  });
+  if (pruneInvalid) {
+    row.querySelectorAll("[data-food-rule-items] input:checked").forEach((input) => {
+      if (!foodRuleAcceptsItem(kind, input.dataset.foodRuleItemKind)) input.checked = false;
+    });
+    renderFoodRuleSelectedItems(row);
+  }
 }
 
 function renderFamilyFoodRules(rules = []) {
@@ -204,22 +248,19 @@ function renderFamilyFoodRules(rules = []) {
   list.innerHTML = rules.length
     ? rules.map(foodRuleMarkup).join("")
     : `<p class="family-food-rules-empty">${escapeHtml(translate("no_food_rules"))}</p>`;
-  selectAll("#family-food-rules-list [data-food-rule]").forEach(setFoodRuleMode);
-}
-
-function renderFoodRuleSelectedItems(row) {
-  const selectedKeys = [...row.querySelectorAll("[data-food-rule-items] input:checked")]
-    .map((input) => input.value);
-  row.querySelector("[data-food-rule-selected-items]").innerHTML = foodRuleSelectedItems(selectedKeys);
+  selectAll("#family-food-rules-list [data-food-rule]").forEach((row) => setFoodRuleMode(row));
 }
 
 function filterFoodRuleItems(search) {
   const row = search.closest("[data-food-rule]");
   const results = row.querySelector("[data-food-rule-items]");
+  const kind = row.querySelector("[data-food-rule-kind]").value;
   const query = search.value.trim().toLocaleLowerCase(state.language);
   let visibleChoices = 0;
   row.querySelectorAll(".food-rule-choice").forEach((choice) => {
+    const matchesKind = foodRuleAcceptsItem(kind, choice.dataset.foodRuleItemKind);
     const matches = Boolean(query)
+      && matchesKind
       && choice.textContent.toLocaleLowerCase(state.language).includes(query);
     choice.hidden = !matches;
     if (matches) visibleChoices += 1;
@@ -241,7 +282,9 @@ function familyFoodRulesPayload() {
       .map((input) => input.value);
     return {
       kind,
-      meal: row.querySelector("[data-food-rule-meal]").value,
+      meal: kind === "allergy" || kind === "favorite"
+        ? "any"
+        : row.querySelector("[data-food-rule-meal]").value,
       item_keys: [...row.querySelectorAll("[data-food-rule-items] input:checked")]
         .map((input) => input.value),
       days: kind !== "routine" || selectedDays.length === FOOD_RULE_DAY_CODES.length
@@ -258,7 +301,10 @@ function familyFoodRulesPayload() {
 }
 
 function familyFoodRulesAreValid(rules = familyFoodRulesPayload()) {
-  return rules.every((rule) => rule.item_keys.length > 0
+  const itemKinds = new Map(state.snapshot.item_options.map((item) => [item.key, item.kind]));
+  return rules.every((rule) => ["routine", "never", "allergy", "favorite"].includes(rule.kind)
+    && rule.item_keys.length > 0
+    && rule.item_keys.every((key) => foodRuleAcceptsItem(rule.kind, itemKinds.get(key)))
     && (rule.kind !== "routine" || (
       rule.meal !== "any"
       && rule.days.every((day) => FOOD_RULE_DAY_CODES.includes(day))
@@ -403,7 +449,11 @@ select("#family-food-rules-list").addEventListener("click", (event) => {
 });
 select("#family-food-rules-list").addEventListener("change", (event) => {
   const row = event.target.closest("[data-food-rule]");
-  if (row && event.target.matches("[data-food-rule-kind]")) setFoodRuleMode(row);
+  if (row && event.target.matches("[data-food-rule-kind]")) {
+    setFoodRuleMode(row, true);
+    const search = row.querySelector("[data-food-rule-item-search]");
+    if (search.value.trim()) filterFoodRuleItems(search);
+  }
   if (row && event.target.matches("[data-food-rule-items] input")) {
     renderFoodRuleSelectedItems(row);
   }

@@ -8,6 +8,7 @@ import {
 } from "../www/core/purchases.js";
 import {
   matchReceiptLabelFromHistory,
+  purchaseReviewState,
   PURCHASE_LAYOUT_CSS,
 } from "../www/features/purchase-review-enhancements.js";
 
@@ -192,7 +193,12 @@ assert.equal(apricotMatch?.value, "apricot");
 assert.equal(matchReceiptLabelFromHistory("UNKNOWN PRODUCT", [
   { value: "apricot", name: "Apricot", history: ["Some unrelated description"] },
 ]), null);
-assert.match(PURCHASE_LAYOUT_CSS, /purchase-entry-grid\{grid-template-columns:1fr\}/);
+assert.equal(purchaseReviewState({ matched: true }), "known-item");
+assert.equal(purchaseReviewState({ matched: false }), "new-item");
+assert.equal(purchaseReviewState({ matched: true, warning: true }), "problem-item");
+assert.match(PURCHASE_LAYOUT_CSS, /known-item/);
+assert.match(PURCHASE_LAYOUT_CSS, /new-item/);
+assert.match(PURCHASE_LAYOUT_CSS, /problem-item/);
 
 const history = collectPurchaseHistory({
   ingredients: withNewItems.items.filter((item) => Object.hasOwn(item, "price_per_kg")),
@@ -219,14 +225,15 @@ assert.match(worker, /type === "record-purchase"/);
 assert.match(worker, /core\/purchases\.js\?v=homealacarte-1/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-1/);
 assert.match(composition, /features\/grocery\.js\?v=homealacarte-78/);
-assert.match(composition, /features\/shell\.js\?v=homealacarte-81/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-85/);
-assert.match(app, /worker\.js\?v=homealacarte-84/);
-assert.match(index, /class="app-version"[^>]*>v90</);
-assert.match(index, /app\.js\?v=homealacarte-90/);
-assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-90/);
-assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-90/);
+assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-91/);
+assert.match(app, /worker\.js\?v=homealacarte-91/);
+assert.match(index, /class="app-version"[^>]*>v91</);
+assert.match(index, /app\.js\?v=homealacarte-91/);
+assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-91/);
+assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-91/);
+assert.match(index, /Incomplete catalogue items/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
 assert.match(receiptFeature, /purchase-batch-form/);
 
-console.log("Purchases update stock and price history, keep structured batch imports, reuse price-history text for fallback matching, and stack purchase entry above batch review.");
+console.log("Purchases update stock and price history, color-code review states, retain structured batch imports, and keep cache versions aligned.");

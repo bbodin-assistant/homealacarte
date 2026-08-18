@@ -4,6 +4,71 @@ import { dishStockAvailability } from "../core/stock-availability.js?v=homealaca
 
 export { countryFlag };
 
+function normalizedPreferenceName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+export function allergenIcon(value) {
+  const name = normalizedPreferenceName(value);
+  if (/peanut|nut|noix|noisette|amande|cajou|pistache|pecan/.test(name)) return "🥜";
+  if (/milk|lait|fromage|cheese|yaourt|yogurt/.test(name)) return "🥛";
+  if (/egg|oeuf/.test(name)) return "🥚";
+  if (/wheat|gluten|ble|farine/.test(name)) return "🌾";
+  if (/fish|poisson|saumon|salmon|thon|tuna|cabillaud|cod/.test(name)) return "🐟";
+  if (/shellfish|crustace|crevette|shrimp|crab|homard|lobster/.test(name)) return "🦐";
+  if (/soy|soja/.test(name)) return "🫘";
+  if (/sesame/.test(name)) return "🌱";
+  return "⚠️";
+}
+
+export function dishPreferenceBadges(dish, people = []) {
+  const components = new Map((dish.components || []).map((component) => [component.key, component]));
+  const badges = [];
+  const favoritePeople = [];
+  const forbiddenPeople = [];
+  const allergyBadges = new Map();
+
+  for (const person of people || []) {
+    for (const rule of person.food_rules || []) {
+      if (rule.kind === "favorite" && (rule.item_keys || []).includes(dish.key)) {
+        favoritePeople.push(person.name);
+      }
+      if (rule.kind === "never") {
+        const matchesDish = (rule.item_keys || []).some((key) => key === dish.key || components.has(key));
+        if (matchesDish) forbiddenPeople.push(person.name);
+      }
+      if (rule.kind === "allergy") {
+        for (const key of rule.item_keys || []) {
+          const component = components.get(key);
+          if (!component) continue;
+          const label = component.name || key;
+          const entry = allergyBadges.get(key) || { icon: allergenIcon(`${key} ${label}`), label, people: [] };
+          entry.people.push(person.name);
+          allergyBadges.set(key, entry);
+        }
+      }
+    }
+  }
+
+  if (favoritePeople.length) {
+    badges.push({ kind: "favorite", icon: "❤️", title: `Favorite: ${favoritePeople.join(", ")}` });
+  }
+  if (forbiddenPeople.length) {
+    badges.push({ kind: "forbidden", icon: "⛔", title: `Forbidden: ${[...new Set(forbiddenPeople)].join(", ")}` });
+  }
+  for (const allergy of allergyBadges.values()) {
+    badges.push({
+      kind: "allergy",
+      icon: allergy.icon,
+      title: `${allergy.label}: ${[...new Set(allergy.people)].join(", ")}`,
+    });
+  }
+  return badges;
+}
+
 export function dishRangeMaximums(dishes) {
   return {
     cost: Math.max(
@@ -101,10 +166,13 @@ export function createDishesFeature({
       const limitingIngredient = dish.components
         .find((component) => component.key === availability.limitingKey)?.name || "";
       const originFlag = countryFlag(dish.origin_country);
+      const preferenceBadges = dishPreferenceBadges(dish, state.snapshot.people || []);
+      const badgeMarkup = preferenceBadges.map((badge) =>
+        `<span class="dish-preference-badge ${escapeHtml(badge.kind)}" title="${escapeHtml(badge.title)}" aria-label="${escapeHtml(badge.title)}">${badge.icon}</span>`).join("");
       return `
-        <article class="dish-card">
+        <article class="dish-card${preferenceBadges.some((badge) => badge.kind === "allergy" || badge.kind === "forbidden") ? " preference-warning" : ""}">
           <button class="dish-card-open" type="button" data-dish-key="${escapeHtml(encodeURIComponent(dish.key))}">
-            <div class="dish-title"><h2>${originFlag ? `<span class="dish-origin-flag" title="${escapeHtml(dish.origin_country)}" aria-hidden="true">${originFlag}</span> ` : ""}${escapeHtml(dish.name)}</h2></div>
+            <div class="dish-title"><h2>${originFlag ? `<span class="dish-origin-flag" title="${escapeHtml(dish.origin_country)}" aria-hidden="true">${originFlag}</span> ` : ""}${escapeHtml(dish.name)}${badgeMarkup ? ` <span class="dish-preference-badges">${badgeMarkup}</span>` : ""}</h2></div>
             <div class="dish-metrics">
               <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(translate("per_serving"))}</span></div>
               ${dish.nutri_score
