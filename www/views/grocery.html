@@ -3,6 +3,7 @@
             <button class="active" type="button" data-grocery-mode="list"><span data-i18n="grocery_list">Courses</span><span id="grocery-tab-count" class="mode-count">0</span></button>
             <button type="button" data-grocery-mode="stock"><span data-i18n="stock_title">Stock disponible</span><span id="stock-tab-count" class="mode-count">0</span></button>
             <button type="button" data-grocery-mode="needs"><span data-i18n="extra_needs">Besoins supplémentaires</span><span id="needs-tab-count" class="mode-count">0</span></button>
+            <button type="button" data-grocery-mode="purchases"><span id="purchases-tab-label">Achats</span><span id="purchases-tab-count" class="mode-count">0</span></button>
           </div>
 
           <div class="grocery-subview active" data-grocery-panel="list">
@@ -126,6 +127,92 @@
               </form>
               <div id="custom-list" class="custom-list"></div>
             </div>
+          </div>
+
+          <div class="grocery-subview" data-grocery-panel="purchases">
+            <div class="page-heading">
+              <div>
+                <p id="purchases-eyebrow" class="eyebrow">Après les courses</p>
+                <h1 id="purchases-title">Achats</h1>
+              </div>
+            </div>
+            <div class="purchase-entry-grid">
+              <section class="panel purchase-entry-panel">
+                <div class="purchase-section-heading">
+                  <h2 id="purchase-single-title">Ajouter un achat</h2>
+                  <p id="purchase-single-intro">Ajoutez un article acheté : le stock et son historique de prix seront mis à jour ensemble.</p>
+                </div>
+                <form id="purchase-add-form" class="purchase-add">
+                  <label>
+                    <span id="purchase-item-label">Article</span>
+                    <select id="purchase-add-item" required></select>
+                  </label>
+                  <label id="purchase-new-name-field" hidden>
+                    <span id="purchase-name-label">Nom</span>
+                    <input id="purchase-add-name" maxlength="160">
+                  </label>
+                  <label>
+                    <span id="purchase-quantity-label">Quantité achetée</span>
+                    <input id="purchase-add-quantity" type="number" min="0.000000001" step="any" required>
+                  </label>
+                  <label>
+                    <span id="purchase-unit-label">Unité</span>
+                    <select id="purchase-add-unit" required></select>
+                  </label>
+                  <label>
+                    <span id="purchase-price-label">Prix payé</span>
+                    <input id="purchase-add-price" type="number" min="0" step="any" required>
+                  </label>
+                  <label>
+                    <span id="purchase-date-label">Date</span>
+                    <input id="purchase-add-date" type="date" required>
+                  </label>
+                  <label>
+                    <span id="purchase-store-label">Magasin</span>
+                    <input id="purchase-add-store" maxlength="160" placeholder="Facultatif">
+                  </label>
+                  <button id="purchase-add-submit" class="button primary" type="submit">Ajouter l’achat</button>
+                </form>
+              </section>
+
+              <section class="panel purchase-entry-panel">
+                <div class="purchase-section-heading">
+                  <h2 id="purchase-batch-title">Ajouter plusieurs achats</h2>
+                  <p id="purchase-batch-intro">Collez une ligne par article avec nom, quantité, unité et prix total. Ajoutez « food » ou « household » en cinquième colonne pour créer un nouvel article.</p>
+                </div>
+                <form id="purchase-batch-form" class="purchase-batch-form">
+                  <label class="purchase-batch-list">
+                    <span id="purchase-batch-list-label">Liste d’achats</span>
+                    <textarea id="purchase-batch-text" rows="7" required placeholder="Tomate; 1250; g; 4,36&#10;Savon; 2; flacon; 5,20; household"></textarea>
+                  </label>
+                  <label>
+                    <span id="purchase-batch-date-label">Date</span>
+                    <input id="purchase-batch-date" type="date" required>
+                  </label>
+                  <label>
+                    <span id="purchase-batch-store-label">Magasin</span>
+                    <input id="purchase-batch-store" maxlength="160" placeholder="Facultatif">
+                  </label>
+                  <p id="purchase-batch-error" class="purchase-error" role="alert"></p>
+                  <button id="purchase-batch-submit" class="button primary" type="submit">Ajouter les achats</button>
+                </form>
+              </section>
+            </div>
+
+            <section class="panel purchase-history-panel">
+              <div class="purchase-section-heading">
+                <h2 id="purchase-history-title">Historique</h2>
+                <p id="purchase-history-intro">Vue chronologique des historiques de prix de tous les articles.</p>
+              </div>
+              <div class="purchase-history-head" aria-hidden="true">
+                <span id="purchase-history-item-label">Article</span>
+                <span id="purchase-history-quantity-label">Quantité</span>
+                <span id="purchase-history-paid-label">Payé</span>
+                <span id="purchase-history-price-label">Prix enregistré</span>
+                <span id="purchase-history-source-label">Source</span>
+              </div>
+              <div id="purchase-list" class="purchase-list"></div>
+            </section>
           </div>
         </section>
 

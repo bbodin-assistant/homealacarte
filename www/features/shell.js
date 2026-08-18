@@ -58,7 +58,7 @@ export function createShellFeature({
   }
 
   function setGroceryMode(mode) {
-    const safeMode = ["list", "stock", "needs"].includes(mode) ? mode : "list";
+    const safeMode = ["list", "stock", "needs", "purchases"].includes(mode) ? mode : "list";
     state.groceryMode = safeMode;
     selectAll("[data-grocery-mode]").forEach((button) => {
       const active = button.dataset.groceryMode === safeMode;

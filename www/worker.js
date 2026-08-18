@@ -1,5 +1,6 @@
 import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-77";
 import { patchConsolidatedRecord } from "./core/data-localization.js?v=homealacarte-80";
+import { applyPurchaseToDocument } from "./core/purchases.js?v=homealacarte-1";
 
 let engine;
 let readyPromise;
@@ -118,6 +119,28 @@ self.onmessage = async ({ data }) => {
         engine.add_household_item(item);
       }
       snapshot = engine.replace_stock(data.rows || []);
+      respond(requestId, "result", currentState(snapshot));
+    } else if (type === "record-purchase") {
+      if (data.rows) engine.replace_menu(data.rows);
+      if (data.stock) engine.replace_stock(data.stock);
+      if (data.customGrocery) engine.replace_custom_grocery(data.customGrocery);
+      const previous = engine.snapshot();
+      const document = JSON.parse(engine.export_data("consolidated"));
+      const updated = applyPurchaseToDocument(document, {
+        date: data.date,
+        store: data.store,
+        purchase_id: data.purchase_id,
+        lines: data.lines || [],
+      });
+      activeLanguage = previous.language || activeLanguage;
+      snapshot = engine.load(
+        [{
+          path: "homealacarte_data.json",
+          content: `${JSON.stringify(updated, null, 2)}\n`,
+        }],
+        { language: activeLanguage },
+      );
+      if (previous.profile) snapshot = engine.set_profile(previous.profile);
       respond(requestId, "result", currentState(snapshot));
     } else if (type === "set-grocery-stock") {
       if (data.rows) engine.replace_menu(data.rows);
