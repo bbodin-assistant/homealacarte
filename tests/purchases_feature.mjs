@@ -202,6 +202,7 @@ assert.match(PURCHASE_LAYOUT_CSS, /problem-item\{[^}]*background:#f5ddd5/);
 assert.match(PURCHASE_LAYOUT_CSS, /known-item \.receipt-review-field input[^}]*background:#eef7f1/);
 assert.match(PURCHASE_LAYOUT_CSS, /new-item \.receipt-review-field input[^}]*background:#edf4fb/);
 assert.match(PURCHASE_LAYOUT_CSS, /problem-item \.receipt-review-field input[^}]*background:#fbeeea/);
+assert.match(PURCHASE_LAYOUT_CSS, /receipt-review-weight/);
 
 const history = collectPurchaseHistory({
   ingredients: withNewItems.items.filter((item) => Object.hasOwn(item, "price_per_kg")),
@@ -232,12 +233,12 @@ assert.match(composition, /features\/grocery\.js\?v=homealacarte-78/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
 assert.match(app, /feature-composition\.js\?v=homealacarte-91/);
 assert.match(app, /worker\.js\?v=homealacarte-93/);
-assert.match(index, /class="app-version"[^>]*>v93</);
-assert.match(index, /app\.js\?v=homealacarte-93/);
-assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-93/);
-assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-93/);
+assert.match(index, /class="app-version"[^>]*>v94</);
+assert.match(index, /app\.js\?v=homealacarte-94/);
+assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-94/);
+assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-94/);
 assert.match(index, /Incomplete catalogue items/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
 assert.match(receiptFeature, /purchase-batch-form/);
 
-console.log("Purchases update stock and price history, color full review rows, retain structured batch imports, and keep cache versions aligned.");
+console.log("Purchases update stock and price history, color full review rows, make unresolved weights actionable, and keep cache versions aligned.");
