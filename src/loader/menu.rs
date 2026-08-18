@@ -35,7 +35,10 @@ pub(crate) fn normalize_food_rules(
         rule.kind = rule.kind.trim().to_lowercase();
         rule.meal = rule.meal.trim().to_lowercase();
         rule.quantity_unit = rule.quantity_unit.trim().to_lowercase();
-        if !matches!(rule.kind.as_str(), "routine" | "never") {
+        if !matches!(
+            rule.kind.as_str(),
+            "routine" | "never" | "allergy" | "favorite"
+        ) {
             return Err(format!("{context} food rule {} has invalid kind", index + 1));
         }
         if !FOOD_RULE_MEALS.contains(&rule.meal.as_str()) {
@@ -61,7 +64,7 @@ pub(crate) fn normalize_food_rules(
                 index + 1
             ));
         }
-        if rule.kind == "never" {
+        if rule.kind != "routine" {
             rule.days.clear();
         }
         if !rule.quantity.is_finite() || rule.quantity <= 0.0 {
@@ -130,8 +133,7 @@ pub(crate) fn normalize_menu(
         }
         if input.person.is_some() && input.people.is_some() {
             return Err(format!(
-                "menu item {} cannot define both person and people",
-                index + 1
+                "menu item {} cannot define both person and people", index + 1
             ));
         }
         let people = if let Some(person) = input.person {
@@ -149,9 +151,7 @@ pub(crate) fn normalize_menu(
         for person in &people {
             if !valid_people.contains(person.trim()) {
                 return Err(format!(
-                    "menu item {} references unknown person: {}",
-                    index + 1,
-                    person
+                    "menu item {} references unknown person: {}", index + 1, person
                 ));
             }
         }
