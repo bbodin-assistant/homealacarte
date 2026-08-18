@@ -6,6 +6,10 @@ import {
   parsePurchaseBatch,
   parsePurchaseDescription,
 } from "../www/core/purchases.js";
+import {
+  matchReceiptLabelFromHistory,
+  PURCHASE_LAYOUT_CSS,
+} from "../www/features/purchase-review-enhancements.js";
 
 const snapshot = {
   ingredients: [{
@@ -172,6 +176,24 @@ assert.equal(batch[2].quantity, 1500);
 assert.equal(batch[2].new_item.kind, "food");
 assert.equal(batch[3].new_item.kind, "household");
 
+const apricotMatch = matchReceiptLabelFromHistory("ABRICOT PRIX MINI BARQ.500G", [
+  {
+    value: "apricot",
+    name: "Apricot",
+    history: ["Ticket de caisse 2026-08-15 — ABRICOT PRIX MINI BARQ.500G, 1,99 EUR"],
+  },
+  {
+    value: "peach",
+    name: "Peach",
+    history: ["Old market note about peaches"],
+  },
+]);
+assert.equal(apricotMatch?.value, "apricot");
+assert.equal(matchReceiptLabelFromHistory("UNKNOWN PRODUCT", [
+  { value: "apricot", name: "Apricot", history: ["Some unrelated description"] },
+]), null);
+assert.match(PURCHASE_LAYOUT_CSS, /purchase-entry-grid\{grid-template-columns:1fr\}/);
+
 const history = collectPurchaseHistory({
   ingredients: withNewItems.items.filter((item) => Object.hasOwn(item, "price_per_kg")),
   household_items: withNewItems.items.filter((item) => Object.hasOwn(item, "estimated_price")),
@@ -200,10 +222,11 @@ assert.match(composition, /features\/grocery\.js\?v=homealacarte-78/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-81/);
 assert.match(app, /feature-composition\.js\?v=homealacarte-85/);
 assert.match(app, /worker\.js\?v=homealacarte-84/);
-assert.match(index, /class="app-version"[^>]*>v88</);
-assert.match(index, /app\.js\?v=homealacarte-88/);
-assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-88/);
+assert.match(index, /class="app-version"[^>]*>v89</);
+assert.match(index, /app\.js\?v=homealacarte-89/);
+assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-89/);
+assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-89/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
 assert.match(receiptFeature, /purchase-batch-form/);
 
-console.log("Purchases update stock and price history, keep structured batch imports, and load raw receipt review support.");
+console.log("Purchases update stock and price history, keep structured batch imports, reuse price-history text for fallback matching, and stack purchase entry above batch review.");
