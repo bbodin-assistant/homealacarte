@@ -1,7 +1,7 @@
 use homealacarte_web::{AppConfig, Engine, SourceFile};
 
-
 use crate::support::synthetic_dataset;
+
 #[test]
 fn unsupported_data_shapes_are_rejected() {
     let unsupported_section = SourceFile {
@@ -54,12 +54,22 @@ fn person_food_rules_are_loaded_and_validated() {
               "kind": "never",
               "meal": "any",
               "item_keys": ["tomato_test"]
+            }, {
+              "kind": "allergy",
+              "meal": "any",
+              "item_keys": ["tomato_test"]
+            }, {
+              "kind": "favorite",
+              "meal": "any",
+              "item_keys": ["test_salad"]
             }]"#,
         1,
     );
     let dataset = homealacarte_web::load_dataset(vec![source.clone()], "en").unwrap();
-    assert_eq!(dataset.people[0].food_rules.len(), 2);
+    assert_eq!(dataset.people[0].food_rules.len(), 4);
     assert_eq!(dataset.people[0].food_rules[0].item_keys.len(), 2);
+    assert_eq!(dataset.people[0].food_rules[2].kind, "allergy");
+    assert_eq!(dataset.people[0].food_rules[3].kind, "favorite");
     assert_eq!(
         dataset.people[0].food_rules[0].days,
         vec!["monday", "wednesday", "friday"]
