@@ -11,6 +11,39 @@ function tokenSet(value) {
   return new Set(normalizeText(value).split(/\s+/).filter((token) => token.length >= 3));
 }
 
+function reviewStrings(documentRef) {
+  const french = String(documentRef?.documentElement?.lang || "").toLowerCase().startsWith("fr");
+  return french ? {
+    foodWeight: "Ce nouvel aliment a besoin de son poids total en grammes. Saisissez-le ci-dessous ou associez l’article au catalogue.",
+    fixRows: "Corrigez les lignes rouges avant d’appliquer les achats. La première ligne à corriger est affichée ci-dessous.",
+    invalidRow: "Vérifiez le nom, la quantité, l’unité et le prix de cette ligne.",
+    matched: "Correspondance catalogue",
+    newItem: "Nouvel article",
+    weightHint: "Requis pour créer un nouvel aliment et calculer son prix au kg et son stock.",
+    weightLabel: "Poids total (g)",
+    weightReady: "Poids renseigné · prêt à créer",
+  } : {
+    foodWeight: "This new food item needs its total weight in grams. Enter it below or match the item to the catalogue.",
+    fixRows: "Fix the red rows before applying purchases. The first row that needs attention is shown below.",
+    invalidRow: "Check the name, quantity, unit and price on this row.",
+    matched: "Catalogue match",
+    newItem: "New item",
+    weightHint: "Required to create a new food item and calculate its price per kg and stock.",
+    weightLabel: "Total weight (g)",
+    weightReady: "Weight entered · ready to create",
+  };
+}
+
+function positiveNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function cleanNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Number(number.toFixed(6)).toString() : "";
+}
+
 export const PURCHASE_LAYOUT_CSS = `
   .purchase-entry-grid{grid-template-columns:1fr}
   .receipt-review-row.known-item{border:2px solid #4f8a65;background:#dfeee4}
@@ -22,6 +55,9 @@ export const PURCHASE_LAYOUT_CSS = `
   .receipt-review-row.known-item .receipt-review-status{color:#3f7354;font-weight:800}
   .receipt-review-row.new-item .receipt-review-status{color:#3f6f9b;font-weight:800}
   .receipt-review-row.problem-item .receipt-review-status{color:#9b4f3b;font-weight:800}
+  .receipt-review-weight{grid-column:1/-1;padding:9px;border:1px dashed currentColor;border-radius:8px}
+  .receipt-review-weight small{color:var(--muted);font-size:9px;line-height:1.35}
+  .receipt-review-weight[hidden]{display:none}
 `;
 
 export function matchReceiptLabelFromHistory(label, candidates = []) {
@@ -49,6 +85,30 @@ export function matchReceiptLabelFromHistory(label, candidates = []) {
 export function purchaseReviewState({ matched = false, invalid = false, warning = false } = {}) {
   if (invalid || warning) return "problem-item";
   return matched ? "known-item" : "new-item";
+}
+
+export function resolvePurchaseReviewWeight({
+  matched = false,
+  kind = "",
+  quantity = 0,
+  unit = "",
+  weight = "",
+} = {}) {
+  const required = !matched && kind === "food";
+  if (!required) return { required: false, valid: true, grams: 0 };
+
+  const explicit = positiveNumber(weight);
+  if (explicit) return { required: true, valid: true, grams: explicit };
+
+  const amount = positiveNumber(quantity);
+  const normalizedUnit = normalizeText(unit);
+  if (amount && normalizedUnit === "g") {
+    return { required: true, valid: true, grams: amount };
+  }
+  if (amount && normalizedUnit === "kg") {
+    return { required: true, valid: true, grams: amount * 1000 };
+  }
+  return { required: true, valid: false, grams: 0 };
 }
 
 function catalogueCandidates(documentRef) {
@@ -109,11 +169,136 @@ function applyHistoryFallback(documentRef, review) {
     row.classList.remove("invalid");
     const status = row.querySelector("[data-receipt-status]");
     if (status) {
-      status.textContent = match.name;
+      if (status.textContent !== match.name) status.textContent = match.name;
       status.classList.remove("warning");
     }
     applyRowState(row);
   });
+}
+
+function setStatus(status, text, warning = false) {
+  if (!status) return;
+  if (status.textContent !== text) status.textContent = text;
+  status.classList.toggle("warning", warning);
+}
+
+function ensureWeightControl(documentRef, row) {
+  let field = row.querySelector("[data-receipt-weight-field]");
+  if (field) return field;
+  const t = reviewStrings(documentRef);
+  field = documentRef.createElement("label");
+  field.className = "receipt-review-field receipt-review-weight";
+  field.dataset.receiptWeightField = "";
+  field.hidden = true;
+  field.innerHTML = `<span>${t.weightLabel}</span><input data-receipt-weight type="number" min="0.000000001" step="any" inputmode="decimal"><small>${t.weightHint}</small>`;
+  row.querySelector("[data-receipt-status]")?.before(field);
+  return field;
+}
+
+function validateReviewRow(documentRef, row) {
+  const t = reviewStrings(documentRef);
+  const nameInput = row.querySelector("[data-receipt-name]");
+  const matchSelect = row.querySelector("[data-receipt-match]");
+  const quantityInput = row.querySelector("[data-receipt-quantity]");
+  const unitInput = row.querySelector("[data-receipt-unit]");
+  const priceInput = row.querySelector("[data-receipt-price]");
+  const kindSelect = row.querySelector("[data-receipt-kind]");
+  const status = row.querySelector("[data-receipt-status]");
+  const weightField = ensureWeightControl(documentRef, row);
+  const weightInput = weightField.querySelector("[data-receipt-weight]");
+
+  const matched = Boolean(matchSelect?.value);
+  const kind = kindSelect?.value || "";
+  let weight = resolvePurchaseReviewWeight({
+    matched,
+    kind,
+    quantity: quantityInput?.value,
+    unit: unitInput?.value,
+    weight: weightInput?.value,
+  });
+  weightField.hidden = !weight.required;
+
+  if (weight.required && !weightInput.value && weight.valid) {
+    weightInput.value = cleanNumber(weight.grams);
+    weight = resolvePurchaseReviewWeight({
+      matched,
+      kind,
+      quantity: quantityInput?.value,
+      unit: unitInput?.value,
+      weight: weightInput.value,
+    });
+  }
+
+  if (weight.required && !weight.valid) {
+    row.classList.add("invalid");
+    setStatus(status, t.foodWeight, true);
+    applyRowState(row);
+    return false;
+  }
+
+  if (weight.required) {
+    quantityInput.value = cleanNumber(weight.grams);
+    unitInput.value = "g";
+  }
+
+  const quantity = positiveNumber(quantityInput?.value);
+  const price = Number(priceInput?.value);
+  const validBasics = Boolean(nameInput?.value?.trim())
+    && quantity > 0
+    && Boolean(unitInput?.value?.trim())
+    && Number.isFinite(price)
+    && price >= 0;
+  if (!validBasics) {
+    row.classList.add("invalid");
+    setStatus(status, t.invalidRow, true);
+    applyRowState(row);
+    return false;
+  }
+
+  row.classList.remove("invalid");
+  if (matched) {
+    setStatus(status, matchSelect.selectedOptions?.[0]?.textContent?.trim() || t.matched, false);
+  } else if (weight.required) {
+    setStatus(status, t.weightReady, false);
+  } else {
+    setStatus(status, t.newItem, false);
+  }
+  applyRowState(row);
+  return true;
+}
+
+function validateReview(documentRef, review) {
+  let firstInvalid = null;
+  review.querySelectorAll("[data-receipt-row]").forEach((row) => {
+    if (!validateReviewRow(documentRef, row) && !firstInvalid) firstInvalid = row;
+  });
+  if (!firstInvalid) return true;
+
+  const errorPanel = documentRef.querySelector("#purchase-batch-error");
+  if (errorPanel) errorPanel.textContent = reviewStrings(documentRef).fixRows;
+  firstInvalid.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  const weightField = firstInvalid.querySelector("[data-receipt-weight-field]");
+  const focusTarget = !weightField?.hidden
+    ? weightField.querySelector("[data-receipt-weight]")
+    : firstInvalid.querySelector("input,select");
+  focusTarget?.focus?.();
+  return false;
+}
+
+function installSubmitValidation(documentRef) {
+  if (documentRef.documentElement.dataset.purchaseReviewValidationInstalled === "true") return;
+  documentRef.documentElement.dataset.purchaseReviewValidationInstalled = "true";
+  documentRef.addEventListener("submit", (event) => {
+    if (event.target?.id !== "purchase-batch-form") return;
+    const review = documentRef.querySelector("#purchase-receipt-review");
+    if (!review || review.hidden) return;
+    const errorPanel = documentRef.querySelector("#purchase-batch-error");
+    if (errorPanel) errorPanel.textContent = "";
+    if (validateReview(documentRef, review)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }, true);
 }
 
 function installLayout(documentRef) {
@@ -128,18 +313,26 @@ function attachReview(documentRef, review) {
   if (!review || review.dataset.historyFallbackInstalled === "true") return;
   review.dataset.historyFallbackInstalled = "true";
   const list = review.querySelector(".receipt-review-list") || review;
-  const refresh = () => applyHistoryFallback(documentRef, review);
+  const refresh = () => {
+    applyHistoryFallback(documentRef, review);
+    review.querySelectorAll("[data-receipt-row]").forEach((row) => validateReviewRow(documentRef, row));
+  };
   const observer = new MutationObserver(refresh);
   observer.observe(list, { childList: true, subtree: true });
   review.addEventListener("change", (event) => {
     const row = event.target.closest?.("[data-receipt-row]");
-    if (row) applyRowState(row);
+    if (row) validateReviewRow(documentRef, row);
+  });
+  review.addEventListener("input", (event) => {
+    const row = event.target.closest?.("[data-receipt-row]");
+    if (row) validateReviewRow(documentRef, row);
   });
   refresh();
 }
 
 export function installPurchaseReviewEnhancements(documentRef = document) {
   installLayout(documentRef);
+  installSubmitValidation(documentRef);
   const existing = documentRef.querySelector("#purchase-receipt-review");
   if (existing) {
     attachReview(documentRef, existing);
