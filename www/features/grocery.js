@@ -1,3 +1,95 @@
+import {
+  collectPurchaseHistory,
+  parsePurchaseBatch,
+} from "../core/purchases.js?v=homealacarte-1";
+
+const PURCHASE_STRINGS = {
+  en: {
+    tab: "Purchases",
+    eyebrow: "After shopping",
+    title: "Purchases",
+    singleTitle: "Add a purchase",
+    singleIntro: "Add one purchased item; stock and its price history are updated together.",
+    batchTitle: "Add purchases in batch",
+    batchIntro: "Paste one item per line with name, quantity, unit and total price. Add “food” or “household” as column 5 when creating a new item.",
+    item: "Item",
+    newFood: "New food item…",
+    newHousehold: "New household item…",
+    name: "Name",
+    quantity: "Purchased quantity",
+    unit: "Unit",
+    paidPrice: "Price paid",
+    date: "Date",
+    store: "Store",
+    optional: "Optional",
+    addPurchase: "Add purchase",
+    batchList: "Purchase list",
+    batchPlaceholder: "Tomato; 1250; g; 4.36\nHand soap; 2; bottle; 5.20; household",
+    addBatch: "Add purchases",
+    history: "History",
+    historyIntro: "Chronological view of price histories across all catalogue items.",
+    paid: "Paid",
+    recordedPrice: "Recorded price",
+    source: "Source",
+    emptyHistory: "No price history yet.",
+    purchaseSource: "Purchase",
+    itemRequired: "Choose an item.",
+    newNameRequired: "Enter a name for the new item.",
+    invalidValue: "Quantity must be positive and price must be zero or positive.",
+  },
+  fr: {
+    tab: "Achats",
+    eyebrow: "Après les courses",
+    title: "Achats",
+    singleTitle: "Ajouter un achat",
+    singleIntro: "Ajoutez un article acheté : le stock et son historique de prix seront mis à jour ensemble.",
+    batchTitle: "Ajouter plusieurs achats",
+    batchIntro: "Collez une ligne par article avec nom, quantité, unité et prix total. Ajoutez « food » ou « household » en cinquième colonne pour créer un nouvel article.",
+    item: "Article",
+    newFood: "Nouvel aliment…",
+    newHousehold: "Nouvel article ménager…",
+    name: "Nom",
+    quantity: "Quantité achetée",
+    unit: "Unité",
+    paidPrice: "Prix payé",
+    date: "Date",
+    store: "Magasin",
+    optional: "Facultatif",
+    addPurchase: "Ajouter l’achat",
+    batchList: "Liste d’achats",
+    batchPlaceholder: "Tomate; 1250; g; 4,36\nSavon; 2; flacon; 5,20; household",
+    addBatch: "Ajouter les achats",
+    history: "Historique",
+    historyIntro: "Vue chronologique des historiques de prix de tous les articles.",
+    paid: "Payé",
+    recordedPrice: "Prix enregistré",
+    source: "Source",
+    emptyHistory: "Aucun historique de prix pour le moment.",
+    purchaseSource: "Achat",
+    itemRequired: "Choisissez un article.",
+    newNameRequired: "Saisissez le nom du nouvel article.",
+    invalidValue: "La quantité doit être positive et le prix doit être positif ou nul.",
+  },
+};
+
+function purchaseStrings(language) {
+  const requested = String(language || "").toLowerCase();
+  return PURCHASE_STRINGS[requested]
+    || PURCHASE_STRINGS[requested.split("-")[0]]
+    || PURCHASE_STRINGS.en;
+}
+
+function localDate() {
+  const date = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function purchaseId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `purchase-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function visibleGroceryCategories(categories = [], hideStocked = false) {
   return categories
     .map((category) => ({
@@ -55,6 +147,128 @@ export function createGroceryFeature({
     select("#grocery-count").hidden = progress.remaining === 0;
   }
 
+  function renderPurchaseLanguage() {
+    const strings = purchaseStrings(state.language);
+    const labels = {
+      "#purchases-tab-label": "tab",
+      "#purchases-eyebrow": "eyebrow",
+      "#purchases-title": "title",
+      "#purchase-single-title": "singleTitle",
+      "#purchase-single-intro": "singleIntro",
+      "#purchase-batch-title": "batchTitle",
+      "#purchase-batch-intro": "batchIntro",
+      "#purchase-item-label": "item",
+      "#purchase-name-label": "name",
+      "#purchase-quantity-label": "quantity",
+      "#purchase-unit-label": "unit",
+      "#purchase-price-label": "paidPrice",
+      "#purchase-date-label": "date",
+      "#purchase-store-label": "store",
+      "#purchase-add-submit": "addPurchase",
+      "#purchase-batch-list-label": "batchList",
+      "#purchase-batch-date-label": "date",
+      "#purchase-batch-store-label": "store",
+      "#purchase-batch-submit": "addBatch",
+      "#purchase-history-title": "history",
+      "#purchase-history-intro": "historyIntro",
+      "#purchase-history-item-label": "item",
+      "#purchase-history-quantity-label": "quantity",
+      "#purchase-history-paid-label": "paid",
+      "#purchase-history-price-label": "recordedPrice",
+      "#purchase-history-source-label": "source",
+    };
+    Object.entries(labels).forEach(([selector, key]) => {
+      select(selector).textContent = strings[key];
+    });
+    select("#purchase-add-store").placeholder = strings.optional;
+    select("#purchase-batch-store").placeholder = strings.optional;
+    select("#purchase-batch-text").placeholder = strings.batchPlaceholder;
+  }
+
+  function purchaseOption() {
+    return (state.snapshot?.stock_options || [])
+      .find((option) => option.item_key === select("#purchase-add-item").value);
+  }
+
+  function setPurchaseItemFields() {
+    const strings = purchaseStrings(state.language);
+    const selected = select("#purchase-add-item").value;
+    const newKind = selected === "__new_food__"
+      ? "food"
+      : selected === "__new_household__"
+        ? "household"
+        : "";
+    const nameField = select("#purchase-new-name-field");
+    const nameInput = select("#purchase-add-name");
+    nameField.hidden = !newKind;
+    nameInput.required = Boolean(newKind);
+    const unitSelect = select("#purchase-add-unit");
+    if (newKind === "food") {
+      unitSelect.innerHTML = "<option value=\"g\">g</option>";
+      return;
+    }
+    if (newKind === "household") {
+      unitSelect.innerHTML = `<option value="unit">${escapeHtml(strings.unit.toLowerCase())}</option>`;
+      return;
+    }
+    const option = purchaseOption();
+    if (!option) {
+      unitSelect.innerHTML = "";
+      return;
+    }
+    if (option.household) {
+      unitSelect.innerHTML = `<option value="unit">${escapeHtml(option.measure_unit)}</option>`;
+      return;
+    }
+    unitSelect.innerHTML = `<option value="g">g</option>${option.measure_unit === "g"
+      ? ""
+      : `<option value="unit">${escapeHtml(option.measure_unit)}</option>`}`;
+    unitSelect.value = option.quantity_unit === "unit" && option.measure_unit !== "g" ? "unit" : "g";
+  }
+
+  function renderPurchaseOptions() {
+    const strings = purchaseStrings(state.language);
+    const options = state.snapshot?.stock_options || [];
+    select("#purchase-add-item").innerHTML = [
+      "<option value=\"\"></option>",
+      ...options.map((option) => (
+        `<option value="${escapeHtml(option.item_key)}">${escapeHtml(option.name)}</option>`
+      )),
+      `<option value="__new_food__">+ ${escapeHtml(strings.newFood)}</option>`,
+      `<option value="__new_household__">+ ${escapeHtml(strings.newHousehold)}</option>`,
+    ].join("");
+    setPurchaseItemFields();
+  }
+
+  function renderPurchases() {
+    renderPurchaseLanguage();
+    renderPurchaseOptions();
+    const today = localDate();
+    if (!select("#purchase-add-date").value) select("#purchase-add-date").value = today;
+    if (!select("#purchase-batch-date").value) select("#purchase-batch-date").value = today;
+    const strings = purchaseStrings(state.language);
+    const number = new Intl.NumberFormat(state.language || undefined, { maximumFractionDigits: 3 });
+    const history = collectPurchaseHistory(state.snapshot);
+    setCountBadge("#purchases-tab-count", history.length);
+    select("#purchase-list").innerHTML = history.map((row) => {
+      const purchase = row.purchase;
+      const quantity = purchase ? `${number.format(purchase.quantity)} ${escapeHtml(purchase.unit)}` : "—";
+      const paid = purchase ? formatMoney(purchase.totalPrice) : "—";
+      const unitLabel = row.household ? row.purchaseUnit || "unit" : "kg";
+      const recordedPrice = `${formatMoney(row.price)} / ${escapeHtml(unitLabel)}`;
+      const source = purchase
+        ? purchase.store || strings.purchaseSource
+        : row.description || "—";
+      return `<div class="purchase-history-row">
+        <strong><span>${escapeHtml(row.itemName)}</span><small>${escapeHtml(row.date || "—")}</small></strong>
+        <span>${quantity}</span>
+        <span>${paid}</span>
+        <span>${recordedPrice}</span>
+        <span title="${escapeHtml(source)}">${escapeHtml(source)}</span>
+      </div>`;
+    }).join("") || `<p class="stock-empty">${escapeHtml(strings.emptyHistory)}</p>`;
+  }
+
   function render() {
     const grocery = state.snapshot.grocery_plan;
     select("#grocery-hide-stocked").checked = state.groceryHideStocked;
@@ -94,6 +308,97 @@ export function createGroceryFeature({
       </article>
     `).join("") || `<p class="grocery-empty">${escapeHtml(translate("empty"))}</p>`;
     updateProgress();
+    renderPurchases();
+  }
+
+  function purchaseLineFromForm() {
+    const strings = purchaseStrings(state.language);
+    const selected = select("#purchase-add-item").value;
+    if (!selected) throw new Error(strings.itemRequired);
+    const quantity = Number(select("#purchase-add-quantity").value);
+    const totalPrice = Number(select("#purchase-add-price").value);
+    const quantityUnit = select("#purchase-add-unit").value;
+    const option = purchaseOption();
+    const newKind = selected === "__new_food__"
+      ? "food"
+      : selected === "__new_household__"
+        ? "household"
+        : "";
+    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalPrice) || totalPrice < 0) {
+      throw new Error(strings.invalidValue);
+    }
+    if (newKind) {
+      const name = select("#purchase-add-name").value.trim();
+      if (!name) throw new Error(strings.newNameRequired);
+      return {
+        quantity,
+        quantity_unit: quantityUnit,
+        display_unit: newKind === "food" ? "g" : strings.unit.toLowerCase(),
+        total_price: totalPrice,
+        new_item: {
+          name,
+          kind: newKind,
+          measure_unit: newKind === "food" ? "g" : strings.unit.toLowerCase(),
+        },
+      };
+    }
+    return {
+      item_key: selected,
+      quantity,
+      quantity_unit: quantityUnit,
+      display_unit: quantityUnit === "g" ? "g" : option?.measure_unit || "unit",
+      total_price: totalPrice,
+    };
+  }
+
+  function submitPurchase(event) {
+    event.preventDefault();
+    try {
+      const line = purchaseLineFromForm();
+      clearTimeout(state.editTimer);
+      clearTimeout(state.stockTimer);
+      clearTimeout(state.customTimer);
+      send("record-purchase", {
+        purchase_id: purchaseId(),
+        date: select("#purchase-add-date").value,
+        store: select("#purchase-add-store").value.trim(),
+        lines: [line],
+        rows: state.draft,
+        stock: stockPayload(),
+        customGrocery: extraNeedsPayload(),
+      });
+      select("#purchase-add-name").value = "";
+      select("#purchase-add-quantity").value = "";
+      select("#purchase-add-price").value = "";
+    } catch (error) {
+      select("#purchase-add-item").setCustomValidity(error.message);
+      select("#purchase-add-item").reportValidity();
+      select("#purchase-add-item").setCustomValidity("");
+    }
+  }
+
+  function submitPurchaseBatch(event) {
+    event.preventDefault();
+    const errorPanel = select("#purchase-batch-error");
+    errorPanel.textContent = "";
+    try {
+      const lines = parsePurchaseBatch(select("#purchase-batch-text").value, state.snapshot);
+      clearTimeout(state.editTimer);
+      clearTimeout(state.stockTimer);
+      clearTimeout(state.customTimer);
+      send("record-purchase", {
+        purchase_id: purchaseId(),
+        date: select("#purchase-batch-date").value,
+        store: select("#purchase-batch-store").value.trim(),
+        lines,
+        rows: state.draft,
+        stock: stockPayload(),
+        customGrocery: extraNeedsPayload(),
+      });
+      select("#purchase-batch-text").value = "";
+    } catch (error) {
+      errorPanel.textContent = error?.message || String(error);
+    }
   }
 
   function mount() {
@@ -131,7 +436,10 @@ export function createGroceryFeature({
       event.preventDefault();
       openDetails(decodeURIComponent(item.dataset.groceryDetails));
     });
+    select("#purchase-add-item").addEventListener("change", setPurchaseItemFields);
+    select("#purchase-add-form").addEventListener("submit", submitPurchase);
+    select("#purchase-batch-form").addEventListener("submit", submitPurchaseBatch);
   }
 
-  return { mount, render, updateProgress };
+  return { mount, render, renderPurchases, updateProgress };
 }

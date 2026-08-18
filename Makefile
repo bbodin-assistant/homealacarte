@@ -40,6 +40,7 @@ test-web:
 	node --check www/core/data-localization.js
 	node --check www/core/ui-i18n.js
 	node --check www/core/stock-availability.js
+	node --check www/core/purchases.js
 	node --check www/translations.js
 	node --check www/worker.js
 	node --check www/features/ai-dish.js
@@ -49,6 +50,7 @@ test-web:
 	node --check www/features/ai-list/strings.js
 	node --check www/features/ai-list/ollama.js
 	node --check www/features/ai-list/payload.js
+	node --check www/features/grocery.js
 	node tests/menu_rows.mjs
 	node tests/food_rules.mjs
 	node tests/profile_rules.mjs
@@ -72,6 +74,7 @@ test-web:
 	node tests/stock_feature.mjs
 	node tests/extra_needs_feature.mjs
 	node tests/grocery_total.mjs
+	node tests/purchases_feature.mjs
 	node tests/dishes_feature.mjs
 	node tests/dish_editor_feature.mjs
 	node tests/ai_dish_ollama.mjs
