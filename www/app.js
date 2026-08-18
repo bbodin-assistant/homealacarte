@@ -43,6 +43,7 @@ import {
 import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-85";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
+import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-1";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -232,6 +233,12 @@ const aiListFeature = createAiListFeature({
 application.mount();
 aiDishFeature.mount();
 aiListFeature.mount();
+installUiConsistency({
+  state,
+  documentRef: document,
+  formatInputNumber,
+  translate: (key) => uiText(state.language, key),
+});
 
 onStorageStatus(application.renderStorageStatus);
 onPrivateStateChange(() => location.reload());

@@ -222,10 +222,10 @@ assert.match(composition, /features\/grocery\.js\?v=homealacarte-78/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-81/);
 assert.match(app, /feature-composition\.js\?v=homealacarte-85/);
 assert.match(app, /worker\.js\?v=homealacarte-84/);
-assert.match(index, /class="app-version"[^>]*>v89</);
-assert.match(index, /app\.js\?v=homealacarte-89/);
-assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-89/);
-assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-89/);
+assert.match(index, /class="app-version"[^>]*>v90</);
+assert.match(index, /app\.js\?v=homealacarte-90/);
+assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-90/);
+assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-90/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
 assert.match(receiptFeature, /purchase-batch-form/);
 
