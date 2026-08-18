@@ -10,9 +10,45 @@ import {
 } from "./local-store.js?v=homealacarte-78";
 
 const POLL_INTERVAL_MS = 5_000;
+export const SYNC_BATCH_SIZE = 100;
+
+const UPSERT_ENTITY_ORDER = new Map([
+  ["app", 0],
+  ["items", 10],
+  ["people", 20],
+  ["dishes", 30],
+  ["menu", 40],
+  ["stock", 50],
+  ["extra_needs", 50],
+]);
+const DELETE_ENTITY_ORDER = new Map([
+  ["menu", 0],
+  ["stock", 10],
+  ["extra_needs", 10],
+  ["dishes", 20],
+  ["people", 30],
+  ["items", 40],
+  ["app", 50],
+]);
 
 function sameValue(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function operationOrder(operation) {
+  const deleting = operation.operation === "delete";
+  const entityOrder = deleting ? DELETE_ENTITY_ORDER : UPSERT_ENTITY_ORDER;
+  return (deleting ? 100 : 0) + (entityOrder.get(operation.entityType) ?? 60);
+}
+
+export function selectSyncBatch(operations, limit = SYNC_BATCH_SIZE) {
+  return [...operations]
+    .sort((left, right) => (
+      operationOrder(left) - operationOrder(right)
+      || String(left.createdAt || "").localeCompare(String(right.createdAt || ""))
+      || String(left.recordKey || "").localeCompare(String(right.recordKey || ""))
+    ))
+    .slice(0, limit);
 }
 
 export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) {
@@ -52,8 +88,9 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
   async function pushPending(activeSession) {
     const appliedChangeIds = new Set();
     while (true) {
-      const operations = await readPendingOperations();
-      if (!operations.length) return appliedChangeIds;
+      const pendingOperations = await readPendingOperations();
+      if (!pendingOperations.length) return appliedChangeIds;
+      const operations = selectSyncBatch(pendingOperations);
       emitStatus({ state: "saving", message: "" });
       const meta = await readSyncMeta();
       const result = await remoteClient.applyRemoteOperations(operations);
