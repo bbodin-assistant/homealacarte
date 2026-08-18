@@ -41,6 +41,9 @@ create table if not exists public.household_changes (
 create index if not exists household_changes_owner_cursor_idx
 on public.household_changes (user_id, change_id);
 
+create index if not exists household_changes_record_lookup_idx
+on public.household_changes (user_id, entity_type, entity_id, change_id desc);
+
 create table if not exists public.household_sync_operations (
     user_id uuid not null references auth.users(id) on delete cascade,
     operation_id text not null check (char_length(operation_id) between 8 and 200),

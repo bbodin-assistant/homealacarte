@@ -66,6 +66,7 @@ test-web:
 	node tests/local_store.mjs
 	node tests/row_codec.mjs
 	node tests/row_sync_schema.mjs
+	node tests/row_sync_batching.mjs
 	node tests/remote_client.mjs
 	node tests/stock_availability.mjs
 	node tests/stock_feature.mjs
