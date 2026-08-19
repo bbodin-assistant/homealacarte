@@ -1,6 +1,6 @@
 import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-93";
 import { patchConsolidatedRecord } from "./core/data-localization.js?v=homealacarte-80";
-import { applyPurchaseToDocument } from "./core/purchases.js?v=homealacarte-1";
+import { applyPurchaseToDocument } from "./core/purchase-application.js?v=homealacarte-1";
 
 let engine;
 let readyPromise;

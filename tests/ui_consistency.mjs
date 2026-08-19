@@ -4,6 +4,7 @@ import {
   CALENDAR_DATE_SELECTOR,
   calendarDateKeyAction,
   catalogueFilterCounts,
+  catalogueSortLabel,
   installFamilyFormatCompatibility,
   prepareCalendarDateInput,
   selectedCatalogueMatchLabel,
@@ -16,6 +17,8 @@ assert.equal(calendarDateKeyAction("1"), "block");
 assert.match(CALENDAR_DATE_SELECTOR, /ingredient-price-checked-at/);
 assert.match(CALENDAR_DATE_SELECTOR, /household-item-last-bought/);
 assert.match(CALENDAR_DATE_SELECTOR, /data-price-observation-date/);
+assert.equal(catalogueSortLabel("en"), "Sorting");
+assert.equal(catalogueSortLabel("fr"), "Tri");
 
 const dateAttributes = new Map();
 const removedDateAttributes = new Set();
@@ -90,7 +93,7 @@ const [app, family, groceryView, catalogueFeature, uiConsistency] = await Promis
   readFile(new URL("../www/features/ui-consistency.js", import.meta.url), "utf8"),
 ]);
 assert.match(app, /installUiConsistency/);
-assert.match(app, /ui-consistency\.js\?v=homealacarte-1/);
+assert.match(app, /ui-consistency\.js\?v=homealacarte-2/);
 assert.match(family, /formatInputNumber\(quantity\)/);
 assert.match(groceryView, /id="purchase-add-date" type="date"/);
 assert.match(groceryView, /id="purchase-batch-date" type="date"/);
@@ -98,6 +101,7 @@ assert.match(catalogueFeature, /data-price-observation-date/);
 assert.match(uiConsistency, /data-auto-availability-select-all/);
 assert.match(uiConsistency, /dispatchEvent\(new Event\("change", \{ bubbles: true \}\)\)/);
 assert.match(uiConsistency, /#item-category-filter, #item-incomplete-filter/);
+assert.match(uiConsistency, /removeAttribute\("aria-hidden"\)/);
 assert.match(uiConsistency, /beforeinput/);
 
-console.log("UI consistency safeguards cover calendar-only dates, purchase matches, availability helpers, family editing, and live catalogue counts.");
+console.log("UI consistency safeguards cover calendar-only dates, textual catalogue sorting, purchase matches, availability helpers, family editing, and live catalogue counts.");

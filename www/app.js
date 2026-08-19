@@ -43,7 +43,7 @@ import {
 import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-91";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
-import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-1";
+import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-2";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -57,7 +57,7 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   stock: [],
   extra_needs: [],
 }, null, 2)}\n`;
-const worker = new Worker("./worker.js?v=homealacarte-93", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-94", { type: "module" });
 const state = createAppState(localStorage, getStorageStatus, defaultLocale(translations));
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;

@@ -90,6 +90,6 @@ assert.match(rowSyncSource, /local-store\.js\?v=homealacarte-79/);
 assert.match(storageSource, /local-store\.js\?v=homealacarte-79/);
 assert.match(storageSource, /row-sync\.js\?v=homealacarte-81/);
 assert.match(appSource, /storage\.js\?v=homealacarte-80/);
-assert.match(indexSource, /app\.js\?v=homealacarte-95/);
+assert.match(indexSource, /app\.js\?v=homealacarte-96/);
 
 console.log("Synchronization preserves pending base edits, reconciles identical outcomes, keeps divergent edits as conflicts, and refreshes the full cache chain.");

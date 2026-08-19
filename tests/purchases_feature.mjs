@@ -6,6 +6,7 @@ import {
   parsePurchaseBatch,
   parsePurchaseDescription,
 } from "../www/core/purchases.js";
+import { applyPurchaseToDocument as applyPurchaseForWorker } from "../www/core/purchase-application.js";
 import {
   matchReceiptLabelFromHistory,
   purchaseReviewState,
@@ -150,6 +151,25 @@ const withNewItems = applyPurchaseToDocument(updated, {
 assert.equal(withNewItems.items.find((item) => item.name === "Lentils").price_per_kg, 3);
 assert.equal(withNewItems.items.find((item) => item.name === "Kitchen roll").estimated_price, 3.6);
 
+const gramOnlyDocument = structuredClone(document);
+gramOnlyDocument.items.find((item) => item.key === "tomato").grams_per_measure_unit = 0;
+gramOnlyDocument.stock = [{ item_key: "tomato", quantity: 100, quantity_unit: "g" }];
+const gramOnlyUpdated = applyPurchaseForWorker(gramOnlyDocument, {
+  date: "2026-08-19",
+  store: "Market",
+  purchase_id: "purchase-grams",
+  lines: [{
+    item_key: "tomato",
+    quantity: 300,
+    quantity_unit: "g",
+    display_unit: "g",
+    total_price: 1.5,
+  }],
+});
+assert.equal(gramOnlyUpdated.items.find((item) => item.key === "tomato").price_per_kg, 5);
+assert.equal(gramOnlyUpdated.stock.find((row) => row.item_key === "tomato").quantity, 400);
+assert.equal(gramOnlyUpdated.items.find((item) => item.key === "tomato").grams_per_measure_unit, 0);
+
 assert.throws(
   () => applyPurchaseToDocument(document, {
     date: "2026-08-18",
@@ -226,19 +246,21 @@ assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(shell, /\["list", "stock", "needs", "purchases"\]/);
 assert.match(worker, /type === "record-purchase"/);
-assert.match(worker, /core\/purchases\.js\?v=homealacarte-1/);
+assert.match(worker, /core\/purchase-application\.js\?v=homealacarte-1/);
 assert.match(worker, /homealacarte_web\.js\?v=homealacarte-93/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-1/);
 assert.match(composition, /features\/grocery\.js\?v=homealacarte-78/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
 assert.match(app, /feature-composition\.js\?v=homealacarte-91/);
-assert.match(app, /worker\.js\?v=homealacarte-93/);
-assert.match(index, /class="app-version"[^>]*>v95</);
-assert.match(index, /app\.js\?v=homealacarte-95/);
-assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-95/);
-assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-95/);
+assert.match(app, /worker\.js\?v=homealacarte-94/);
+assert.match(index, /class="app-version"[^>]*>v96</);
+assert.match(index, /app\.js\?v=homealacarte-96/);
+assert.match(index, /features\/receipt-purchases\.js\?v=homealacarte-96/);
+assert.match(index, /features\/purchase-review-enhancements\.js\?v=homealacarte-96/);
 assert.match(index, /Incomplete catalogue items/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
 assert.match(receiptFeature, /purchase-batch-form/);
+assert.doesNotMatch(receiptFeature, /form\.dispatchEvent\(new Event\("submit"/);
+assert.match(receiptFeature, /textarea\.value = structured;[\s\S]*reviewing = false;/);
 
-console.log("Purchases update stock and price history, color full review rows, make unresolved weights actionable, and keep cache versions aligned.");
+console.log("Purchases reliably update stock and price history, including reviewed receipts and gram-only incomplete foods, while cache versions stay aligned.");

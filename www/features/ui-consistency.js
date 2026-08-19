@@ -48,6 +48,10 @@ export function catalogueFilterCounts(snapshot = {}, filters = {}) {
   };
 }
 
+export function catalogueSortLabel(language = "") {
+  return String(language || "").toLowerCase().startsWith("fr") ? "Tri" : "Sorting";
+}
+
 export function selectedCatalogueMatchLabel(select) {
   if (!select?.value) return "";
   const selected = select.selectedOptions?.[0]
@@ -105,6 +109,29 @@ function installCalendarOnlyDates(documentRef) {
     if (!input) return;
     prepareCalendarDateInput(input);
     openCalendar(input);
+  });
+}
+
+function updateCatalogueSortLabel(documentRef) {
+  const sort = documentRef.querySelector("#item-sort");
+  const indicator = sort?.closest("label")?.querySelector("span");
+  if (!indicator) return false;
+  const label = catalogueSortLabel(documentRef.documentElement?.lang);
+  if (indicator.textContent !== label) indicator.textContent = label;
+  indicator.removeAttribute("aria-hidden");
+  return true;
+}
+
+function installCatalogueSortLabel(documentRef) {
+  const update = () => updateCatalogueSortLabel(documentRef);
+  update();
+  const panel = documentRef.querySelector("#item-filter-panel");
+  if (panel) {
+    new MutationObserver(update).observe(panel, { childList: true, subtree: true });
+  }
+  new MutationObserver(update).observe(documentRef.documentElement, {
+    attributes: true,
+    attributeFilter: ["lang"],
   });
 }
 
@@ -235,6 +262,7 @@ export function installUiConsistency({
   installFamilyFormatCompatibility(formatInputNumber);
   installUiConsistencyStyles(documentRef);
   installCalendarOnlyDates(documentRef);
+  installCatalogueSortLabel(documentRef);
   installCatalogueCountUpdates(documentRef, state);
   installPurchaseStatusSync(documentRef);
   installAvailabilitySelectAll(documentRef, translate);
