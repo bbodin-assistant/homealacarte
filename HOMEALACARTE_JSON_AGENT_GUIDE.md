@@ -35,6 +35,7 @@ Rules:
 - Never copy existing items or dishes into the export.
 - Do not include `people`, `stock`, or `extra_needs` in the export.
 - For newly created user-facing items and dishes, use localized names when reliable translations are available.
+- Generated menu rows should include their calendar `date` so identical weekdays in different weeks remain distinct.
 
 ## 3. Localized text
 
@@ -98,7 +99,7 @@ Agent rules:
   "saturated_fat_g": 0.0,
   "fruit_vegetable_legume_percent": 0.0,
   "incomplete": false,
-  "purchase_quantity_grams": 0.0,
+  "purchase_quantity_grams": 100.0,
   "purchase_unit": "package description",
   "price_per_kg": 0.0,
   "price_checked_at": "",
@@ -113,6 +114,7 @@ Notes:
 
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
+- `grams`, `grams_per_measure_unit`, and `purchase_quantity_grams` must be positive.
 - Keys use lowercase `snake_case` and must remain identical in every language.
 - Localize the display `name` rather than creating separate item records for different languages.
 
@@ -167,6 +169,7 @@ Rules:
 ```json
 {
   "id": "menu_entry_stable_id",
+  "date": "2026-08-17",
   "day": "Monday",
   "meal": "Dinner",
   "item_key": "tomato_emmental_toast",
@@ -180,6 +183,8 @@ Rules:
 Rules:
 
 - `id` is optional on import. Home à la Carte assigns one when absent and preserves it on export for incremental synchronization.
+- `date` is optional for backward-compatible imports, but agents generating current menus should provide the calendar date in `YYYY-MM-DD` form and keep `day` consistent with it.
+- `date` is part of menu-row identity: otherwise-compatible rows on different dates remain separate.
 - `item_key` may reference an item or dish.
 - Use `portion` for dishes.
 - Use `g` or `unit` for direct items.
@@ -206,8 +211,18 @@ Rules:
     },
     {
       "kind": "never",
+      "meal": "dinner",
+      "item_keys": ["tomato_emmental_toast"]
+    },
+    {
+      "kind": "allergy",
       "meal": "any",
       "item_keys": ["peanut"]
+    },
+    {
+      "kind": "favorite",
+      "meal": "any",
+      "item_keys": ["tomato"]
     }
   ]
 }
@@ -215,10 +230,15 @@ Rules:
 
 Food rules:
 
+- Valid `kind` codes are `routine`, `never`, `allergy`, and `favorite`.
 - `routine`: on each selected and available day, schedule one of `item_keys` at `meal`; one key expresses a fixed habit.
-- `days` is optional for a routine. An omitted or empty list means every available day. Otherwise use any of `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`.
-- `never`: exclude the listed dishes and any dish containing the listed ingredients. Use `meal: "any"` for every meal.
-- Meal codes are `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, and `anytime`.
+- `days` applies only to `routine`. An omitted or empty list means every available day. Otherwise use any of `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`. Days on non-routine rules are ignored.
+- `never`: exclude a listed dish or item at the selected meal. Listing an ingredient also excludes dishes containing that ingredient. Use `meal: "any"` to apply the rule to every meal.
+- `allergy`: exclude a listed dish or item, and dishes containing a listed ingredient, at every meal. Use `meal: "any"`; allergy matching is global rather than meal-specific.
+- `favorite`: make matching candidate dishes, including dishes containing a listed ingredient, preferred during automatic menu generation without forcing their selection. Use `meal: "any"`; favorite matching is currently global rather than meal-specific.
+- Meal codes are `any`, `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, and `anytime`. `any` is the all-meals rule code and cannot be used by a `routine` rule.
+- `quantity` must be positive. `quantity_unit` must be `portion`, `g`, or `unit`; omitted values default to `1.0` and `portion`.
+- Every `item_keys` entry must resolve to an existing item or dish.
 
 ## 8. Stock entry
 
@@ -250,6 +270,8 @@ Food rules:
 - Every dish component must resolve to an item.
 - Every menu entry must resolve to an item or dish.
 - Every menu person must resolve to a person.
+- Generated menu rows should include a calendar `date`; legacy date-less rows remain importable.
+- Food-rule `kind`, `meal`, `days`, quantity, unit, and references must use the codes and constraints documented above.
 - Existing records must not be duplicated in the export.
 - Localized text objects must use language-tag keys with string values.
 - Stable identifiers and references must remain strings and must not vary by language.
