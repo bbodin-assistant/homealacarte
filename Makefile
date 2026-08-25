@@ -2,6 +2,7 @@ WASM_PACK ?= $(HOME)/.cargo/bin/wasm-pack
 DATA_DIR ?= ./sample-data
 PERSONAL_DATA_DIR ?= ./data
 PERSONAL_IMPORT ?= ./private-import/homealacarte.json
+PERSONAL_IMPORT_NO_STOCK ?= ./private-import/homealacarte-no-stock.json
 PERSONAL_BASE_DIR ?= ./dataweb
 PERSONAL_OVERLAY_DIR ?= ./perso-data
 PERSONAL_MERGED_IMPORT ?= ./private-import/homealacarte-merged.json
@@ -18,7 +19,7 @@ web-build:
 	DATA_DIR="$(DATA_DIR)" python3 scripts/build.py
 
 personal-data:
-	cargo run --quiet --bin personal-data -- "$(PERSONAL_DATA_DIR)" "$(PERSONAL_IMPORT)"
+	cargo run --quiet --bin personal-data -- "$(PERSONAL_DATA_DIR)" "$(PERSONAL_IMPORT)" "$(PERSONAL_IMPORT_NO_STOCK)"
 
 merge-personal-data:
 	cargo run --quiet --bin personal-data -- merge "$(PERSONAL_BASE_DIR)" "$(PERSONAL_OVERLAY_DIR)" "$(PERSONAL_MERGED_IMPORT)" "$(PERSONAL_MERGE_AUDIT)"
@@ -103,6 +104,7 @@ test-reset-demo:
 
 test-personal-data:
 	cargo test --test personal_data
+	cargo test --bin personal-data
 
 test-personal-import:
 	node tests/personal_import.mjs "$(PERSONAL_IMPORT)"

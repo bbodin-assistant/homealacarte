@@ -78,12 +78,42 @@ fn atomic_write(output_path: &Path, content: &str) -> Result<(), String> {
         .map_err(|error| format!("cannot replace {}: {error}", output_path.display()))
 }
 
-fn convert(source_directory: &Path, output_path: &Path, language: &str) -> Result<(), String> {
+fn content_without_stock(content: &str) -> Result<String, String> {
+    let mut document: serde_json::Value = serde_json::from_str(content)
+        .map_err(|error| format!("cannot decode consolidated personal data: {error}"))?;
+    let object = document
+        .as_object_mut()
+        .ok_or_else(|| "consolidated personal data must be a JSON object".to_string())?;
+    object.insert("stock".to_string(), serde_json::Value::Array(Vec::new()));
+    serde_json::to_string_pretty(&document)
+        .map_err(|error| format!("cannot encode stock-free personal data: {error}"))
+}
+
+fn convert(
+    source_directory: &Path,
+    output_path: &Path,
+    no_stock_output_path: Option<&Path>,
+    language: &str,
+) -> Result<(), String> {
     let (content, report) =
         consolidate_personal_sources(load_directory(source_directory)?, language)?;
-    atomic_write(output_path, &content)?;
+    let no_stock_content = no_stock_output_path
+        .map(|_| content_without_stock(&content))
+        .transpose()?;
 
+    atomic_write(output_path, &content)?;
     println!("Personal import written to {}", output_path.display());
+
+    if let (Some(no_stock_output_path), Some(no_stock_content)) =
+        (no_stock_output_path, no_stock_content)
+    {
+        atomic_write(no_stock_output_path, &no_stock_content)?;
+        println!(
+            "Personal import without stock written to {}",
+            no_stock_output_path.display()
+        );
+    }
+
     println!(
         "{} foods, {} household items, {} dishes, {} people, {} menu rows, {} stock rows, {} extra needs",
         report.ingredients,
@@ -154,9 +184,18 @@ fn run() -> Result<(), String> {
     };
 
     match arguments.as_slice() {
-        [source_directory, output_path] => {
-            convert(Path::new(source_directory), Path::new(output_path), &language)
-        }
+        [source_directory, output_path] => convert(
+            Path::new(source_directory),
+            Path::new(output_path),
+            None,
+            &language,
+        ),
+        [source_directory, output_path, no_stock_output_path] => convert(
+            Path::new(source_directory),
+            Path::new(output_path),
+            Some(Path::new(no_stock_output_path)),
+            &language,
+        ),
         [command, base_directory, overlay_directory, output_path, audit_path]
             if command == "merge" =>
         {
@@ -169,7 +208,7 @@ fn run() -> Result<(), String> {
             )
         }
         _ => Err(
-            "usage: personal-data [--locale <tag>] <source-directory> <output.json>\n       personal-data [--locale <tag>] merge <base-directory> <overlay-directory> <output.json> <audit.json>"
+            "usage: personal-data [--locale <tag>] <source-directory> <output.json> [<output-without-stock.json>]\n       personal-data [--locale <tag>] merge <base-directory> <overlay-directory> <output.json> <audit.json>"
                 .to_string(),
         ),
     }
@@ -179,5 +218,32 @@ fn main() {
     if let Err(error) = run() {
         eprintln!("Personal data migration failed: {error}");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::content_without_stock;
+
+    #[test]
+    fn stock_free_copy_clears_stock_and_preserves_other_sections() {
+        let content = r#"{
+          "items": [{"key": "apple_test"}],
+          "stock": [{"item_key": "apple_test", "quantity": 2}],
+          "extra_needs": [{"item_key": "soap_test", "quantity": 1}]
+        }"#;
+
+        let stock_free: serde_json::Value =
+            serde_json::from_str(&content_without_stock(content).unwrap()).unwrap();
+
+        assert_eq!(
+            stock_free["items"],
+            serde_json::json!([{"key": "apple_test"}])
+        );
+        assert_eq!(stock_free["stock"], serde_json::json!([]));
+        assert_eq!(
+            stock_free["extra_needs"],
+            serde_json::json!([{"item_key": "soap_test", "quantity": 1}])
+        );
     }
 }
