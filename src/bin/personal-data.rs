@@ -84,7 +84,7 @@ fn content_without_stock(content: &str) -> Result<String, String> {
     let object = document
         .as_object_mut()
         .ok_or_else(|| "consolidated personal data must be a JSON object".to_string())?;
-    object.insert("stock".to_string(), serde_json::Value::Array(Vec::new()));
+    object.remove("stock");
     serde_json::to_string_pretty(&document)
         .map_err(|error| format!("cannot encode stock-free personal data: {error}"))
 }
@@ -226,7 +226,7 @@ mod tests {
     use super::content_without_stock;
 
     #[test]
-    fn stock_free_copy_clears_stock_and_preserves_other_sections() {
+    fn stock_free_copy_removes_stock_and_preserves_other_sections() {
         let content = r#"{
           "items": [{"key": "apple_test"}],
           "stock": [{"item_key": "apple_test", "quantity": 2}],
@@ -240,7 +240,7 @@ mod tests {
             stock_free["items"],
             serde_json::json!([{"key": "apple_test"}])
         );
-        assert_eq!(stock_free["stock"], serde_json::json!([]));
+        assert!(stock_free.get("stock").is_none());
         assert_eq!(
             stock_free["extra_needs"],
             serde_json::json!([{"item_key": "soap_test", "quantity": 1}])
