@@ -108,7 +108,7 @@ fn legacy_personal_files_become_one_valid_current_document() {
         document["extra_needs"][0]["notes"],
         "buy the fragrance-free version"
     );
-    assert!(content.contains("\"meal\": \"Dejeuner\""));
+    assert!(content.contains("\"meal\": \"lunch\""));
     assert!(!content.contains("ingredient_key"));
     assert!(!content.contains("household_items"));
     assert!(!content.contains("\"default\""));

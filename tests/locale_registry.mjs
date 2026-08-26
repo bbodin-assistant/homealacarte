@@ -18,6 +18,7 @@ for (const [locale, strings] of Object.entries(registry.locales)) {
     "breakfast", "morning_snack", "lunch", "afternoon_snack_1",
     "afternoon_snack_2", "dinner", "anytime",
   ]);
+  assert.equal(typeof strings.categories, "object");
   assert.deepEqual(Object.keys(strings.messages), [
     "generated_automatically", "daily_routine",
   ]);
@@ -26,5 +27,8 @@ for (const [locale, strings] of Object.entries(registry.locales)) {
   assert.equal(typeof strings.pdf.decimal_separator, "string");
   assert.ok(strings.pdf.decimal_separator);
 }
+assert.equal(registry.locales.en.categories["Produce::Vegetables"], "Produce::Vegetables");
+assert.equal(registry.locales.fr.categories["Produce::Vegetables"], "Fruits et légumes::Légumes");
+assert.equal(registry.locales.es.categories["Produce::Vegetables"], "Productos::Verduras");
 
 console.log("Structural locale registry is complete and data-driven across at least three locales.");

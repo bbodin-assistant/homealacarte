@@ -1,4 +1,4 @@
-use crate::loader::{load_dataset, localize_day, localize_meal};
+use crate::loader::load_dataset;
 use crate::model::*;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -59,6 +59,17 @@ fn localize_sources(sources: &[SourceFile], language: &str) -> Result<Vec<Source
                     for (index, row) in rows.iter_mut().enumerate() {
                         if section == "menu" && contains_localized_value(row) {
                             ensure_localized_menu_id(row, &source.path, index);
+                        }
+                        if section == "items" {
+                            if let Some(category) = row
+                                .as_object_mut()
+                                .and_then(|item| item.get_mut("category"))
+                            {
+                                resolve_localized_value(
+                                    category,
+                                    &crate::locale::fallback_locale(),
+                                );
+                            }
                         }
                         resolve_localized_value(row, language);
                     }
@@ -194,11 +205,6 @@ fn merge_ingredient(
 ) -> Ingredient {
     Ingredient {
         name: choose_text(&current.name, &source_current.name, &source_target.name),
-        category: choose_text(
-            &current.category,
-            &source_current.category,
-            &source_target.category,
-        ),
         source: choose_text(&current.source, &source_current.source, &source_target.source),
         url: choose_text(&current.url, &source_current.url, &source_target.url),
         price_source: choose_text(
@@ -293,11 +299,6 @@ fn merge_household_item(
 ) -> HouseholdItem {
     HouseholdItem {
         name: choose_text(&current.name, &source_current.name, &source_target.name),
-        category: choose_text(
-            &current.category,
-            &source_current.category,
-            &source_target.category,
-        ),
         purchase_unit: choose_text(
             &current.purchase_unit,
             &source_current.purchase_unit,
@@ -346,7 +347,6 @@ fn merge_menu(
     current: &[MenuRow],
     source_current: &[MenuRow],
     source_target: &[MenuRow],
-    language: &str,
 ) -> Result<Vec<MenuRow>, String> {
     let source_current = source_current
         .iter()
@@ -360,8 +360,6 @@ fn merge_menu(
         .iter()
         .map(|row| {
             let mut next = row.clone();
-            next.day = localize_day(&row.day, language)?;
-            next.meal = localize_meal(&row.meal, language)?;
             if let (Some(source_current), Some(source_target)) =
                 (source_current.get(row.id.as_str()), source_target.get(row.id.as_str()))
             {
@@ -385,7 +383,6 @@ pub(super) fn merge_runtime_dataset(
     current: &Dataset,
     source_current: &Dataset,
     mut source_target: Dataset,
-    language: &str,
 ) -> Result<Dataset, String> {
     let target_ingredients = source_target.ingredients.clone();
     source_target.ingredients = current
@@ -468,12 +465,7 @@ pub(super) fn merge_runtime_dataset(
         .collect();
 
     let target_menu = source_target.menu.clone();
-    source_target.menu = merge_menu(
-        &current.menu,
-        &source_current.menu,
-        &target_menu,
-        language,
-    )?;
+    source_target.menu = merge_menu(&current.menu, &source_current.menu, &target_menu)?;
     source_target.stock = current.stock.clone();
     source_target.stock_units = current.stock_units.clone();
     let target_stock_notes = source_target.stock_notes.clone();
@@ -555,6 +547,14 @@ pub(super) fn rehydrate_localized_data(
                 let mut template = source_row.clone();
                 if section == "menu" {
                     ensure_localized_menu_id(&mut template, &source.path, index);
+                    if let Some(menu) = template.as_object_mut() {
+                        menu.remove("day");
+                        menu.remove("meal");
+                    }
+                } else if section == "items" {
+                    if let Some(item) = template.as_object_mut() {
+                        item.remove("category");
+                    }
                 }
                 let Some(identity) = row_identity(section, &template) else {
                     continue;

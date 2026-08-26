@@ -42,4 +42,6 @@ fn menu_replacement_normalizes_localized_rows() {
         Some(snapshot.planner[0].id.as_str())
     );
     assert_eq!(exported["menu"][0]["date"].as_str(), Some("2026-08-18"));
+    assert_eq!(exported["menu"][0]["day"].as_str(), Some("tuesday"));
+    assert_eq!(exported["menu"][0]["meal"].as_str(), Some("dinner"));
 }

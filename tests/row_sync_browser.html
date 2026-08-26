@@ -126,6 +126,73 @@
       if (!afterPull.people.some((person) => person.key === "sam") || notified !== 1) {
         throw new Error("incremental remote pull was not applied and announced");
       }
+
+      // A large import spans several sync batches. One conflict choice must apply
+      // to the whole queued import instead of prompting again after every batch.
+      await clearLocalState();
+      const importedItems = Array.from({ length: 205 }, (_, index) => ({
+        key: `imported_${index}`,
+        name: `Imported ${index}`,
+      }));
+      await writeLocalState({
+        version: 10,
+        language: "en",
+        sources: [{
+          path: "homealacarte_data.json",
+          content: JSON.stringify({
+            items: importedItems,
+            dishes: [],
+            people: [],
+            menu: [],
+            stock: [],
+            extra_needs: [],
+          }),
+        }],
+      }, { userId: "browser-test" });
+      let conflictApplyCalls = 0;
+      let conflictChangeId = 100;
+      const conflictStatuses = [];
+      const conflictSync = createRowSync({
+        emitStatus: (status) => conflictStatuses.push(status),
+        notifyRemoteChange: () => {},
+        remoteClient: {
+          ensureSession: async () => session,
+          getSession: () => session,
+          isNetworkError: () => false,
+          touchAccountActivity: async () => {},
+          applyRemoteOperations: async (operations) => {
+            conflictApplyCalls += 1;
+            const changes = operations.map((operation) => ({
+              change_id: ++conflictChangeId,
+              entity_type: operation.entityType,
+              entity_id: operation.entityId,
+              position: operation.position,
+              payload: operation.payload,
+              record_version: Number(operation.expectedVersion) + 1,
+              operation: operation.operation,
+            }));
+            return operations[0]?.expectedVersion === 0
+              ? { conflicts: changes, applied: [] }
+              : { conflicts: [], applied: changes };
+          },
+          fetchRemoteChanges: async () => [],
+        },
+      });
+      if (await conflictSync.synchronize(false) !== null) {
+        throw new Error("large import did not expose its initial conflict");
+      }
+      if (!conflictStatuses.some((status) => status.state === "conflict")) {
+        throw new Error("large import conflict status was not emitted");
+      }
+      if (!await conflictSync.resolve("local")) {
+        throw new Error("one local resolution did not finish the large import");
+      }
+      if ((await readPendingOperations()).length !== 0) {
+        throw new Error("one local resolution did not drain every import batch");
+      }
+      if (conflictApplyCalls < 5 || conflictStatuses.at(-1)?.state !== "synced") {
+        throw new Error("large import batches were not automatically resolved and synchronized");
+      }
       body.dataset.result = "passed";
       body.textContent = "Relational IndexedDB synchronization passed.";
     } catch (error) {

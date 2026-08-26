@@ -230,7 +230,7 @@ impl Engine {
             let mut item = HouseholdItem {
                 key: key.clone(),
                 name: input.name.trim().to_string(),
-                category: input.category.trim().to_string(),
+                category: crate::locale::canonical_category(&input.category),
                 purchase_unit: input.purchase_unit.trim().to_string(),
                 purchase_quantity: input.purchase_quantity,
                 estimated_price: input.estimated_price,

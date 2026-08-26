@@ -16,10 +16,7 @@
       "saturated_fat_g": 0.01,
       "salt_g": 0.01,
       "fruit_vegetable_legume_percent": 100,
-      "category": {
-        "en": "Produce::Vegetables",
-        "fr": "Fruits et légumes::Légumes"
-      },
+      "category": "Produce::Vegetables",
       "source": {
         "en": "Anses Ciqual 2025, food code 20385; price estimate from Carrefour France checked 2026-07-30",
         "fr": "Anses Ciqual 2025, code aliment 20385 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
@@ -53,10 +50,7 @@
       "saturated_fat_g": 0.56,
       "salt_g": 1.17,
       "fruit_vegetable_legume_percent": 0,
-      "category": {
-        "en": "Bakery::Bread",
-        "fr": "Boulangerie::Pain"
-      },
+      "category": "Bakery::Bread",
       "source": {
         "en": "Anses Ciqual 2025, food code 7110; price estimate from Carrefour France checked 2026-07-30",
         "fr": "Anses Ciqual 2025, code aliment 7110 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
@@ -90,10 +84,7 @@
       "saturated_fat_g": 18.1,
       "salt_g": 0.68,
       "fruit_vegetable_legume_percent": 0,
-      "category": {
-        "en": "Dairy::Cheese",
-        "fr": "Produits laitiers::Fromage"
-      },
+      "category": "Dairy::Cheese",
       "source": {
         "en": "Anses Ciqual 2025, food code 12118; price estimate from Carrefour France checked 2026-07-30",
         "fr": "Anses Ciqual 2025, code aliment 12118 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
@@ -114,10 +105,7 @@
         "en": "Liquid hand soap",
         "fr": "Savon liquide pour les mains"
       },
-      "category": {
-        "en": "Household::Hygiene",
-        "fr": "Maison::Hygiène"
-      },
+      "category": "Household::Hygiene",
       "estimated_price": 1.05,
       "purchase_unit": {
         "en": "300 ml bottle",
@@ -226,14 +214,8 @@
   ],
   "menu": [
     {
-      "day": {
-        "en": "Monday",
-        "fr": "Lundi"
-      },
-      "meal": {
-        "en": "Lunch",
-        "fr": "Dejeuner"
-      },
+      "day": "monday",
+      "meal": "lunch",
       "item_key": "sample_tomato_toast",
       "people": [
         "sample_alex",

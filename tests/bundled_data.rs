@@ -51,6 +51,7 @@ fn public_sample_data_uses_the_current_schema() {
         .find(|ingredient| ingredient.key == "sample_tomato")
         .expect("sample ingredient");
     assert_eq!(sample_item.name, "Tomate crue (générique)");
+    assert_eq!(sample_item.category, "Fruits et légumes::Légumes");
     assert!(sample_item.source.contains("Anses Ciqual 2025"));
     assert_eq!(sample_item.sugars_g, Some(3.22));
     assert_eq!(sample_item.saturated_fat_g, Some(0.01));

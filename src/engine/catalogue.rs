@@ -32,6 +32,7 @@ impl Engine {
     ) -> Result<AppSnapshot, String> {
         let mut next = self.dataset.as_ref().ok_or("no dataset loaded")?.clone();
         for mut ingredient in custom_ingredients {
+            ingredient.category = crate::locale::canonical_category(&ingredient.category);
             preserve_price_history(
                 &mut ingredient.price_history,
                 &[],
@@ -74,6 +75,7 @@ impl Engine {
         mut input: Ingredient,
         price_history_provided: bool,
     ) -> Result<AppSnapshot, String> {
+        input.category = crate::locale::canonical_category(&input.category);
         validate_ingredient(&input)?;
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
         let index = dataset
@@ -107,6 +109,7 @@ impl Engine {
     }
 
     pub fn add_ingredient(&mut self, mut input: Ingredient) -> Result<AppSnapshot, String> {
+        input.category = crate::locale::canonical_category(&input.category);
         preserve_price_history(
             &mut input.price_history,
             &[],
@@ -135,6 +138,7 @@ impl Engine {
         mut input: HouseholdItem,
         price_history_provided: bool,
     ) -> Result<AppSnapshot, String> {
+        input.category = crate::locale::canonical_category(&input.category);
         validate_household_item(&input)?;
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
         let index = dataset
@@ -162,6 +166,7 @@ impl Engine {
         &mut self,
         mut input: HouseholdItem,
     ) -> Result<AppSnapshot, String> {
+        input.category = crate::locale::canonical_category(&input.category);
         preserve_price_history(
             &mut input.price_history,
             &[],

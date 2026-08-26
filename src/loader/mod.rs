@@ -1,7 +1,8 @@
 use crate::model::{Dataset, HouseholdItem, Ingredient, Person, SourceFile};
 pub use self::inputs::MenuInput;
 pub(crate) use self::localization::{
-    food_rule_meal_name, localize_day, localize_meal, localized_days, localized_meals,
+    dataset_with_localized_categories, food_rule_meal_name, localized_days, localized_meals,
+    localized_menu_rows,
 };
 pub(crate) use self::menu::{
     FOOD_RULE_DAYS, merge_menu_rows, normalize_food_rules, normalize_menu,
@@ -129,7 +130,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             saturated_fat_g: input.saturated_fat_g,
             salt_g: input.salt_g,
             fruit_vegetable_legume_percent: input.fruit_vegetable_legume_percent,
-            category: input.category.trim().to_string(),
+            category: crate::locale::canonical_category(&input.category),
             source: input.source.trim().to_string(),
             url: input.url.trim().to_string(),
             price_per_kg: input.price_per_kg,
@@ -238,7 +239,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         household_items.push(HouseholdItem {
             key,
             name: input.name.trim().to_string(),
-            category: input.category.trim().to_string(),
+            category: crate::locale::canonical_category(&input.category),
             purchase_unit: input.purchase_unit.unwrap_or_else(|| "unité".to_string()),
             purchase_quantity,
             estimated_price: input.estimated_price,

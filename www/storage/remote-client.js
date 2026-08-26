@@ -20,7 +20,7 @@ export function createRemoteClient({
     if (!configPromise) {
       configPromise = (configValue
         ? Promise.resolve({ SUPABASE_CONFIG: configValue })
-        : import("../supabase-config.js?v=homealacarte-30"))
+        : import("../supabase-config.js?v=homealacarte-96"))
         .then(({ SUPABASE_CONFIG }) => {
           const projectUrl = String(SUPABASE_CONFIG?.projectUrl || "").replace(/\/+$/, "");
           const publishableKey = String(SUPABASE_CONFIG?.publishableKey || "");

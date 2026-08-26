@@ -1,6 +1,6 @@
+use crate::locale;
 use crate::model::{FoodRule, MenuRow};
 use super::inputs::MenuInput;
-use super::localization::{localize_day, localize_meal};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
@@ -96,7 +96,7 @@ pub(crate) fn normalize_food_rules(
 
 pub(crate) fn normalize_menu(
     inputs: Vec<MenuInput>,
-    language: &str,
+    _language: &str,
     valid_items: &HashSet<String>,
     valid_people: &HashSet<String>,
     default_person: Option<&str>,
@@ -155,13 +155,17 @@ pub(crate) fn normalize_menu(
                 ));
             }
         }
+        let day = locale::day_key(&input.day)
+            .ok_or_else(|| format!("menu item {} has an unknown day: {}", index + 1, input.day))?;
+        let meal = locale::meal_key(&input.meal)
+            .ok_or_else(|| format!("menu item {} has an unknown meal: {}", index + 1, input.meal))?;
         let date = input.date.trim().to_string();
         let supplied_id = input.id.unwrap_or_default().trim().to_string();
         let id = if supplied_id.is_empty() {
             let identity = serde_json::json!({
                 "date": date,
-                "day": input.day,
-                "meal": input.meal,
+                "day": day,
+                "meal": meal,
                 "item_key": input.item_key,
                 "people": people,
                 "quantity": quantity,
@@ -186,10 +190,8 @@ pub(crate) fn normalize_menu(
         rows.push(MenuRow {
             id,
             date,
-            day: localize_day(&input.day, language)
-                .map_err(|error| format!("menu item {}: {error}", index + 1))?,
-            meal: localize_meal(&input.meal, language)
-                .map_err(|error| format!("menu item {}: {error}", index + 1))?,
+            day,
+            meal,
             item_key: input.item_key.trim().to_string(),
             people: people
                 .into_iter()

@@ -65,7 +65,7 @@ Agent rules:
 
 - Localized values may contain any valid language-tag keys for which reliable text is available; do not restrict records to the locales currently present in the UI translation catalogue.
 - Do not invent a translation only to fill a locale. A normal string remains valid and is treated as language-neutral.
-- The same localized representation may be used for other user-facing text such as `category`, `source`, `measure_unit`, `purchase_unit`, dish `source_notes`, component `source_quantity`, person descriptions, and notes.
+- The same localized representation may be used for other user-facing text such as `source`, `measure_unit`, `purchase_unit`, dish `source_notes`, component `source_quantity`, person descriptions, and notes.
 - Locale keys may include a region suffix such as `en-GB`, `fr-FR`, or `zh-CN`.
 - Resolution tries the requested locale, then its base language, then the first available localized value.
 - Keep identifiers and machine-readable codes stable. Do **not** localize fields such as `key`, `item_key`, person keys, `origin_country`, `nutri_score`, booleans, or numeric values.
@@ -81,10 +81,7 @@ Agent rules:
     "fr": "Tomate",
     "es": "Tomate"
   },
-  "category": {
-    "en": "Produce::Vegetables",
-    "fr": "Fruits et légumes::Légumes"
-  },
+  "category": "Produce::Vegetables",
   "custom": false,
   "measure_unit": "g",
   "grams": 100.0,
@@ -112,6 +109,8 @@ Agent rules:
 
 Notes:
 
+- `category` is a stable `Category::Subcategory` semantic code. Use a registered code when one applies and do not translate it in item data; display labels come from `locales/structural.json`.
+- A genuinely custom category may remain a language-neutral string.
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
 - `grams`, `grams_per_measure_unit`, and `purchase_quantity_grams` must be positive.
@@ -170,8 +169,8 @@ Rules:
 {
   "id": "menu_entry_stable_id",
   "date": "2026-08-17",
-  "day": "Monday",
-  "meal": "Dinner",
+  "day": "monday",
+  "meal": "dinner",
   "item_key": "tomato_emmental_toast",
   "people": ["person_key"],
   "quantity": 1.0,
@@ -185,6 +184,9 @@ Rules:
 - `id` is optional on import. Home à la Carte assigns one when absent and preserves it on export for incremental synchronization.
 - `date` is optional for backward-compatible imports, but agents generating current menus should provide the calendar date in `YYYY-MM-DD` form and keep `day` consistent with it.
 - `date` is part of menu-row identity: otherwise-compatible rows on different dates remain separate.
+- `day` is a semantic code: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, or `sunday`.
+- `meal` is a semantic code: `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, or `anytime`.
+- Do not translate `day` or `meal` in menu data. Home à la Carte translates these shared concepts for display.
 - `item_key` may reference an item or dish.
 - Use `portion` for dishes.
 - Use `g` or `unit` for direct items.

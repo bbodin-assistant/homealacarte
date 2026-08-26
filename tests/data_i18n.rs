@@ -98,6 +98,7 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
         .unwrap();
 
     assert_eq!(item(&french, "tomato").name, "Tomate test");
+    assert_eq!(item(&french, "tomato").category, "Fruits et légumes::Légumes");
     assert_eq!(item(&french, "tomato").measure_unit, "pièce");
     assert_eq!(french.dishes[0].name, "Assiette de tomates");
     assert_eq!(french.dishes[0].source_notes, vec!["Trancher et servir."]);
@@ -147,9 +148,7 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
         .find(|item| item["key"] == "tomato")
         .unwrap();
     assert_eq!(tomato["name"], "Tomate personnalisée");
-    assert_eq!(tomato["category"]["en"], "Produce::Vegetables");
-    assert_eq!(tomato["category"]["fr"], "Fruits et légumes::Légumes");
-    assert_eq!(tomato["category"]["es"], "Productos::Verduras");
+    assert_eq!(tomato["category"], "Produce::Vegetables");
     assert_eq!(tomato["measure_unit"]["fr"], "pièce");
     assert_eq!(tomato["price_source"]["es"], "Mercado de prueba");
     assert_eq!(exported["dishes"][0]["name"]["en"], "Tomato plate");
@@ -160,6 +159,8 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
     assert_eq!(exported["menu"][0]["notes"]["fr"], "Servir froid");
     assert_eq!(exported["menu"][0]["notes"]["es"], "Servir frío");
     assert_eq!(exported["menu"][0]["id"], menu_id);
+    assert_eq!(exported["menu"][0]["day"], "monday");
+    assert_eq!(exported["menu"][0]["meal"], "dinner");
 }
 
 #[test]

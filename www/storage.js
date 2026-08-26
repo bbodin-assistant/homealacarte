@@ -3,8 +3,8 @@ import {
   readLocalState,
   readSyncMeta,
 } from "./storage/local-store.js?v=homealacarte-78";
-import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-79";
-import { createRowSync } from "./storage/row-sync.js?v=homealacarte-80";
+import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-80";
+import { createRowSync } from "./storage/row-sync.js?v=homealacarte-81";
 
 let syncStatus = { state: "local", email: "", message: "" };
 

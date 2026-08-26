@@ -13,6 +13,8 @@ struct LocaleStrings {
     days: BTreeMap<String, String>,
     meals: BTreeMap<String, String>,
     #[serde(default)]
+    categories: BTreeMap<String, String>,
+    #[serde(default)]
     messages: BTreeMap<String, String>,
     pdf: PdfLocaleStrings,
 }
@@ -23,6 +25,8 @@ struct LocaleAliases {
     days: BTreeMap<String, String>,
     #[serde(default)]
     meals: BTreeMap<String, String>,
+    #[serde(default)]
+    categories: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -136,6 +140,24 @@ pub(crate) fn day_key(value: &str) -> Option<String> {
 
 pub(crate) fn meal_key(value: &str) -> Option<String> {
     canonical_key(value, &registry().aliases.meals, |strings| &strings.meals)
+}
+
+pub(crate) fn category_key(value: &str) -> Option<String> {
+    canonical_key(value, &registry().aliases.categories, |strings| &strings.categories)
+}
+
+pub(crate) fn canonical_category(value: &str) -> String {
+    category_key(value).unwrap_or_else(|| value.trim().to_string())
+}
+
+pub(crate) fn category_label(language: &str, value: &str) -> String {
+    let Some(key) = category_key(value) else {
+        return value.trim().to_string();
+    };
+    locale(language)
+        .and_then(|strings| strings.categories.get(&key))
+        .cloned()
+        .unwrap_or(key)
 }
 
 pub(crate) fn pdf_strings(language: &str) -> Option<&'static PdfLocaleStrings> {

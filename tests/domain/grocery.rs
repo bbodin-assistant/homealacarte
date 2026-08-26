@@ -81,7 +81,7 @@ fn synthetic_data_supports_groceries_stock_export_and_pdf() {
             })
     );
     assert!(snapshot.stock.iter().any(|item| {
-        item.name == "Test tomato" && item.category == "Produce::Vegetables"
+        item.name == "Test tomato" && item.category == "Fruits et légumes::Légumes"
     }));
     let consolidated: serde_json::Value =
         serde_json::from_str(&engine.export_data("consolidated").unwrap()).unwrap();

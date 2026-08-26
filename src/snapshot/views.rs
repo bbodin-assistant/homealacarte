@@ -1,15 +1,60 @@
 use super::nutrition::{dish_nutri_score, dish_nutrients, ingredient_nutrients};
 use crate::grocery::{build_grocery, build_grocery_plan};
-use crate::loader::{localized_days, localized_meals};
+use crate::loader::{
+    dataset_with_localized_categories, localized_days, localized_meals, localized_menu_rows,
+};
 use crate::menu_math::menu_multiplier;
 use crate::model::*;
 use std::collections::HashMap;
+
+fn localize_grocery_categories(grocery: &mut GroceryResult, language: &str) {
+    let labels = grocery
+        .items
+        .iter()
+        .map(|item| {
+            let code = if item.subcategory.is_empty() {
+                item.category.clone()
+            } else {
+                format!("{}::{}", item.category, item.subcategory)
+            };
+            (item.id.clone(), crate::locale::category_label(language, &code))
+        })
+        .collect::<HashMap<_, _>>();
+    for item in &mut grocery.items {
+        let label = labels.get(&item.id).cloned().unwrap_or_default();
+        let (category, subcategory) = label.split_once("::").unwrap_or((&label, ""));
+        item.category = category.to_string();
+        item.subcategory = subcategory.to_string();
+    }
+    for category in &mut grocery.categories {
+        let category_code = category.name.clone();
+        for subcategory in &mut category.subcategories {
+            let code = if subcategory.name.is_empty() {
+                category_code.clone()
+            } else {
+                format!("{}::{}", category_code, subcategory.name)
+            };
+            let label = crate::locale::category_label(language, &code);
+            let (category_label, subcategory_label) =
+                label.split_once("::").unwrap_or((&label, ""));
+            category.name = category_label.to_string();
+            subcategory.name = subcategory_label.to_string();
+            for item in &mut subcategory.items {
+                item.category = category_label.to_string();
+                item.subcategory = subcategory_label.to_string();
+            }
+        }
+    }
+}
 
 pub fn build_snapshot(
     dataset: &Dataset,
     language: &str,
     profile: Option<&str>,
 ) -> Result<AppSnapshot, String> {
+    let canonical_dataset = dataset;
+    let localized_dataset = dataset_with_localized_categories(dataset, language);
+    let dataset = &localized_dataset;
     let ingredients: HashMap<String, &Ingredient> = dataset
         .ingredients
         .iter()
@@ -22,6 +67,7 @@ pub fn build_snapshot(
         .collect();
     let days = localized_days(language);
     let meals = localized_meals(language);
+    let planner = localized_menu_rows(&dataset.menu, language)?;
 
     let mut item_options: Vec<ItemOption> = dataset
         .ingredients
@@ -49,8 +95,7 @@ pub fn build_snapshot(
     let mut menu_cells = Vec::new();
     for day in &days {
         for meal in &meals {
-            let entries = dataset
-                .menu
+            let entries = planner
                 .iter()
                 .filter(|row| &row.day == day && &row.meal == meal)
                 .map(|row| {
@@ -81,8 +126,7 @@ pub fn build_snapshot(
     for day in &days {
         let mut total = Nutrients::default();
         if let Some(profile) = profile {
-            for row in dataset
-                .menu
+            for row in planner
                 .iter()
                 .filter(|row| &row.day == day && row.people.iter().any(|person| person == profile))
             {
@@ -308,6 +352,11 @@ pub fn build_snapshot(
             .then(a.key.cmp(&b.key))
     });
 
+    let mut grocery = build_grocery(canonical_dataset)?;
+    let mut grocery_plan = build_grocery_plan(canonical_dataset)?;
+    localize_grocery_categories(&mut grocery, language);
+    localize_grocery_categories(&mut grocery_plan, language);
+
     Ok(AppSnapshot {
         language: language.to_string(),
         profile: profile.map(str::to_string),
@@ -330,11 +379,11 @@ pub fn build_snapshot(
         stock_options,
         custom_grocery,
         household_options,
-        planner: dataset.menu.clone(),
+        planner,
         menu_cells,
         daily_nutrition,
         dishes: dish_views,
-        grocery: build_grocery(dataset)?,
-        grocery_plan: build_grocery_plan(dataset)?,
+        grocery,
+        grocery_plan,
     })
 }

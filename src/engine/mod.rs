@@ -1,4 +1,4 @@
-use crate::loader::{localize_day, localize_meal};
+use crate::loader::localized_menu_rows;
 use crate::model::*;
 use crate::snapshot::build_snapshot;
 
@@ -54,13 +54,7 @@ impl Engine {
             return self.snapshot();
         }
 
-        if self.source_files.is_empty() {
-            let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
-            for row in &mut dataset.menu {
-                row.day = localize_day(&row.day, &language)?;
-                row.meal = localize_meal(&row.meal, &language)?;
-            }
-        } else {
+        if !self.source_files.is_empty() {
             let source_current = data_i18n::localized_dataset(&self.source_files, &self.language)?;
             let source_target = data_i18n::localized_dataset(&self.source_files, &language)?;
             let current = self.dataset.as_ref().ok_or("no dataset loaded")?;
@@ -68,7 +62,6 @@ impl Engine {
                 current,
                 &source_current,
                 source_target,
-                &language,
             )?;
             self.dataset = Some(next);
         }
@@ -79,5 +72,11 @@ impl Engine {
     pub fn snapshot(&self) -> Result<AppSnapshot, String> {
         let dataset = self.dataset.as_ref().ok_or("no dataset loaded")?;
         build_snapshot(dataset, &self.language, self.profile.as_deref())
+    }
+
+    pub(crate) fn dataset_with_localized_menu(&self) -> Result<Dataset, String> {
+        let mut dataset = self.dataset.as_ref().ok_or("no dataset loaded")?.clone();
+        dataset.menu = localized_menu_rows(&dataset.menu, &self.language)?;
+        Ok(dataset)
     }
 }

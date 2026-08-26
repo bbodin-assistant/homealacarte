@@ -26,7 +26,7 @@ impl Engine {
     }
 
     pub fn generate_menu(&self, request: AutoMenuRequest) -> Result<AutoMenuProposal, String> {
-        let dataset = self.dataset.as_ref().ok_or("no dataset loaded")?;
-        crate::optimizer::generate_menu(dataset, &self.language, request)
+        let dataset = self.dataset_with_localized_menu()?;
+        crate::optimizer::generate_menu(&dataset, &self.language, request)
     }
 }

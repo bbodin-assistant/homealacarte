@@ -85,7 +85,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     return true;
   }
 
-  async function pushPending(activeSession) {
+  async function pushPending(activeSession, conflictChoice = null) {
     const appliedChangeIds = new Set();
     while (true) {
       const pendingOperations = await readPendingOperations();
@@ -105,20 +105,25 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
         activeSession.user.id,
       );
       if (result?.conflicts?.length) {
-        conflict = {
+        const nextConflict = {
           kind: "rows",
           rows: result.conflicts.map((remote) => ({
             remote,
             operation: remote.operation || "upsert",
           })),
         };
+        if (conflictChoice) {
+          await resolveLocalConflicts(nextConflict.rows, conflictChoice);
+          continue;
+        }
+        conflict = nextConflict;
         emitStatus({ state: "conflict", message: "The same records changed on another device." });
         return null;
       }
     }
   }
 
-  async function synchronize(notify = true) {
+  async function synchronize(notify = true, conflictChoice = null) {
     const activeSession = await remoteClient.ensureSession();
     if (!activeSession) {
       emitStatus({ state: remoteClient.getSession() ? "offline" : "signed-out" });
@@ -126,7 +131,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     }
     try {
       await remoteClient.touchAccountActivity();
-      const appliedChangeIds = await pushPending(activeSession);
+      const appliedChangeIds = await pushPending(activeSession, conflictChoice);
       if (!appliedChangeIds) return null;
       if (!await pullRemoteChanges(activeSession, notify, appliedChangeIds)) return null;
       emitStatus({ state: "synced", message: "" });
@@ -239,12 +244,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     } else {
       await resolveLocalConflicts(current.rows, choice);
     }
-    if (choice === "local" || current.kind === "legacy") {
-      const saved = await synchronize(false);
-      return saved || null;
-    }
-    emitStatus({ state: "synced", message: "" });
-    return readLocalState();
+    return await synchronize(false, choice) || null;
   }
 
   function startPolling() {

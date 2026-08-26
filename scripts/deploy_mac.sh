@@ -77,6 +77,13 @@ remote_ssh() {
 
 echo "Building the project..."
 make build DATA_DIR=./data
+if [[ ! -f "$DIST_DIR/supabase-config.js" ]] \
+    || ! grep -Eq '"?projectUrl"?[[:space:]]*:[[:space:]]*"https://[^"]+"' "$DIST_DIR/supabase-config.js" \
+    || ! grep -Eq '"?publishableKey"?[[:space:]]*:[[:space:]]*"[^"]+"' "$DIST_DIR/supabase-config.js"; then
+    echo "Deployment stopped: dist/supabase-config.js is missing or incomplete." >&2
+    echo "Create www/supabase-config.js with the browser-safe Supabase URL and publishable key." >&2
+    exit 1
+fi
 echo "Preparing the remote upload directory..."
 remote_ssh "sh -s -- '$REMOTE_NAME'" <<'REMOTE_PREPARE'
 set -eu
