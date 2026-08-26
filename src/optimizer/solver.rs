@@ -260,6 +260,7 @@ pub(crate) fn solve_menu_once(
                     &dataset.dishes[**dish_index].key,
                     &slot.meal,
                     language,
+                    &ingredients_by_key,
                     &dishes_by_key,
                 )
             })

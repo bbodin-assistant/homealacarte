@@ -115,11 +115,25 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         } else {
             input.measure_unit.trim().to_string()
         };
+        let mut seen_allergens = HashSet::new();
+        let allergens = input
+            .allergens
+            .into_iter()
+            .map(|allergen| allergen.trim().to_lowercase())
+            .filter(|allergen| !allergen.is_empty() && seen_allergens.insert(allergen.clone()))
+            .collect::<Vec<_>>();
+        if let Some(allergen) = allergens
+            .iter()
+            .find(|allergen| !crate::model::ALLERGEN_CODES.contains(&allergen.as_str()))
+        {
+            return Err(format!("{path}: ingredient {key} has invalid allergen: {allergen}"));
+        }
         ingredients.push(Ingredient {
             key,
             name: input.name.trim().to_string(),
             custom: input.custom,
             incomplete: input.incomplete,
+            allergens,
             grams: input.grams,
             kcal: input.kcal,
             protein_g: input.protein_g,

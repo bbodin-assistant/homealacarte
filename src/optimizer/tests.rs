@@ -8,6 +8,7 @@ fn ingredient(key: &str, price: f64) -> Ingredient {
         name: key.to_string(),
         custom: false,
         incomplete: false,
+        allergens: vec![],
         grams: 100.0,
         kcal: 100.0,
         protein_g: 0.0,
@@ -71,6 +72,7 @@ fn generator_applies_daily_choices_and_never_rules() {
                     kind: "routine".to_string(),
                     meal: "breakfast".to_string(),
                     item_keys: vec!["stocked".to_string(), "bought".to_string()],
+                    allergens: vec![],
                     days: vec![
                         "monday".to_string(),
                         "tuesday".to_string(),
@@ -85,6 +87,7 @@ fn generator_applies_daily_choices_and_never_rules() {
                     kind: "never".to_string(),
                     meal: "any".to_string(),
                     item_keys: vec!["bought".to_string()],
+                    allergens: vec![],
                     days: vec![],
                     quantity: 1.0,
                     quantity_unit: "portion".to_string(),

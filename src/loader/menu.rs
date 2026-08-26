@@ -80,7 +80,27 @@ pub(crate) fn normalize_food_rules(
             .map(|key| key.trim().to_string())
             .filter(|key| !key.is_empty() && keys.insert(key.clone()))
             .collect();
-        if rule.item_keys.is_empty() {
+        let mut allergens = HashSet::new();
+        rule.allergens = rule
+            .allergens
+            .into_iter()
+            .map(|allergen| allergen.trim().to_lowercase())
+            .filter(|allergen| !allergen.is_empty() && allergens.insert(allergen.clone()))
+            .collect();
+        if rule.kind != "allergy" {
+            rule.allergens.clear();
+        }
+        if let Some(allergen) = rule
+            .allergens
+            .iter()
+            .find(|allergen| !crate::model::ALLERGEN_CODES.contains(&allergen.as_str()))
+        {
+            return Err(format!(
+                "{context} food rule {} has invalid allergen: {allergen}",
+                index + 1
+            ));
+        }
+        if rule.item_keys.is_empty() && rule.allergens.is_empty() {
             return Err(format!("{context} food rule {} requires food choices", index + 1));
         }
         if let Some(key) = rule.item_keys.iter().find(|key| !valid_items.contains(*key)) {

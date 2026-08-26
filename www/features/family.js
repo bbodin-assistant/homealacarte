@@ -4,6 +4,8 @@ export function foodRuleAcceptsItem(kind, itemKind) {
   return true;
 }
 
+const ALLERGEN_CODES = ["sesame", "peanut", "tree_nut"];
+
 export function createFamilyFeature({
   state,
   select,
@@ -37,12 +39,29 @@ function preferenceText(key) {
     allergy: "Allergie",
     favorite: "Plat favori",
     forbidden: "Interdit / ne jamais proposer",
+    allergens: "Allergènes",
+    sesame: "Sésame",
+    peanut: "Arachides / cacahuètes",
+    tree_nut: "Fruits à coque",
   } : {
     allergy: "Allergy",
     favorite: "Favorite dish",
     forbidden: "Forbidden / never propose",
+    allergens: "Allergens",
+    sesame: "Sesame",
+    peanut: "Peanuts",
+    tree_nut: "Tree nuts",
   };
   return labels[key] || key;
+}
+
+function foodRuleAllergenOptions(selectedAllergens = []) {
+  const selected = new Set(selectedAllergens);
+  return ALLERGEN_CODES.map((code) => `
+    <label class="food-rule-allergen">
+      <input type="checkbox" value="${code}" ${selected.has(code) ? "checked" : ""}>
+      <span>${escapeHtml(preferenceText(code))}</span>
+    </label>`).join("");
 }
 
 function renderFamily() {
@@ -195,6 +214,10 @@ function foodRuleMarkup(rule = {}) {
         </div>
       </div>
     </div>
+    <div class="food-rule-allergens-field" data-allergen-field>
+      <span>${escapeHtml(preferenceText("allergens"))}</span>
+      <div data-food-rule-allergens role="group">${foodRuleAllergenOptions(rule.allergens)}</div>
+    </div>
     <label data-routine-field><span>${escapeHtml(translate("food_rule_quantity"))}</span>
       <input data-food-rule-quantity type="number" min="0.000000001" step="any" value="${escapeHtml(formatInputNumber(quantity))}">
     </label>
@@ -235,6 +258,7 @@ function setFoodRuleMode(row, pruneInvalid = false) {
   row.querySelectorAll("[data-routine-field]").forEach((field) => {
     field.hidden = !routine;
   });
+  row.querySelector("[data-allergen-field]").hidden = kind !== "allergy";
   if (pruneInvalid) {
     row.querySelectorAll("[data-food-rule-items] input:checked").forEach((input) => {
       if (!foodRuleAcceptsItem(kind, input.dataset.foodRuleItemKind)) input.checked = false;
@@ -287,6 +311,10 @@ function familyFoodRulesPayload() {
         : row.querySelector("[data-food-rule-meal]").value,
       item_keys: [...row.querySelectorAll("[data-food-rule-items] input:checked")]
         .map((input) => input.value),
+      allergens: kind === "allergy"
+        ? [...row.querySelectorAll("[data-food-rule-allergens] input:checked")]
+          .map((input) => input.value)
+        : [],
       days: kind !== "routine" || selectedDays.length === FOOD_RULE_DAY_CODES.length
         ? []
         : (selectedDays.length ? selectedDays : ["__no_day_selected__"]),
@@ -303,8 +331,9 @@ function familyFoodRulesPayload() {
 function familyFoodRulesAreValid(rules = familyFoodRulesPayload()) {
   const itemKinds = new Map(state.snapshot.item_options.map((item) => [item.key, item.kind]));
   return rules.every((rule) => ["routine", "never", "allergy", "favorite"].includes(rule.kind)
-    && rule.item_keys.length > 0
+    && (rule.item_keys.length > 0 || (rule.kind === "allergy" && rule.allergens.length > 0))
     && rule.item_keys.every((key) => foodRuleAcceptsItem(rule.kind, itemKinds.get(key)))
+    && rule.allergens.every((allergen) => ALLERGEN_CODES.includes(allergen))
     && (rule.kind !== "routine" || (
       rule.meal !== "any"
       && rule.days.every((day) => FOOD_RULE_DAY_CODES.includes(day))

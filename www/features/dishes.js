@@ -24,6 +24,14 @@ export function allergenIcon(value) {
   return "⚠️";
 }
 
+function allergenLabel(code) {
+  return {
+    sesame: "Sesame",
+    peanut: "Peanuts",
+    tree_nut: "Tree nuts",
+  }[code] || code;
+}
+
 export function dishPreferenceBadges(dish, people = []) {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
   const badges = [];
@@ -48,6 +56,18 @@ export function dishPreferenceBadges(dish, people = []) {
           const entry = allergyBadges.get(key) || { icon: allergenIcon(`${key} ${label}`), label, people: [] };
           entry.people.push(person.name);
           allergyBadges.set(key, entry);
+        }
+        for (const allergen of rule.allergens || []) {
+          const matches = [...components.values()]
+            .filter((component) => (component.allergens || []).includes(allergen));
+          if (!matches.length) continue;
+          const entry = allergyBadges.get(`allergen:${allergen}`) || {
+            icon: allergenIcon(allergen),
+            label: allergenLabel(allergen),
+            people: [],
+          };
+          entry.people.push(person.name);
+          allergyBadges.set(`allergen:${allergen}`, entry);
         }
       }
     }

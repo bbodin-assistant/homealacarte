@@ -16,6 +16,8 @@ pub(crate) struct IngredientInput {
     pub(crate) custom: bool,
     #[serde(default)]
     pub(crate) incomplete: bool,
+    #[serde(default)]
+    pub(crate) allergens: Vec<String>,
     pub(crate) grams: f64,
     pub(crate) kcal: f64,
     pub(crate) protein_g: f64,

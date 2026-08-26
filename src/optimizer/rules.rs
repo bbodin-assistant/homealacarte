@@ -2,7 +2,7 @@ use crate::loader::{
     FOOD_RULE_DAYS, food_rule_meal_name, localized_days, merge_menu_rows,
 };
 use crate::locale::message_label;
-use crate::model::{AutoMenuAvailability, Dataset, Dish, MenuRow, Person};
+use crate::model::{AutoMenuAvailability, Dataset, Dish, Ingredient, MenuRow, Person};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 pub(crate) fn rule_matches_meal(rule_meal: &str, meal: &str, language: &str) -> bool {
@@ -19,11 +19,32 @@ fn rule_matches_item(rule_item: &str, item_key: &str, dishes: &HashMap<&str, &Di
         })
 }
 
+fn allergen_matches_item(
+    allergen: &str,
+    item_key: &str,
+    ingredients: &HashMap<&str, &Ingredient>,
+    dishes: &HashMap<&str, &Dish>,
+) -> bool {
+    ingredients
+        .get(item_key)
+        .is_some_and(|ingredient| ingredient.allergens.iter().any(|value| value == allergen))
+        || dishes.get(item_key).is_some_and(|dish| {
+            dish.components.iter().any(|component| {
+                ingredients
+                    .get(component.item_key.as_str())
+                    .is_some_and(|ingredient| {
+                        ingredient.allergens.iter().any(|value| value == allergen)
+                    })
+            })
+        })
+}
+
 pub(crate) fn person_forbids_item(
     person: &Person,
     item_key: &str,
     meal: &str,
     language: &str,
+    ingredients: &HashMap<&str, &Ingredient>,
     dishes: &HashMap<&str, &Dish>,
 ) -> bool {
     person.food_rules.iter().any(|rule| {
@@ -32,10 +53,11 @@ pub(crate) fn person_forbids_item(
             "never" => rule_matches_meal(&rule.meal, meal, language),
             _ => false,
         };
-        applies
-            && rule.item_keys.iter().any(|forbidden| {
+        applies && (rule.item_keys.iter().any(|forbidden| {
                 rule_matches_item(forbidden, item_key, dishes)
-            })
+            }) || (rule.kind == "allergy" && rule.allergens.iter().any(|allergen| {
+                allergen_matches_item(allergen, item_key, ingredients, dishes)
+            })))
     })
 }
 
@@ -67,6 +89,11 @@ pub(crate) fn routine_rows(
         .dishes
         .iter()
         .map(|dish| (dish.key.as_str(), dish))
+        .collect::<HashMap<_, _>>();
+    let ingredients = dataset
+        .ingredients
+        .iter()
+        .map(|ingredient| (ingredient.key.as_str(), ingredient))
         .collect::<HashMap<_, _>>();
     let days = localized_days(language);
     let mut seen = BTreeSet::new();
@@ -104,7 +131,9 @@ pub(crate) fn routine_rows(
             let allowed = rule
                 .item_keys
                 .iter()
-                .filter(|key| !person_forbids_item(person, key, &meal, language, &dishes))
+                .filter(|key| {
+                    !person_forbids_item(person, key, &meal, language, &ingredients, &dishes)
+                })
                 .collect::<Vec<_>>();
             if allowed.is_empty() {
                 return Err("auto_menu_routine_no_allowed_choice".to_string());
@@ -130,13 +159,14 @@ pub(crate) fn routine_rows(
 #[cfg(test)]
 mod preference_tests {
     use super::*;
-    use crate::model::{DishComponent, FoodRule};
+    use crate::model::{DishComponent, FoodRule, Ingredient};
 
     fn rule(kind: &str, item_key: &str) -> FoodRule {
         FoodRule {
             kind: kind.to_string(),
             meal: "any".to_string(),
             item_keys: vec![item_key.to_string()],
+            allergens: vec![],
             days: vec![],
             quantity: 1.0,
             quantity_unit: "portion".to_string(),
@@ -175,20 +205,87 @@ mod preference_tests {
         }
     }
 
+    fn ingredient(key: &str, allergens: &[&str]) -> Ingredient {
+        Ingredient {
+            key: key.to_string(),
+            name: key.to_string(),
+            custom: false,
+            incomplete: false,
+            allergens: allergens.iter().map(|value| value.to_string()).collect(),
+            grams: 100.0,
+            kcal: 0.0,
+            protein_g: 0.0,
+            carbs_g: 0.0,
+            fat_g: 0.0,
+            fiber_g: 0.0,
+            sugars_g: None,
+            saturated_fat_g: None,
+            salt_g: None,
+            fruit_vegetable_legume_percent: None,
+            category: "Test".to_string(),
+            source: String::new(),
+            url: String::new(),
+            price_per_kg: 0.0,
+            price_source: String::new(),
+            price_checked_at: String::new(),
+            price_history: vec![],
+            measure_unit: "g".to_string(),
+            grams_per_measure_unit: 1.0,
+            purchase_unit: "100 g".to_string(),
+            purchase_quantity_grams: 100.0,
+        }
+    }
+
     #[test]
     fn allergies_block_dishes_containing_the_allergen() {
         let pasta = dish("pasta", "peanut");
         let dishes = HashMap::from([(pasta.key.as_str(), &pasta)]);
+        let ingredients = HashMap::new();
         let allergic = person(vec![rule("allergy", "peanut")]);
-        assert!(person_forbids_item(&allergic, "pasta", "Lunch", "en", &dishes));
+        assert!(person_forbids_item(
+            &allergic,
+            "pasta",
+            "Lunch",
+            "en",
+            &ingredients,
+            &dishes,
+        ));
+    }
+
+    #[test]
+    fn allergies_block_compound_ingredients_with_declared_allergens() {
+        let noodles = ingredient("sesame_noodles", &["sesame"]);
+        let ingredients = HashMap::from([(noodles.key.as_str(), &noodles)]);
+        let bowl = dish("noodle_bowl", "sesame_noodles");
+        let dishes = HashMap::from([(bowl.key.as_str(), &bowl)]);
+        let mut allergy = rule("allergy", "placeholder");
+        allergy.item_keys.clear();
+        allergy.allergens = vec!["sesame".to_string()];
+        let allergic = person(vec![allergy]);
+        assert!(person_forbids_item(
+            &allergic,
+            "noodle_bowl",
+            "Lunch",
+            "en",
+            &ingredients,
+            &dishes,
+        ));
     }
 
     #[test]
     fn favorite_rules_mark_matching_dishes_without_forbidding_them() {
         let pasta = dish("pasta", "tomato");
         let dishes = HashMap::from([(pasta.key.as_str(), &pasta)]);
+        let ingredients = HashMap::new();
         let fan = person(vec![rule("favorite", "pasta")]);
         assert!(person_favors_item(&fan, "pasta", &dishes));
-        assert!(!person_forbids_item(&fan, "pasta", "Lunch", "en", &dishes));
+        assert!(!person_forbids_item(
+            &fan,
+            "pasta",
+            "Lunch",
+            "en",
+            &ingredients,
+            &dishes,
+        ));
     }
 }

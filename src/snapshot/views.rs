@@ -163,6 +163,7 @@ pub fn build_snapshot(
                     quantity: component.quantity / dish.servings,
                     quantity_unit: component.quantity_unit.clone(),
                     source_quantity: component.source_quantity.clone(),
+                    allergens: ingredient.allergens.clone(),
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;

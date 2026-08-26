@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+pub const ALLERGEN_CODES: [&str; 3] = ["sesame", "peanut", "tree_nut"];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceFile {
     pub path: String,
@@ -34,6 +36,8 @@ pub struct Ingredient {
     pub custom: bool,
     #[serde(default)]
     pub incomplete: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allergens: Vec<String>,
     pub grams: f64,
     pub kcal: f64,
     pub protein_g: f64,
@@ -125,6 +129,8 @@ pub struct FoodRule {
     pub meal: String,
     #[serde(default)]
     pub item_keys: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allergens: Vec<String>,
     #[serde(default)]
     pub days: Vec<String>,
     #[serde(default = "default_rule_quantity")]
@@ -389,6 +395,8 @@ pub struct DishComponentView {
     pub quantity: f64,
     pub quantity_unit: String,
     pub source_quantity: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub allergens: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

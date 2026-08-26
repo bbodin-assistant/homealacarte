@@ -21,6 +21,7 @@ fn the_item_catalogue_edits_general_items_and_deletes_safely() {
             name: "New herb".to_string(),
             custom: true,
             incomplete: true,
+            allergens: vec![],
             grams: 100.0,
             kcal: 0.0,
             protein_g: 0.0,

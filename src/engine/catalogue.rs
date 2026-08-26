@@ -403,6 +403,13 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
     {
         return Err("the fruit, vegetable and legume percentage cannot exceed 100".to_string());
     }
+    if let Some(allergen) = ingredient
+        .allergens
+        .iter()
+        .find(|allergen| !crate::model::ALLERGEN_CODES.contains(&allergen.as_str()))
+    {
+        return Err(format!("invalid ingredient allergen: {allergen}"));
+    }
     if ingredient
         .price_history
         .iter()

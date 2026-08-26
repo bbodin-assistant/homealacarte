@@ -130,6 +130,7 @@ function ingredientFormPayload() {
     name_i18n: nameI18n,
     custom: existing ? Boolean(existing.custom) : true,
     incomplete: select("#ingredient-incomplete").checked,
+    allergens: existing?.allergens || [],
     grams: Number(select("#ingredient-grams").value),
     kcal: Number(select("#ingredient-kcal").value),
     protein_g: Number(select("#ingredient-protein").value),
