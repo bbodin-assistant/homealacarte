@@ -56,6 +56,16 @@ function allergenLabel(code) {
   }[code] || code;
 }
 
+const SPECIFIC_TREE_NUT_CODES = new Set([
+  "almond", "hazelnut", "walnut", "cashew_nut", "pecan", "brazil_nut", "pistachio", "macadamia",
+]);
+
+export function allergenCodesOverlap(ruleAllergen, ingredientAllergen) {
+  return ruleAllergen === ingredientAllergen
+    || (ruleAllergen === "tree_nut" && SPECIFIC_TREE_NUT_CODES.has(ingredientAllergen))
+    || (ingredientAllergen === "tree_nut" && SPECIFIC_TREE_NUT_CODES.has(ruleAllergen));
+}
+
 export function dishPreferenceBadges(dish, people = []) {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
   const badges = [];
@@ -83,7 +93,8 @@ export function dishPreferenceBadges(dish, people = []) {
         }
         for (const allergen of rule.allergens || []) {
           const matches = [...components.values()]
-            .filter((component) => (component.allergens || []).includes(allergen));
+            .filter((component) => (component.allergens || [])
+              .some((ingredientAllergen) => allergenCodesOverlap(allergen, ingredientAllergen)));
           if (!matches.length) continue;
           const entry = allergyBadges.get(`allergen:${allergen}`) || {
             icon: allergenIcon(allergen),

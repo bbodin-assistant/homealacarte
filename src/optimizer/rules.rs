@@ -19,6 +19,26 @@ fn rule_matches_item(rule_item: &str, item_key: &str, dishes: &HashMap<&str, &Di
         })
 }
 
+fn is_specific_tree_nut(allergen: &str) -> bool {
+    matches!(
+        allergen,
+        "almond"
+            | "hazelnut"
+            | "walnut"
+            | "cashew_nut"
+            | "pecan"
+            | "brazil_nut"
+            | "pistachio"
+            | "macadamia"
+    )
+}
+
+fn allergens_overlap(rule_allergen: &str, ingredient_allergen: &str) -> bool {
+    rule_allergen == ingredient_allergen
+        || (rule_allergen == "tree_nut" && is_specific_tree_nut(ingredient_allergen))
+        || (ingredient_allergen == "tree_nut" && is_specific_tree_nut(rule_allergen))
+}
+
 fn allergen_matches_item(
     allergen: &str,
     item_key: &str,
@@ -27,13 +47,21 @@ fn allergen_matches_item(
 ) -> bool {
     ingredients
         .get(item_key)
-        .is_some_and(|ingredient| ingredient.allergens.iter().any(|value| value == allergen))
+        .is_some_and(|ingredient| {
+            ingredient
+                .allergens
+                .iter()
+                .any(|value| allergens_overlap(allergen, value))
+        })
         || dishes.get(item_key).is_some_and(|dish| {
             dish.components.iter().any(|component| {
                 ingredients
                     .get(component.item_key.as_str())
                     .is_some_and(|ingredient| {
-                        ingredient.allergens.iter().any(|value| value == allergen)
+                        ingredient
+                            .allergens
+                            .iter()
+                            .any(|value| allergens_overlap(allergen, value))
                     })
             })
         })
@@ -269,6 +297,25 @@ mod preference_tests {
             "en",
             &ingredients,
             &dishes,
+        ));
+    }
+
+    #[test]
+    fn specific_nut_allergies_conservatively_block_generic_tree_nut_labels() {
+        let ice_cream = ingredient("ice_cream", &["tree_nut"]);
+        let ingredients = HashMap::from([(ice_cream.key.as_str(), &ice_cream)]);
+        let mut allergy = rule("allergy", "placeholder");
+        allergy.item_keys.clear();
+        allergy.allergens = vec!["pistachio".to_string()];
+        let allergic = person(vec![allergy]);
+
+        assert!(person_forbids_item(
+            &allergic,
+            "ice_cream",
+            "Afternoon snack",
+            "en",
+            &ingredients,
+            &HashMap::new(),
         ));
     }
 

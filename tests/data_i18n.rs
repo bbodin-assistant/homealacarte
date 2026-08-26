@@ -107,7 +107,7 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
     assert_eq!(french.people[0].name, "Alexandre");
     assert_eq!(french.people[0].description, "Profil synthétique");
     assert_eq!(french.planner[0].day, "Lundi");
-    assert_eq!(french.planner[0].meal, "Diner");
+    assert_eq!(french.planner[0].meal, "Dîner");
     assert_eq!(french.planner[0].notes, "Servir froid");
     assert_eq!(french.stock[0].notes, "Il en reste une");
     assert_eq!(

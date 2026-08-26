@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   allergenIcon,
+  allergenCodesOverlap,
   countryFlag,
   dishPreferenceBadges,
   dishRangeMaximums,
@@ -22,6 +23,9 @@ assert.equal(countryFlag("France"), "");
 assert.equal(allergenIcon("Peanut butter"), "🥜");
 assert.equal(allergenIcon("milk"), "🥛");
 assert.equal(allergenIcon("unknown allergen"), "⚠️");
+assert.equal(allergenCodesOverlap("pistachio", "tree_nut"), true);
+assert.equal(allergenCodesOverlap("tree_nut", "walnut"), true);
+assert.equal(allergenCodesOverlap("pistachio", "walnut"), false);
 
 const badges = dishPreferenceBadges({
   key: "pad_thai",
