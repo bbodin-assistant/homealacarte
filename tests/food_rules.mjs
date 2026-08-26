@@ -27,7 +27,7 @@ assert.equal(foodRuleAcceptsItem("allergy", "dish"), false);
 assert.equal(foodRuleAcceptsItem("favorite", "dish"), true);
 assert.equal(foodRuleAcceptsItem("favorite", "ingredient"), false);
 assert.equal(foodRuleAcceptsItem("never", "dish"), true);
-for (const allergen of ["walnut", "cashew_nut", "pistachio", "milk", "egg", "gluten"]) {
+for (const allergen of ["walnut", "cashew_nut", "pistachio", "milk", "egg", "gluten", "mollusc", "lupin"]) {
   assert.ok(ALLERGEN_CODES.includes(allergen), `missing major allergen code: ${allergen}`);
 }
 assert.match(translations, /food_rule_routine:/);

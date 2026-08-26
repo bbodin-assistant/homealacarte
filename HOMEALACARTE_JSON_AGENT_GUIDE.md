@@ -242,9 +242,9 @@ Food rules:
 - `quantity` must be positive. `quantity_unit` must be `portion`, `g`, or `unit`; omitted values default to `1.0` and `portion`.
 - Every `item_keys` entry must resolve to an existing item or dish.
 - Canonical allergen codes are `gluten`, `wheat`, `rye`, `barley`, `oat`,
-  `spelt`, `crustacean`, `egg`, `fish`, `peanut`, `soy`, `milk`, `tree_nut`,
+  `spelt`, `crustacean`, `mollusc`, `egg`, `fish`, `peanut`, `soy`, `milk`, `tree_nut`,
   `almond`, `hazelnut`, `walnut`, `cashew_nut`, `pecan`, `brazil_nut`,
-  `pistachio`, `macadamia`, `celery`, `mustard`, `sesame`, and `sulfite`.
+  `pistachio`, `macadamia`, `celery`, `mustard`, `lupin`, `sesame`, and `sulfite`.
   Use the individual tree-nut code when it is known; an ingredient may also
   carry `tree_nut` to support broader allergy profiles.
 

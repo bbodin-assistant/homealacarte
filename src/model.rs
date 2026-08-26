@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 
 /// Canonical codes for the major regulated food allergens, with individual
 /// tree nuts kept separate so a profile can be as precise as the diagnosis.
-pub const ALLERGEN_CODES: [&str; 25] = [
+pub const ALLERGEN_CODES: [&str; 27] = [
     "gluten",
     "wheat",
     "rye",
@@ -11,6 +11,7 @@ pub const ALLERGEN_CODES: [&str; 25] = [
     "oat",
     "spelt",
     "crustacean",
+    "mollusc",
     "egg",
     "fish",
     "peanut",
@@ -27,6 +28,7 @@ pub const ALLERGEN_CODES: [&str; 25] = [
     "macadamia",
     "celery",
     "mustard",
+    "lupin",
     "sesame",
     "sulfite",
 ];

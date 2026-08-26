@@ -5,9 +5,9 @@ export function foodRuleAcceptsItem(kind, itemKind) {
 }
 
 export const ALLERGEN_CODES = [
-  "gluten", "wheat", "rye", "barley", "oat", "spelt", "crustacean", "egg", "fish",
+  "gluten", "wheat", "rye", "barley", "oat", "spelt", "crustacean", "mollusc", "egg", "fish",
   "peanut", "soy", "milk", "tree_nut", "almond", "hazelnut", "walnut", "cashew_nut",
-  "pecan", "brazil_nut", "pistachio", "macadamia", "celery", "mustard", "sesame", "sulfite",
+  "pecan", "brazil_nut", "pistachio", "macadamia", "celery", "mustard", "lupin", "sesame", "sulfite",
 ];
 
 export function createFamilyFeature({
@@ -54,6 +54,7 @@ function preferenceText(key) {
     oat: "Avoine",
     spelt: "Épeautre",
     crustacean: "Crustacés",
+    mollusc: "Mollusques",
     egg: "Œufs",
     fish: "Poisson",
     soy: "Soja",
@@ -68,6 +69,7 @@ function preferenceText(key) {
     macadamia: "Noix de macadamia",
     celery: "Céleri",
     mustard: "Moutarde",
+    lupin: "Lupin",
     sulfite: "Sulfites",
   } : {
     allergy: "Allergy",
@@ -84,6 +86,7 @@ function preferenceText(key) {
     oat: "Oats",
     spelt: "Spelt",
     crustacean: "Crustaceans",
+    mollusc: "Molluscs",
     egg: "Eggs",
     fish: "Fish",
     soy: "Soy",
@@ -98,6 +101,7 @@ function preferenceText(key) {
     macadamia: "Macadamia nuts",
     celery: "Celery",
     mustard: "Mustard",
+    lupin: "Lupin",
     sulfite: "Sulfites",
   };
   return labels[key] || key;

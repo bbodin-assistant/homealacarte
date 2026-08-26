@@ -33,6 +33,7 @@ function allergenLabel(code) {
     oat: "Oats",
     spelt: "Spelt",
     crustacean: "Crustaceans",
+    mollusc: "Molluscs",
     egg: "Eggs",
     fish: "Fish",
     sesame: "Sesame",
@@ -50,6 +51,7 @@ function allergenLabel(code) {
     macadamia: "Macadamia nuts",
     celery: "Celery",
     mustard: "Mustard",
+    lupin: "Lupin",
     sulfite: "Sulfites",
   }[code] || code;
 }
