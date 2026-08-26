@@ -241,6 +241,12 @@ Food rules:
 - Meal codes are `any`, `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, and `anytime`. `any` is the all-meals rule code and cannot be used by a `routine` rule.
 - `quantity` must be positive. `quantity_unit` must be `portion`, `g`, or `unit`; omitted values default to `1.0` and `portion`.
 - Every `item_keys` entry must resolve to an existing item or dish.
+- Canonical allergen codes are `gluten`, `wheat`, `rye`, `barley`, `oat`,
+  `spelt`, `crustacean`, `egg`, `fish`, `peanut`, `soy`, `milk`, `tree_nut`,
+  `almond`, `hazelnut`, `walnut`, `cashew_nut`, `pecan`, `brazil_nut`,
+  `pistachio`, `macadamia`, `celery`, `mustard`, `sesame`, and `sulfite`.
+  Use the individual tree-nut code when it is known; an ingredient may also
+  carry `tree_nut` to support broader allergy profiles.
 
 ## 8. Stock entry
 

@@ -4,7 +4,11 @@ export function foodRuleAcceptsItem(kind, itemKind) {
   return true;
 }
 
-const ALLERGEN_CODES = ["sesame", "peanut", "tree_nut"];
+export const ALLERGEN_CODES = [
+  "gluten", "wheat", "rye", "barley", "oat", "spelt", "crustacean", "egg", "fish",
+  "peanut", "soy", "milk", "tree_nut", "almond", "hazelnut", "walnut", "cashew_nut",
+  "pecan", "brazil_nut", "pistachio", "macadamia", "celery", "mustard", "sesame", "sulfite",
+];
 
 export function createFamilyFeature({
   state,
@@ -43,6 +47,28 @@ function preferenceText(key) {
     sesame: "Sésame",
     peanut: "Arachides / cacahuètes",
     tree_nut: "Fruits à coque",
+    gluten: "Gluten",
+    wheat: "Blé",
+    rye: "Seigle",
+    barley: "Orge",
+    oat: "Avoine",
+    spelt: "Épeautre",
+    crustacean: "Crustacés",
+    egg: "Œufs",
+    fish: "Poisson",
+    soy: "Soja",
+    milk: "Lait",
+    almond: "Amandes",
+    hazelnut: "Noisettes",
+    walnut: "Noix",
+    cashew_nut: "Noix de cajou",
+    pecan: "Noix de pécan",
+    brazil_nut: "Noix du Brésil",
+    pistachio: "Pistaches",
+    macadamia: "Noix de macadamia",
+    celery: "Céleri",
+    mustard: "Moutarde",
+    sulfite: "Sulfites",
   } : {
     allergy: "Allergy",
     favorite: "Favorite dish",
@@ -51,6 +77,28 @@ function preferenceText(key) {
     sesame: "Sesame",
     peanut: "Peanuts",
     tree_nut: "Tree nuts",
+    gluten: "Gluten",
+    wheat: "Wheat",
+    rye: "Rye",
+    barley: "Barley",
+    oat: "Oats",
+    spelt: "Spelt",
+    crustacean: "Crustaceans",
+    egg: "Eggs",
+    fish: "Fish",
+    soy: "Soy",
+    milk: "Milk",
+    almond: "Almonds",
+    hazelnut: "Hazelnuts",
+    walnut: "Walnuts",
+    cashew_nut: "Cashews",
+    pecan: "Pecans",
+    brazil_nut: "Brazil nuts",
+    pistachio: "Pistachios",
+    macadamia: "Macadamia nuts",
+    celery: "Celery",
+    mustard: "Mustard",
+    sulfite: "Sulfites",
   };
   return labels[key] || key;
 }

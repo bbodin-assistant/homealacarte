@@ -26,9 +26,31 @@ export function allergenIcon(value) {
 
 function allergenLabel(code) {
   return {
+    gluten: "Gluten",
+    wheat: "Wheat",
+    rye: "Rye",
+    barley: "Barley",
+    oat: "Oats",
+    spelt: "Spelt",
+    crustacean: "Crustaceans",
+    egg: "Eggs",
+    fish: "Fish",
     sesame: "Sesame",
     peanut: "Peanuts",
+    soy: "Soy",
+    milk: "Milk",
     tree_nut: "Tree nuts",
+    almond: "Almonds",
+    hazelnut: "Hazelnuts",
+    walnut: "Walnuts",
+    cashew_nut: "Cashews",
+    pecan: "Pecans",
+    brazil_nut: "Brazil nuts",
+    pistachio: "Pistachios",
+    macadamia: "Macadamia nuts",
+    celery: "Celery",
+    mustard: "Mustard",
+    sulfite: "Sulfites",
   }[code] || code;
 }
 
