@@ -31,6 +31,7 @@ const PURCHASE_STRINGS = {
     paid: "Paid",
     recordedPrice: "Recorded price",
     source: "Source",
+    undated: "Date unavailable",
     emptyHistory: "No price history yet.",
     purchaseSource: "Purchase",
     itemRequired: "Choose an item.",
@@ -64,6 +65,7 @@ const PURCHASE_STRINGS = {
     paid: "Payé",
     recordedPrice: "Prix enregistré",
     source: "Source",
+    undated: "Date non renseignée",
     emptyHistory: "Aucun historique de prix pour le moment.",
     purchaseSource: "Achat",
     itemRequired: "Choisissez un article.",
@@ -116,6 +118,27 @@ export function groceryProgress(grocery) {
     ? candidateFullTotal
     : remainingTotal;
   return { checked, fullTotal, remaining: total - checked, remainingTotal, total };
+}
+
+export function groupPurchaseHistoryByDate(rows = []) {
+  const groups = new Map();
+  rows.forEach((row) => {
+    const date = String(row?.date || "");
+    if (!groups.has(date)) groups.set(date, []);
+    groups.get(date).push(row);
+  });
+  return [...groups].map(([date, purchases]) => ({ date, purchases }));
+}
+
+function purchaseDateLabel(date, language, undatedLabel) {
+  if (!date) return undatedLabel;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return new Intl.DateTimeFormat(language || undefined, {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(parsed);
 }
 
 export function createGroceryFeature({
@@ -250,23 +273,33 @@ export function createGroceryFeature({
     const number = new Intl.NumberFormat(state.language || undefined, { maximumFractionDigits: 3 });
     const history = collectPurchaseHistory(state.snapshot);
     setCountBadge("#purchases-tab-count", history.length);
-    select("#purchase-list").innerHTML = history.map((row) => {
-      const purchase = row.purchase;
-      const quantity = purchase ? `${number.format(purchase.quantity)} ${escapeHtml(purchase.unit)}` : "—";
-      const paid = purchase ? formatMoney(purchase.totalPrice) : "—";
-      const unitLabel = row.household ? row.purchaseUnit || "unit" : "kg";
-      const recordedPrice = `${formatMoney(row.price)} / ${escapeHtml(unitLabel)}`;
-      const source = purchase
-        ? purchase.store || strings.purchaseSource
-        : row.description || "—";
-      return `<div class="purchase-history-row">
-        <strong><span>${escapeHtml(row.itemName)}</span><small>${escapeHtml(row.date || "—")}</small></strong>
-        <span>${quantity}</span>
-        <span>${paid}</span>
-        <span>${recordedPrice}</span>
-        <span title="${escapeHtml(source)}">${escapeHtml(source)}</span>
-      </div>`;
-    }).join("") || `<p class="stock-empty">${escapeHtml(strings.emptyHistory)}</p>`;
+    select("#purchase-list").innerHTML = groupPurchaseHistoryByDate(history).map((group) => `
+      <section class="purchase-date-group">
+        <h3 class="purchase-date-heading">
+          ${group.date ? `<time datetime="${escapeHtml(group.date)}">` : "<span>"}
+            ${escapeHtml(purchaseDateLabel(group.date, state.language, strings.undated))}
+          ${group.date ? "</time>" : "</span>"}
+          <span>${number.format(group.purchases.length)}</span>
+        </h3>
+        ${group.purchases.map((row) => {
+          const purchase = row.purchase;
+          const quantity = purchase ? `${number.format(purchase.quantity)} ${escapeHtml(purchase.unit)}` : "—";
+          const paid = purchase ? formatMoney(purchase.totalPrice) : "—";
+          const unitLabel = row.household ? row.purchaseUnit || "unit" : "kg";
+          const recordedPrice = `${formatMoney(row.price)} / ${escapeHtml(unitLabel)}`;
+          const source = purchase
+            ? purchase.store || strings.purchaseSource
+            : row.description || "—";
+          return `<div class="purchase-history-row">
+            <strong><span>${escapeHtml(row.itemName)}</span></strong>
+            <span>${quantity}</span>
+            <span>${paid}</span>
+            <span>${recordedPrice}</span>
+            <span title="${escapeHtml(source)}">${escapeHtml(source)}</span>
+          </div>`;
+        }).join("")}
+      </section>
+    `).join("") || `<p class="stock-empty">${escapeHtml(strings.emptyHistory)}</p>`;
   }
 
   function render() {

@@ -6,6 +6,7 @@ import {
   parsePurchaseBatch,
   parsePurchaseDescription,
 } from "../www/core/purchases.js";
+import { groupPurchaseHistoryByDate } from "../www/features/grocery.js";
 import {
   matchReceiptLabelFromHistory,
   purchaseReviewState,
@@ -210,6 +211,17 @@ const history = collectPurchaseHistory({
 });
 assert.ok(history.some((row) => row.description === "Market check"));
 assert.ok(history.some((row) => row.purchase?.purchaseId === "purchase-test-1"));
+const groupedHistory = groupPurchaseHistoryByDate([
+  { date: "2026-08-18", itemName: "Tomato" },
+  { date: "2026-08-18", itemName: "Hand soap" },
+  { date: "2026-08-01", itemName: "Tomato" },
+  { date: "", itemName: "Undated" },
+]);
+assert.deepEqual(groupedHistory.map((group) => [group.date, group.purchases.length]), [
+  ["2026-08-18", 2],
+  ["2026-08-01", 1],
+  ["", 1],
+]);
 
 const [groceryView, groceryFeature, shell, worker, app, composition, index, receiptFeature] = await Promise.all([
   readFile(new URL("../www/views/grocery.html", import.meta.url), "utf8"),
@@ -229,9 +241,9 @@ assert.match(worker, /type === "record-purchase"/);
 assert.match(worker, /core\/purchases\.js\?v=homealacarte-1/);
 assert.match(worker, /homealacarte_web\.js\?v=homealacarte-93/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-1/);
-assert.match(composition, /features\/grocery\.js\?v=homealacarte-78/);
+assert.match(composition, /features\/grocery\.js\?v=homealacarte-79/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-91/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-92/);
 assert.match(app, /worker\.js\?v=homealacarte-93/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");

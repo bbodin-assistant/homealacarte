@@ -69,8 +69,12 @@
 .purchase-history-head, .purchase-history-row { display: grid; grid-template-columns: minmax(160px, 1.3fr) 100px 90px 120px minmax(150px, 1fr); gap: 9px; align-items: center; padding: 9px 12px; }
 .purchase-history-head { color: var(--muted); background: #f3efe7; border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .purchase-list { max-height: 520px; overflow: auto; }
+.purchase-date-group { border-bottom: 1px solid var(--line); }
+.purchase-date-group:last-child { border-bottom: 0; }
+.purchase-date-heading { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 8px 12px; color: var(--ink); background: #e9e3d8; border-bottom: 1px solid var(--line); font-size: 10px; font-weight: 800; }
+.purchase-date-heading > span:last-child { min-width: 22px; padding: 2px 6px; color: var(--muted); background: var(--surface); border-radius: 999px; text-align: center; }
 .purchase-history-row { border-bottom: 1px solid var(--line); font-size: 10px; }
-.purchase-history-row:last-child { border-bottom: 0; }
+.purchase-date-group .purchase-history-row:last-child { border-bottom: 0; }
 .purchase-history-row strong { min-width: 0; display: grid; gap: 3px; font-size: 11px; }
 .purchase-history-row strong span, .purchase-history-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .purchase-history-row small, .purchase-history-row > span { color: var(--muted); font-size: 9px; font-weight: 500; }
