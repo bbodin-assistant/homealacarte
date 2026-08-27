@@ -10,7 +10,7 @@ import { createDishEditorFeature } from "../features/dish-editor.js?v=homealacar
 import { createCatalogueFeature } from "../features/catalogue.js?v=homealacarte-84";
 import { createFamilyFeature } from "../features/family.js?v=homealacarte-91";
 import { createMenuFeature } from "../features/menu.js?v=homealacarte-81";
-import { createDataAccountFeature } from "../features/data-account.js?v=homealacarte-77";
+import { createDataAccountFeature } from "../features/data-account.js?v=homealacarte-99";
 import { createShellFeature } from "../features/shell.js?v=homealacarte-91";
 
 export function createFeatureComposition({

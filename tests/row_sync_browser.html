@@ -45,10 +45,19 @@
       })), 2, "browser-test");
       if ((await readPendingOperations()).length !== 0) throw new Error("acknowledged outbox is not empty");
 
+      const reorderedState = await readLocalState();
+      const reorderedDocument = JSON.parse(reorderedState.sources[0].content);
+      reorderedDocument.items[0] = { name: "Rice", key: "rice" };
+      reorderedState.sources[0].content = JSON.stringify(reorderedDocument);
+      await writeLocalState(reorderedState, { userId: "browser-test" });
+      if ((await readPendingOperations()).length !== 0) {
+        throw new Error("JSON object key order created a false local change");
+      }
+
       documentValue.items[0].name = "Local rice";
       state.sources[0].content = JSON.stringify(documentValue);
       await writeLocalState(state, { userId: "browser-test" });
-      const conflicts = await applyRemoteChanges([{
+      const { conflicts } = await applyRemoteChanges([{
         change_id: 3,
         entity_type: "items",
         entity_id: "rice",
@@ -115,6 +124,20 @@
       remoteChanges = [...remoteChanges, {
         change_id: 6,
         entity_type: "people",
+        entity_id: "alex",
+        position: 0,
+        payload: { name: "Alex", key: "alex", kcal_target: 2000, kind: "adult" },
+        record_version: 2,
+        operation: "upsert",
+      }];
+      await sync.synchronize(true);
+      if (notified !== 0) {
+        throw new Error("a version-only remote echo announced a visible change");
+      }
+
+      remoteChanges = [...remoteChanges, {
+        change_id: 7,
+        entity_type: "people",
         entity_id: "sam",
         position: 1,
         payload: { key: "sam", name: "Sam", kind: "adult", kcal_target: 1900 },
@@ -125,6 +148,57 @@
       const afterPull = JSON.parse((await readLocalState()).sources[0].content);
       if (!afterPull.people.some((person) => person.key === "sam") || notified !== 1) {
         throw new Error("incremental remote pull was not applied and announced");
+      }
+
+      let concurrentFetches = 0;
+      let maximumConcurrentFetches = 0;
+      let fetchCalls = 0;
+      const serializedSync = createRowSync({
+        emitStatus: () => {},
+        notifyRemoteChange: () => {},
+        remoteClient: {
+          ensureSession: async () => session,
+          getSession: () => session,
+          isNetworkError: () => false,
+          touchAccountActivity: async () => {},
+          applyRemoteOperations: async () => ({ conflicts: [], applied: [] }),
+          fetchRemoteChanges: async () => {
+            fetchCalls += 1;
+            concurrentFetches += 1;
+            maximumConcurrentFetches = Math.max(maximumConcurrentFetches, concurrentFetches);
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            concurrentFetches -= 1;
+            return [];
+          },
+        },
+      });
+      await Promise.all([
+        serializedSync.synchronize(true),
+        serializedSync.queueSynchronization(),
+        serializedSync.synchronize(false),
+      ]);
+      if (maximumConcurrentFetches !== 1 || fetchCalls !== 1) {
+        throw new Error("overlapping synchronization triggers were not coalesced");
+      }
+
+      const mismatchStatuses = [];
+      let mismatchNetworkCalls = 0;
+      const mismatchedSync = createRowSync({
+        emitStatus: (status) => mismatchStatuses.push(status),
+        notifyRemoteChange: () => {},
+        remoteClient: {
+          ensureSession: async () => ({ user: { id: "another-account" } }),
+          getSession: () => ({ user: { id: "another-account" } }),
+          isNetworkError: () => false,
+          touchAccountActivity: async () => { mismatchNetworkCalls += 1; },
+          applyRemoteOperations: async () => { mismatchNetworkCalls += 1; },
+          fetchRemoteChanges: async () => { mismatchNetworkCalls += 1; return []; },
+        },
+      });
+      if (await mismatchedSync.synchronize(false) !== null
+          || mismatchNetworkCalls !== 0
+          || mismatchStatuses.at(-1)?.message !== "sync_account_mismatch") {
+        throw new Error("a different account was allowed to access this IndexedDB replica");
       }
 
       // A large import spans several sync batches. One conflict choice must apply
@@ -172,7 +246,13 @@
               operation: operation.operation,
             }));
             return operations[0]?.expectedVersion === 0
-              ? { conflicts: changes, applied: [] }
+              ? {
+                conflicts: changes.map((change) => ({
+                  ...change,
+                  payload: { ...change.payload, remote_test_value: true },
+                })),
+                applied: [],
+              }
               : { conflicts: [], applied: changes };
           },
           fetchRemoteChanges: async () => [],

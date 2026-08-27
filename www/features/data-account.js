@@ -420,7 +420,7 @@ export function createDataAccountFeature({
   select("#account-use-online").addEventListener("click", async () => {
     setAccountBusy(true);
     try {
-      if (await resolveSyncConflict("remote")) reloadPage();
+      if (!await resolveSyncConflict("remote")) setAccountBusy(false);
     } catch (error) {
       accountError(error);
       setAccountBusy(false);
@@ -429,8 +429,7 @@ export function createDataAccountFeature({
   select("#account-use-local").addEventListener("click", async () => {
     setAccountBusy(true);
     try {
-      if (await resolveSyncConflict("local")) reloadPage();
-      else setAccountBusy(false);
+      if (!await resolveSyncConflict("local")) setAccountBusy(false);
     } catch (error) {
       accountError(error);
       setAccountBusy(false);

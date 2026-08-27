@@ -1,10 +1,11 @@
 import {
   clearLocalState,
   readLocalState,
+  readPendingOperations,
   readSyncMeta,
-} from "./storage/local-store.js?v=homealacarte-79";
+} from "./storage/local-store.js?v=homealacarte-99";
 import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-80";
-import { createRowSync } from "./storage/row-sync.js?v=homealacarte-82";
+import { createRowSync } from "./storage/row-sync.js?v=homealacarte-99";
 
 let syncStatus = { state: "local", email: "", message: "" };
 
@@ -121,6 +122,7 @@ export async function submitPrivacyRequest(requestType, message) {
 export async function getStorageDiagnostics() {
   const local = await readLocalState();
   const meta = await readSyncMeta();
+  const pendingOperations = await readPendingOperations();
   const config = await loadConfig();
   let remote = null;
   let remoteError = "";
@@ -147,6 +149,9 @@ export async function getStorageDiagnostics() {
     retentionPolicy: config?.retentionPolicy || "",
     localBytes: jsonSize(local),
     localUpdatedAt: meta.locallyUpdatedAt || "",
+    localCursor: Number(meta.cursor || 0),
+    pendingOperationCount: pendingOperations.length,
+    ...rowSync.getDiagnostics(),
     originBytes: Number(estimate.usage || 0),
     originQuotaBytes: Number(estimate.quota || 0),
     remoteBytes: jsonSize(remote?.records),
@@ -207,14 +212,16 @@ export async function synchronizePrivateState() {
 }
 
 export async function resolveSyncConflict(choice) {
-  return rowSync.resolve(choice);
+  const value = await rowSync.resolve(choice);
+  if (value) notifyRemoteChange(value);
+  return value;
 }
 
 globalThis.addEventListener?.("online", () => rowSync.queueSynchronization());
 globalThis.addEventListener?.("offline", () => emitStatus({ state: "offline", message: "" }));
 
 globalThis.addEventListener?.("focus", () => {
-  rowSync.synchronize(true).catch((error) => {
+  rowSync.queueSynchronization(true).catch((error) => {
     if (!isNetworkError(error)) console.warn("Unable to refresh synchronized data", error);
   });
 });

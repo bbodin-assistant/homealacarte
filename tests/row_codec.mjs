@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import {
   privateStateToRecords,
   recordsToPrivateState,
+  sameJsonValue,
+  sameRecordContent,
 } from "../www/storage/row-codec.js";
 
 const document = {
@@ -35,6 +37,18 @@ const records = privateStateToRecords(state);
 assert.equal(records.length, 6);
 assert.equal(records.find((row) => row.entityType === "menu").entityId, "menu_stable");
 assert.equal(records.find((row) => row.entityType === "stock").entityId, "rice");
+assert.equal(records.find((row) => row.entityType === "items").position, 0);
+assert.equal(records.find((row) => row.entityType === "dishes").position, 0);
+assert.equal(records.find((row) => row.entityType === "people").position, 0);
+assert.equal(sameJsonValue({ key: "rice", name: "Rice" }, { name: "Rice", key: "rice" }), true);
+assert.equal(sameRecordContent(
+  { entityType: "items", position: 8, payload: { key: "rice", name: "Rice" } },
+  { entityType: "items", position: 0, payload: { name: "Rice", key: "rice" } },
+), true, "unordered records ignore array position and JSON object key order");
+assert.equal(sameRecordContent(
+  { entityType: "menu", position: 1, payload: { id: "menu_stable" } },
+  { entityType: "menu", position: 0, payload: { id: "menu_stable" } },
+), false, "menu order remains synchronized");
 
 const restored = recordsToPrivateState(records);
 assert.equal(restored.version, 10);

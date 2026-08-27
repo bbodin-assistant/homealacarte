@@ -7,9 +7,10 @@ import {
   readSyncMeta,
   resolveLocalConflicts,
   writeLocalState,
-} from "./local-store.js?v=homealacarte-79";
+} from "./local-store.js?v=homealacarte-99";
+import { normalizeRemoteRecord, sameJsonValue } from "./row-codec.js?v=homealacarte-99";
 
-const POLL_INTERVAL_MS = 5_000;
+const POLL_INTERVAL_MS = 30_000;
 export const SYNC_BATCH_SIZE = 100;
 
 const UPSERT_ENTITY_ORDER = new Map([
@@ -31,27 +32,6 @@ const DELETE_ENTITY_ORDER = new Map([
   ["app", 50],
 ]);
 
-function sameValue(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function sameJsonValue(left, right) {
-  if (Object.is(left, right)) return true;
-  if (Array.isArray(left) || Array.isArray(right)) {
-    return Array.isArray(left)
-      && Array.isArray(right)
-      && left.length === right.length
-      && left.every((value, index) => sameJsonValue(value, right[index]));
-  }
-  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  return leftKeys.length === rightKeys.length
-    && leftKeys.every((key, index) => (
-      key === rightKeys[index] && sameJsonValue(left[key], right[key])
-    ));
-}
-
 function operationOrder(operation) {
   const deleting = operation.operation === "delete";
   const entityOrder = deleting ? DELETE_ENTITY_ORDER : UPSERT_ENTITY_ORDER;
@@ -65,7 +45,7 @@ function syncRecordKey(entityType, entityId) {
 function operationMatchesRemote(operation, remote) {
   return operation?.operation === "upsert"
     && (remote?.operation || "upsert") === "upsert"
-    && Number(operation.position || 0) === Number(remote.position || 0)
+    && normalizeRemoteRecord(operation).position === normalizeRemoteRecord(remote).position
     && sameJsonValue(operation.payload, remote.payload);
 }
 
@@ -106,9 +86,20 @@ export function selectSyncBatch(operations, limit = SYNC_BATCH_SIZE) {
 }
 
 export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) {
-  let drainPromise = null;
+  let synchronizationPromise = null;
+  let synchronizationQueued = false;
+  let queuedNotify = false;
+  let queuedConflictChoice = null;
   let conflict = null;
   let pollingTimer = null;
+
+  function accountMismatch(meta, activeSession) {
+    return Boolean(meta.userId && meta.userId !== activeSession?.user?.id);
+  }
+
+  function reportAccountMismatch() {
+    emitStatus({ state: "error", message: "sync_account_mismatch" });
+  }
 
   async function pullRemoteChanges(activeSession, notify = true, ignoredChangeIds = new Set()) {
     const meta = await readSyncMeta();
@@ -121,15 +112,15 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
       const remoteChanges = changes.filter(
         (change) => !ignoredChangeIds.has(Number(change.change_id || 0)),
       );
-      const conflicts = await applyRemoteChanges(
+      const result = await applyRemoteChanges(
         remoteChanges,
         nextCursor,
         activeSession.user.id,
       );
       cursor = nextCursor;
-      changed = changed || remoteChanges.length > conflicts.length;
-      if (conflicts.length) {
-        conflict = { kind: "rows", rows: conflicts };
+      changed = changed || result.changedRecordKeys.length > 0;
+      if (result.conflicts.length) {
+        conflict = { kind: "rows", rows: result.conflicts };
         emitStatus({ state: "conflict", message: "Online and local records both changed." });
         return false;
       }
@@ -182,13 +173,17 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     }
   }
 
-  async function synchronize(notify = true, conflictChoice = null) {
+  async function synchronizeOnce(notify = true, conflictChoice = null) {
     const activeSession = await remoteClient.ensureSession();
     if (!activeSession) {
       emitStatus({ state: remoteClient.getSession() ? "offline" : "signed-out" });
       return null;
     }
     try {
+      if (accountMismatch(await readSyncMeta(), activeSession)) {
+        reportAccountMismatch();
+        return null;
+      }
       await remoteClient.touchAccountActivity();
       const appliedChangeIds = await pushPending(activeSession, conflictChoice);
       if (!appliedChangeIds) return null;
@@ -204,12 +199,34 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     }
   }
 
-  function queueSynchronization() {
-    if (drainPromise) return drainPromise;
-    drainPromise = Promise.resolve()
-      .then(() => synchronize(false))
-      .finally(() => { drainPromise = null; });
-    return drainPromise;
+  function synchronize(notify = true, conflictChoice = null) {
+    synchronizationQueued = true;
+    queuedNotify = queuedNotify || notify;
+    queuedConflictChoice = conflictChoice || queuedConflictChoice;
+    if (synchronizationPromise) return synchronizationPromise;
+    synchronizationPromise = Promise.resolve().then(async () => {
+      let result = null;
+      while (synchronizationQueued) {
+        synchronizationQueued = false;
+        const nextNotify = queuedNotify;
+        const nextChoice = queuedConflictChoice;
+        queuedNotify = false;
+        queuedConflictChoice = null;
+        result = await synchronizeOnce(nextNotify, nextChoice);
+        if (conflict) {
+          synchronizationQueued = false;
+          break;
+        }
+      }
+      return result;
+    }).finally(() => {
+      synchronizationPromise = null;
+    });
+    return synchronizationPromise;
+  }
+
+  function queueSynchronization(notify = true) {
+    return synchronize(notify);
   }
 
   async function load() {
@@ -225,6 +242,10 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
       emitStatus({ state: remoteClient.getSession() ? "offline" : "signed-out", message: "" });
       return local;
     }
+    if (accountMismatch(meta, activeSession)) {
+      reportAccountMismatch();
+      return undefined;
+    }
 
     emitStatus({ state: "connecting", message: "" });
     try {
@@ -237,14 +258,14 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
           await clearLocalState();
           local = undefined;
         }
-        const rowConflicts = await applyRemoteChanges(
+        const result = await applyRemoteChanges(
           remoteRecords.map((row) => ({ ...row, operation: "upsert" })),
           snapshot.cursor,
           activeSession.user.id,
           true,
         );
-        if (rowConflicts.length) {
-          conflict = { kind: "rows", rows: rowConflicts };
+        if (result.conflicts.length) {
+          conflict = { kind: "rows", rows: result.conflicts };
           emitStatus({ state: "conflict", message: "Online and local records both changed." });
           return local;
         }
@@ -252,7 +273,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
       } else {
         const legacyRemote = await remoteClient.fetchRemoteState();
         if (legacyRemote?.payload) {
-          if (local && meta.legacyDirty && !sameValue(local, legacyRemote.payload)) {
+          if (local && meta.legacyDirty && !sameJsonValue(local, legacyRemote.payload)) {
             conflict = { kind: "legacy", local, remote: legacyRemote.payload };
             emitStatus({ state: "conflict", message: "Legacy online and local data both changed." });
             return local;
@@ -277,8 +298,13 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
 
   async function save(value) {
     const activeSession = await remoteClient.ensureSession();
+    const meta = await readSyncMeta();
+    if (activeSession && accountMismatch(meta, activeSession)) {
+      reportAccountMismatch();
+      return;
+    }
     const result = await writeLocalState(value, {
-      userId: activeSession?.user?.id || (await readSyncMeta()).userId || null,
+      userId: activeSession?.user?.id || meta.userId || null,
     });
     if (!result.changed) {
       if (activeSession && result.pending) queueSynchronization();
@@ -310,7 +336,7 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     if (pollingTimer || typeof setInterval !== "function") return;
     pollingTimer = setInterval(() => {
       if (globalThis.document?.visibilityState === "hidden" || conflict) return;
-      synchronize(true).catch(() => {});
+      queueSynchronization(true).catch(() => {});
     }, POLL_INTERVAL_MS);
   }
 
@@ -318,10 +344,22 @@ export function createRowSync({ remoteClient, emitStatus, notifyRemoteChange }) 
     if (pollingTimer) clearInterval(pollingTimer);
     pollingTimer = null;
     conflict = null;
+    synchronizationQueued = false;
+    queuedNotify = false;
+    queuedConflictChoice = null;
+  }
+
+  function getDiagnostics() {
+    return {
+      pollIntervalMs: POLL_INTERVAL_MS,
+      synchronizing: Boolean(synchronizationPromise),
+      conflict: conflict?.kind || "",
+    };
   }
 
   return {
     load,
+    getDiagnostics,
     queueSynchronization,
     resolve,
     save,

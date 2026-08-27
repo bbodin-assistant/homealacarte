@@ -13,6 +13,31 @@ const INGREDIENT_MIGRATION_VERSIONS = [6, 7, 8];
 const NUTRITION_MIGRATION_VERSIONS = [6, 7, 8, 9];
 const APPLICATION_TABS = ["family", "menu", "grocery", "dishes", "items", "data"];
 
+export function applySynchronizedPrivateState({
+  state,
+  saved,
+  applyTranslations,
+  send,
+  source = "synchronized",
+}) {
+  if (saved?.version !== DATA_SCHEMA_VERSION || !saved.sources?.length) return false;
+  state.language = saved.language || state.language;
+  state.importedSources = saved.sources;
+  state.restorePeople = null;
+  state.restoreMenu = null;
+  state.restoreStock = null;
+  state.restoreCustom = null;
+  applyTranslations();
+  const requestId = send("load-files", {
+    files: saved.sources,
+    language: state.language,
+    source,
+  });
+  state.nonPersistingRequestIds ||= new Set();
+  state.nonPersistingRequestIds.add(requestId);
+  return true;
+}
+
 export async function bootstrapApplication({
   state,
   requestedTab,
@@ -27,6 +52,13 @@ export async function bootstrapApplication({
   if (APPLICATION_TABS.includes(requestedTab)) switchTab(requestedTab);
 
   const saved = await loadPrivateState().catch(() => null);
+  if (applySynchronizedPrivateState({
+    state,
+    saved,
+    applyTranslations,
+    send,
+    source: "saved",
+  })) return;
   if ([...NUTRITION_MIGRATION_VERSIONS, ...ROW_SYNC_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION]
     .includes(saved?.version)) {
     state.language = saved.language || state.language;

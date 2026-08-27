@@ -9,6 +9,7 @@ export const DATA_ENTITY_TYPES = [
 
 const APP_ENTITY_TYPE = "app";
 const APP_ENTITY_ID = "settings";
+const ORDERED_ENTITY_TYPES = new Set(["people", "menu"]);
 
 function clone(value) {
   return value == null ? value : structuredClone(value);
@@ -89,6 +90,27 @@ export function recordKey(entityType, entityIdValue) {
   return `${entityType}\u0000${entityIdValue}`;
 }
 
+function synchronizedPosition(entityType, position) {
+  return ORDERED_ENTITY_TYPES.has(entityType) ? Number(position || 0) : 0;
+}
+
+export function sameJsonValue(left, right) {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return Array.isArray(left)
+      && Array.isArray(right)
+      && left.length === right.length
+      && left.every((value, index) => sameJsonValue(value, right[index]));
+  }
+  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return leftKeys.length === rightKeys.length
+    && leftKeys.every((key, index) => (
+      key === rightKeys[index] && sameJsonValue(left[key], right[key])
+    ));
+}
+
 export function privateStateToRecords(value) {
   const document = privateStateDocument(value);
   const records = [{
@@ -115,7 +137,7 @@ export function privateStateToRecords(value) {
         recordKey: recordKey(type, id),
         entityType: type,
         entityId: id,
-        position,
+        position: synchronizedPosition(type, position),
         payload,
         version: 0,
       });
@@ -131,7 +153,7 @@ export function normalizeRemoteRecord(row) {
     recordKey: recordKey(entityType, entityId),
     entityType,
     entityId,
-    position: Number(row.position || 0),
+    position: synchronizedPosition(entityType, row.position),
     payload: clone(row.payload),
     version: Number(row.version || row.record_version || 0),
   };
@@ -162,6 +184,7 @@ export function recordsToPrivateState(sourceRecords) {
 }
 
 export function sameRecordContent(left, right) {
-  return left.position === right.position
-    && JSON.stringify(left.payload) === JSON.stringify(right.payload);
+  return synchronizedPosition(left.entityType, left.position)
+      === synchronizedPosition(right.entityType, right.position)
+    && sameJsonValue(left.payload, right.payload);
 }

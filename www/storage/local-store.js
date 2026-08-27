@@ -2,8 +2,9 @@ import {
   normalizeRemoteRecord,
   privateStateToRecords,
   recordsToPrivateState,
+  sameJsonValue,
   sameRecordContent,
-} from "./row-codec.js?v=homealacarte-78";
+} from "./row-codec.js?v=homealacarte-99";
 
 const DB_NAME = "homealacarte-private";
 const DB_VERSION = 2;
@@ -218,27 +219,11 @@ export async function readPendingOperations() {
 }
 
 function operationMatches(left, right) {
-  return left.operationId === right.operationId
+  return Boolean(left && right)
+    && left.operationId === right.operationId
     && left.operation === right.operation
     && left.position === right.position
-    && JSON.stringify(left.payload) === JSON.stringify(right.payload);
-}
-
-function sameJsonValue(left, right) {
-  if (Object.is(left, right)) return true;
-  if (Array.isArray(left) || Array.isArray(right)) {
-    return Array.isArray(left)
-      && Array.isArray(right)
-      && left.length === right.length
-      && left.every((value, index) => sameJsonValue(value, right[index]));
-  }
-  if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
-  const leftKeys = Object.keys(left).sort();
-  const rightKeys = Object.keys(right).sort();
-  return leftKeys.length === rightKeys.length
-    && leftKeys.every((key, index) => (
-      key === rightKeys[index] && sameJsonValue(left[key], right[key])
-    ));
+    && sameJsonValue(left.payload, right.payload);
 }
 
 export function classifyPendingRemote(pending, change) {
@@ -248,7 +233,7 @@ export function classifyPendingRemote(pending, change) {
   if (pending.operation === "delete" && remoteOperation === "delete") return "reconcile";
   if (pending.operation === "upsert"
     && remoteOperation === "upsert"
-    && Number(pending.position || 0) === remote.position
+    && normalizeRemoteRecord(pending).position === remote.position
     && sameJsonValue(pending.payload, remote.payload)) {
     return "reconcile";
   }
@@ -311,6 +296,8 @@ export function applyRemoteChanges(changes, cursor, userId, replace = false) {
     const pending = new Map(currentState[OUTBOX_STORE].map((row) => [row.recordKey, row]));
     const remoteKeys = new Set();
     const conflicts = [];
+    const changedRecordKeys = new Set();
+    const current = new Map(currentState[RECORDS_STORE].map((row) => [row.recordKey, row]));
     const database = await openDatabase();
     try {
       const transaction = database.transaction(
@@ -326,8 +313,16 @@ export function applyRemoteChanges(changes, cursor, userId, replace = false) {
         const pendingOperation = pending.get(remote.recordKey);
         const action = classifyPendingRemote(pendingOperation, change);
         if (action === "reconcile") {
-          if (change.operation === "delete") recordsStore.delete(remote.recordKey);
-          else recordsStore.put(remote);
+          if (change.operation === "delete") {
+            if (current.has(remote.recordKey)) changedRecordKeys.add(remote.recordKey);
+            recordsStore.delete(remote.recordKey);
+          } else {
+            if (!current.has(remote.recordKey)
+              || !sameRecordContent(current.get(remote.recordKey), remote)) {
+              changedRecordKeys.add(remote.recordKey);
+            }
+            recordsStore.put(remote);
+          }
           outboxStore.delete(remote.recordKey);
           pending.delete(remote.recordKey);
         } else if (action === "keep-local") {
@@ -335,14 +330,20 @@ export function applyRemoteChanges(changes, cursor, userId, replace = false) {
         } else if (action === "conflict") {
           conflicts.push({ remote, operation: change.operation || "upsert" });
         } else if (change.operation === "delete") {
+          if (current.has(remote.recordKey)) changedRecordKeys.add(remote.recordKey);
           recordsStore.delete(remote.recordKey);
         } else {
+          if (!current.has(remote.recordKey)
+            || !sameRecordContent(current.get(remote.recordKey), remote)) {
+            changedRecordKeys.add(remote.recordKey);
+          }
           recordsStore.put(remote);
         }
       }
       if (replace) {
         for (const local of currentState[RECORDS_STORE]) {
           if (!remoteKeys.has(local.recordKey) && !pending.has(local.recordKey)) {
+            changedRecordKeys.add(local.recordKey);
             recordsStore.delete(local.recordKey);
           }
         }
@@ -358,7 +359,7 @@ export function applyRemoteChanges(changes, cursor, userId, replace = false) {
     } finally {
       database.close();
     }
-    return conflicts;
+    return { conflicts, changedRecordKeys: [...changedRecordKeys] };
   });
 }
 

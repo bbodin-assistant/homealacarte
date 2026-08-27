@@ -175,9 +175,17 @@ preserve it.
 
 Concurrent edits to different records merge automatically. Concurrent edits to
 the same record use its individual version and present the existing local/online
-choice without discarding unrelated changes. A lightweight cursor poll while
-the page is visible, plus refreshes on focus and reconnect, brings changes from
-other devices into the running application.
+choice without discarding unrelated changes. All save, poll, focus, reconnect,
+and manual requests pass through one coalescing synchronization queue. A cursor
+poll runs about every 30 seconds while the page is visible; focus and reconnect
+also request a sync. Actual remote mutations are rehydrated into the existing
+worker without reloading the page or writing the same snapshot back to the
+outbox. JSON objects are compared semantically, and ordering is synchronized
+only for entities where it is meaningful (`people` and `menu`).
+
+The IndexedDB replica records its owning account. If a different account signs
+in on the same browser profile, synchronization and local writes stop with an
+explicit error instead of uploading the previous account's data.
 
 ## Validation
 

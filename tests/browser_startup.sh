@@ -7,8 +7,9 @@ browser_log="/tmp/homealacarte-browser-startup.log"
 rendered_dom="/tmp/homealacarte-browser-startup.html"
 server_log="/tmp/homealacarte-browser-startup-server.log"
 browser_profile="/tmp/homealacarte-browser-startup-profile-$$"
+python_executable="${PYTHON_EXECUTABLE:-python3}"
 
-python3 -m http.server "${port}" --bind 127.0.0.1 --directory dist >"${server_log}" 2>&1 &
+"${python_executable}" -m http.server "${port}" --bind 127.0.0.1 --directory dist >"${server_log}" 2>&1 &
 server_pid=$!
 trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
 
@@ -30,6 +31,6 @@ if grep -Eiq 'INFO:CONSOLE.*(Uncaught|SyntaxError|ReferenceError|TypeError)' "${
 fi
 
 grep -Eq '<html[^>]*data-app-module-loaded="true"' "${rendered_dom}"
-grep -Eq 'GET /app\.js\?v=homealacarte-96 HTTP/1\.1" 200' "${server_log}"
+grep -Eq 'GET /app\.js\?v=homealacarte-99 HTTP/1\.1" 200' "${server_log}"
 
 echo "The application module starts in Chromium without an uncaught frontend exception."

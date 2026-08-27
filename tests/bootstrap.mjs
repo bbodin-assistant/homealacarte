@@ -41,3 +41,24 @@ assert.deepEqual(calls, [
 ]);
 
 console.log("Bootstrap restores current private state and routes the initial load deterministically.");
+
+const currentCalls = [];
+const currentState = { language: "fr", colorTheme: 0, nonPersistingRequestIds: new Set() };
+await bootstrapApplication({
+  state: currentState,
+  requestedTab: "family",
+  loadPrivateState: async () => ({ ...saved, version: 11 }),
+  applyColorTheme: () => {},
+  applyTranslations: () => {},
+  switchTab: () => {},
+  send: (...args) => {
+    currentCalls.push(args);
+    return 42;
+  },
+});
+assert.deepEqual(currentCalls, [["load-files", {
+  files: saved.sources,
+  language: "en",
+  source: "saved",
+}]]);
+assert.deepEqual([...currentState.nonPersistingRequestIds], [42]);

@@ -23,6 +23,7 @@ export function createWorkerResponseHandler({
       return;
     }
     if (data.type === "error") {
+      state.nonPersistingRequestIds?.delete(data.requestId);
       if (state.pendingDataAction?.requestId === data.requestId) state.pendingDataAction = null;
       showError(data.message, data.code);
       return;
@@ -90,6 +91,7 @@ export function createWorkerResponseHandler({
       return;
     }
     if (data.snapshot) {
+      const suppressPersistence = state.nonPersistingRequestIds?.delete(data.requestId) === true;
       clearError();
       state.snapshot = data.snapshot;
       state.language = data.snapshot.language;
@@ -130,7 +132,7 @@ export function createWorkerResponseHandler({
         send("replace-custom-grocery", { rows });
         return;
       }
-      persistDraft();
+      if (!suppressPersistence) persistDraft();
       render();
       setBusy(false);
       if (state.pendingDataAction?.requestId === data.requestId) {

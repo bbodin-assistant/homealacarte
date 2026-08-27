@@ -37,6 +37,7 @@ export function createAppState(storage, getStorageStatus, defaultLanguage = "") 
     source: "bundled",
     requestId: 0,
     latestRequest: 0,
+    nonPersistingRequestIds: new Set(),
     editTimer: null,
     stockTimer: null,
     customTimer: null,

@@ -18,7 +18,10 @@ export function createWorkerClient({
   }
 
   worker.onmessage = ({ data }) => {
-    if (!shouldHandleWorkerMessage(data, state.latestRequest)) return undefined;
+    if (!shouldHandleWorkerMessage(data, state.latestRequest)) {
+      state.nonPersistingRequestIds?.delete(data.requestId);
+      return undefined;
+    }
     return handleMessage(data);
   };
   worker.onerror = (event) => {

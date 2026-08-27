@@ -41,3 +41,32 @@ assert.equal(state.restoreMenu, null);
 assert.deepEqual(sent, [["replace-menu", { rows: [{ day: "Monday" }] }]]);
 
 console.log("Worker responses own status, error, snapshot replacement, and restoration routing.");
+
+let persisted = 0;
+let rendered = 0;
+const synchronizedState = {
+  language: "fr",
+  nonPersistingRequestIds: new Set([12]),
+};
+const synchronizedHandle = createWorkerResponseHandler({
+  state: synchronizedState,
+  clearError: () => {},
+  persistDraft: () => { persisted += 1; },
+  render: () => { rendered += 1; },
+  setBusy: () => {},
+});
+await synchronizedHandle({
+  type: "snapshot",
+  requestId: 12,
+  source: "synchronized",
+  snapshot: {
+    language: "en",
+    people: [],
+    planner: [],
+    stock: [],
+    custom_grocery: [],
+  },
+});
+assert.equal(persisted, 0, "remote hydration must not write the snapshot back to synchronization");
+assert.equal(rendered, 1);
+assert.equal(synchronizedState.nonPersistingRequestIds.size, 0);

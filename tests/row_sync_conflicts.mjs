@@ -86,12 +86,14 @@ const [rowSyncSource, storageSource, appSource, indexSource] = await Promise.all
   readFile(new URL("../www/app.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
 ]);
-assert.match(rowSyncSource, /local-store\.js\?v=homealacarte-79/);
+assert.match(rowSyncSource, /local-store\.js\?v=homealacarte-99/);
 assert.match(rowSyncSource, /pushPending\(activeSession, conflictChoice\)/);
 assert.match(rowSyncSource, /synchronize\(false, choice\)/);
-assert.match(storageSource, /local-store\.js\?v=homealacarte-79/);
-assert.match(storageSource, /row-sync\.js\?v=homealacarte-82/);
-assert.match(appSource, /storage\.js\?v=homealacarte-82/);
+assert.match(storageSource, /local-store\.js\?v=homealacarte-99/);
+assert.match(storageSource, /row-sync\.js\?v=homealacarte-99/);
+assert.match(appSource, /storage\.js\?v=homealacarte-99/);
+assert.doesNotMatch(appSource, /onPrivateStateChange\(\(\) => location\.reload\(\)\)/);
+assert.match(appSource, /applySynchronizedPrivateState/);
 const appVersion = indexSource.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(indexSource, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));

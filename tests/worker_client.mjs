@@ -13,7 +13,7 @@ const messages = [];
 const errors = [];
 const busy = [];
 const worker = { postMessage: (message) => posted.push(message) };
-const state = { requestId: 4, latestRequest: 4 };
+const state = { requestId: 4, latestRequest: 4, nonPersistingRequestIds: new Set([4]) };
 const client = createWorkerClient({
   worker,
   state,
@@ -29,6 +29,7 @@ assert.deepEqual(busy, [true]);
 worker.onmessage({ data: { requestId: 4, type: "snapshot" } });
 worker.onmessage({ data: { requestId: 5, type: "snapshot" } });
 assert.deepEqual(messages, [{ requestId: 5, type: "snapshot" }]);
+assert.equal(state.nonPersistingRequestIds.size, 0);
 
 let prevented = false;
 worker.onerror({ message: "boom", preventDefault: () => { prevented = true; } });
