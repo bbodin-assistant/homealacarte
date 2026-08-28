@@ -27,12 +27,12 @@ const PURCHASE_STRINGS = {
     batchPlaceholder: "Tomato; 1250; g; 4.36\nHand soap; 2; bottle; 5.20; household",
     addBatch: "Add purchases",
     history: "History",
-    historyIntro: "Chronological view of recorded purchases across all catalogue items.",
+    historyIntro: "Chronological view of price histories across all catalogue items.",
     paid: "Paid",
     recordedPrice: "Recorded price",
     source: "Source",
     undated: "Date unavailable",
-    emptyHistory: "No purchases recorded yet.",
+    emptyHistory: "No price history yet.",
     purchaseSource: "Purchase",
     itemRequired: "Choose an item.",
     newNameRequired: "Enter a name for the new item.",
@@ -61,12 +61,12 @@ const PURCHASE_STRINGS = {
     batchPlaceholder: "Tomate; 1250; g; 4,36\nSavon; 2; flacon; 5,20; household",
     addBatch: "Ajouter les achats",
     history: "Historique",
-    historyIntro: "Vue chronologique des achats enregistrés pour tous les articles du catalogue.",
+    historyIntro: "Vue chronologique des historiques de prix de tous les articles.",
     paid: "Payé",
     recordedPrice: "Prix enregistré",
     source: "Source",
     undated: "Date non renseignée",
-    emptyHistory: "Aucun achat enregistré pour le moment.",
+    emptyHistory: "Aucun historique de prix pour le moment.",
     purchaseSource: "Achat",
     itemRequired: "Choisissez un article.",
     newNameRequired: "Saisissez le nom du nouvel article.",
@@ -271,7 +271,7 @@ export function createGroceryFeature({
     if (!select("#purchase-batch-date").value) select("#purchase-batch-date").value = today;
     const strings = purchaseStrings(state.language);
     const number = new Intl.NumberFormat(state.language || undefined, { maximumFractionDigits: 3 });
-    const history = collectPurchaseHistory(state.snapshot).filter((row) => row.purchase);
+    const history = collectPurchaseHistory(state.snapshot);
     setCountBadge("#purchases-tab-count", history.length);
     select("#purchase-list").innerHTML = groupPurchaseHistoryByDate(history).map((group) => `
       <section class="purchase-date-group">
@@ -283,11 +283,13 @@ export function createGroceryFeature({
         </h3>
         ${group.purchases.map((row) => {
           const purchase = row.purchase;
-          const quantity = `${number.format(purchase.quantity)} ${escapeHtml(purchase.unit)}`;
-          const paid = formatMoney(purchase.totalPrice);
+          const quantity = purchase ? `${number.format(purchase.quantity)} ${escapeHtml(purchase.unit)}` : "—";
+          const paid = purchase ? formatMoney(purchase.totalPrice) : "—";
           const unitLabel = row.household ? row.purchaseUnit || "unit" : "kg";
           const recordedPrice = `${formatMoney(row.price)} / ${escapeHtml(unitLabel)}`;
-          const source = purchase.store || strings.purchaseSource;
+          const source = purchase
+            ? purchase.store || strings.purchaseSource
+            : row.description || "—";
           return `<div class="purchase-history-row">
             <strong><span>${escapeHtml(row.itemName)}</span></strong>
             <span>${quantity}</span>
