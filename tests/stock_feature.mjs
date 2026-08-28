@@ -36,6 +36,7 @@ assert.equal(addStockQuantity(state, "rice", 100, "g"), true);
 assert.equal(addStockQuantity(state, "rice", 2, "unit", "Top shelf"), true);
 assert.equal(state.stockDraft[0].quantity, 1100);
 assert.equal(state.stockDraft[0].notes, "Top shelf");
+assert.match(state.stockDraft[0].added_at, /^\d{4}-\d{2}-\d{2}$/);
 
 assert.equal(updateStockItem(state.stockDraft[0], "quantity_unit", "unit"), true);
 assert.equal(state.stockDraft[0].quantity, 2.2);
@@ -44,12 +45,15 @@ assert.equal(state.stockDraft[0].notes, "Opened");
 
 assert.equal(addStockQuantity(state, "soap", 3, "g"), true);
 assert.equal(state.stockDraft[1].quantity_unit, "unit");
+const addedAt = state.stockDraft[0].added_at;
+assert.equal(state.stockDraft[1].added_at, addedAt);
 assert.deepEqual(stockPayload(state.stockDraft), [
   {
     item_key: "rice",
     quantity: 2.2,
     quantity_unit: "unit",
     notes: "Opened",
+    added_at: addedAt,
     household: false,
   },
   {
@@ -57,8 +61,9 @@ assert.deepEqual(stockPayload(state.stockDraft), [
     quantity: 3,
     quantity_unit: "unit",
     notes: "",
+    added_at: addedAt,
     household: true,
   },
 ]);
 
-console.log("Stock feature preserves payloads and unit conversions after extraction.");
+console.log("Stock feature preserves payloads, added dates, and unit conversions after extraction.");
