@@ -71,6 +71,9 @@ pub(crate) fn ingredient_requirements(dataset: &Dataset) -> HashMap<String, f64>
             let multiplier = menu_multiplier(row, Some(ingredient), None) * people_count;
             *totals.entry(row.item_key.clone()).or_insert(0.0) += ingredient.grams * multiplier;
         } else if let Some(dish) = dishes.get(&row.item_key) {
+            if dish.grocery_exempt {
+                continue;
+            }
             let multiplier = menu_multiplier(row, None, Some(dish)) * people_count;
             for component in &dish.components {
                 *totals.entry(component.item_key.clone()).or_insert(0.0) +=

@@ -165,6 +165,7 @@ pub(crate) fn flatten_dishes(
             name: input.name.clone(),
             origin_country,
             auto_menu_main: input.auto_menu_main,
+            grocery_exempt: input.grocery_exempt,
             servings: input.servings,
             recipe_url: input.recipe_url.clone(),
             source: input.source.clone(),

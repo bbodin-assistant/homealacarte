@@ -4,7 +4,7 @@ export { ALLERGEN_CODES };
 
 export function foodRuleAcceptsItem(kind, itemKind) {
   if (kind === "allergy") return itemKind !== "dish";
-  if (kind === "favorite") return itemKind === "dish";
+  if (kind === "favorite" || kind === "like") return itemKind === "dish";
   return true;
 }
 
@@ -41,11 +41,15 @@ function preferenceText(key) {
   const labels = french ? {
     allergy: "Allergie",
     favorite: "Plat favori",
+    like: "Plat aimé (bibliothèque)",
+    dislike: "N’aime pas (bibliothèque)",
     forbidden: "Interdit / ne jamais proposer",
     allergens: "Allergènes",
   } : {
     allergy: "Allergy",
     favorite: "Favorite dish",
+    like: "Liked dish (library)",
+    dislike: "Disliked food or dish (library)",
     forbidden: "Forbidden / never propose",
     allergens: "Allergens",
   };
@@ -221,7 +225,7 @@ function annualPeriodIsValid(start, end) {
 }
 
 function foodRuleMarkup(rule = {}) {
-  const kind = ["routine", "never", "allergy", "favorite"].includes(rule.kind)
+  const kind = ["routine", "never", "allergy", "favorite", "like", "dislike"].includes(rule.kind)
     ? rule.kind
     : "routine";
   const meal = rule.meal || (kind === "routine" ? "breakfast" : "any");
@@ -236,6 +240,8 @@ function foodRuleMarkup(rule = {}) {
         <option value="never" ${kind === "never" ? "selected" : ""}>${escapeHtml(preferenceText("forbidden"))}</option>
         <option value="allergy" ${kind === "allergy" ? "selected" : ""}>${escapeHtml(preferenceText("allergy"))}</option>
         <option value="favorite" ${kind === "favorite" ? "selected" : ""}>${escapeHtml(preferenceText("favorite"))}</option>
+        <option value="like" ${kind === "like" ? "selected" : ""}>${escapeHtml(preferenceText("like"))}</option>
+        <option value="dislike" ${kind === "dislike" ? "selected" : ""}>${escapeHtml(preferenceText("dislike"))}</option>
       </select>
     </label>
     <label><span>${escapeHtml(translate("food_rule_meal"))}</span>
@@ -295,7 +301,7 @@ function renderFoodRuleSelectedItems(row) {
 function setFoodRuleMode(row, pruneInvalid = false) {
   const kind = row.querySelector("[data-food-rule-kind]").value;
   const routine = kind === "routine";
-  const globalPreference = kind === "allergy" || kind === "favorite";
+  const globalPreference = ["allergy", "favorite", "like", "dislike"].includes(kind);
   row.classList.toggle("never-rule", !routine);
   const meal = row.querySelector("[data-food-rule-meal]");
   meal.disabled = globalPreference;
@@ -355,7 +361,7 @@ function familyFoodRulesPayload() {
     const periodEnd = kind === "routine" ? annualPeriodBoundaryValue(row, "end") : "";
     return {
       kind,
-      meal: kind === "allergy" || kind === "favorite"
+      meal: ["allergy", "favorite", "like", "dislike"].includes(kind)
         ? "any"
         : row.querySelector("[data-food-rule-meal]").value,
       item_keys: [...row.querySelectorAll("[data-food-rule-items] input:checked")]
@@ -381,7 +387,7 @@ function familyFoodRulesPayload() {
 
 function familyFoodRulesAreValid(rules = familyFoodRulesPayload()) {
   const itemKinds = new Map(state.snapshot.item_options.map((item) => [item.key, item.kind]));
-  return rules.every((rule) => ["routine", "never", "allergy", "favorite"].includes(rule.kind)
+  return rules.every((rule) => ["routine", "never", "allergy", "favorite", "like", "dislike"].includes(rule.kind)
     && (rule.item_keys.length > 0 || (rule.kind === "allergy" && rule.allergens.length > 0))
     && rule.item_keys.every((key) => foodRuleAcceptsItem(rule.kind, itemKinds.get(key)))
     && rule.allergens.every((allergen) => ALLERGEN_CODES.includes(allergen))

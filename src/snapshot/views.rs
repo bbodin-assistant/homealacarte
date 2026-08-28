@@ -172,6 +172,7 @@ pub fn build_snapshot(
             name: dish.name.clone(),
             origin_country: dish.origin_country.clone(),
             auto_menu_main: dish.auto_menu_main,
+            grocery_exempt: dish.grocery_exempt,
             servings: dish.servings,
             recipe_url: dish.recipe_url.clone(),
             source: dish.source.clone(),

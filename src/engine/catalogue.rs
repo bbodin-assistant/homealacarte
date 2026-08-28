@@ -338,6 +338,7 @@ fn dish_from_input(
         name,
         origin_country: existing_origin_country,
         auto_menu_main: input.auto_menu_main,
+        grocery_exempt: input.grocery_exempt,
         servings: input.servings,
         recipe_url: input.recipe_url.trim().to_string(),
         source: input.source.trim().to_string(),

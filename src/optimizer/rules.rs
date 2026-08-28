@@ -250,6 +250,7 @@ mod preference_tests {
             name: key.to_string(),
             origin_country: String::new(),
             auto_menu_main: true,
+            grocery_exempt: false,
             servings: 1.0,
             recipe_url: String::new(),
             source: String::new(),

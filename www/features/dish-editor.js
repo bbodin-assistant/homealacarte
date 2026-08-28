@@ -201,6 +201,7 @@ function dishFormSignature() {
     source: select("#new-dish-source").value.trim(),
     nutri_score: select("#new-dish-nutri-score").value,
     auto_menu_main: select("#new-dish-auto-menu-main").checked,
+    grocery_exempt: select("#new-dish-grocery-exempt").checked,
     source_notes: dishSourceNotesPayload(),
     components: selectAll("#new-dish-component-list .new-dish-component-row").map((row) => ({
       mode: row.dataset.componentMode,
@@ -266,6 +267,7 @@ function openDishForm(dish = null) {
   select("#new-dish-source").value = dish?.source || "";
   select("#new-dish-nutri-score").value = dish?.nutri_score_manual || "";
   select("#new-dish-auto-menu-main").checked = dish?.auto_menu_main !== false;
+  select("#new-dish-grocery-exempt").checked = dish?.grocery_exempt === true;
   select("#new-dish-nutri-status").textContent = dish
     ? dishNutriScoreDetail(dish)
     : translate("nutri_score_field_help");
@@ -403,6 +405,7 @@ select("#new-dish-form").addEventListener("submit", (event) => {
       source: select("#new-dish-source").value.trim(),
       nutri_score: select("#new-dish-nutri-score").value,
       auto_menu_main: select("#new-dish-auto-menu-main").checked,
+      grocery_exempt: select("#new-dish-grocery-exempt").checked,
       source_notes: dishSourceNotesPayload(),
       components,
     },

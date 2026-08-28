@@ -116,6 +116,8 @@ pub struct Dish {
     pub origin_country: String,
     #[serde(default = "default_true")]
     pub auto_menu_main: bool,
+    #[serde(default)]
+    pub grocery_exempt: bool,
     pub servings: f64,
     pub recipe_url: String,
     pub source: String,
@@ -140,6 +142,8 @@ pub struct DishCreateInput {
     pub name: String,
     #[serde(default = "default_true")]
     pub auto_menu_main: bool,
+    #[serde(default)]
+    pub grocery_exempt: bool,
     pub servings: f64,
     #[serde(default)]
     pub recipe_url: String,
@@ -409,6 +413,7 @@ pub struct DishView {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub origin_country: String,
     pub auto_menu_main: bool,
+    pub grocery_exempt: bool,
     pub servings: f64,
     pub recipe_url: String,
     pub source: String,

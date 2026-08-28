@@ -138,6 +138,8 @@ pub(crate) struct DishInput {
     pub(crate) origin_country: String,
     #[serde(default = "bool_true")]
     pub(crate) auto_menu_main: bool,
+    #[serde(default)]
+    pub(crate) grocery_exempt: bool,
     #[serde(default = "one")]
     pub(crate) servings: f64,
     #[serde(default)]
