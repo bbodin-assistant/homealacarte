@@ -5,7 +5,6 @@ import {
   allergenIcon,
   allergenIconSvg,
   allergenLabel,
-  isSpecificTreeNut,
 } from "../core/allergens.js?v=homealacarte-100";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
@@ -94,10 +93,8 @@ export function dishRangeMaximums(dishes) {
 }
 
 export function dishFilterAllergenMatches(selectedAllergen, ingredientAllergen) {
-  if (selectedAllergen === "tree_nut") {
-    return ingredientAllergen === "tree_nut" || isSpecificTreeNut(ingredientAllergen);
-  }
-  return selectedAllergen === ingredientAllergen;
+  return selectedAllergen === ingredientAllergen
+    && ALLERGEN_CODES.includes(selectedAllergen);
 }
 
 function dishHasFilteredAllergen(dish, selectedAllergens) {

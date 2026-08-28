@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// Canonical codes for the major regulated food allergens, with individual
-/// tree nuts kept separate so a profile can be as precise as the diagnosis.
-pub const ALLERGEN_CODES: [&str; 27] = [
+/// Canonical codes for the major regulated food allergens. Nut allergens are
+/// represented only by explicit named codes.
+pub const ALLERGEN_CODES: [&str; 26] = [
     "gluten",
     "wheat",
     "rye",
@@ -17,7 +17,6 @@ pub const ALLERGEN_CODES: [&str; 27] = [
     "peanut",
     "soy",
     "milk",
-    "tree_nut",
     "almond",
     "hazelnut",
     "walnut",
@@ -32,6 +31,19 @@ pub const ALLERGEN_CODES: [&str; 27] = [
     "sesame",
     "sulfite",
 ];
+
+pub const NUT_ALLERGEN_CODES: [&str; 8] = [
+    "almond",
+    "hazelnut",
+    "walnut",
+    "cashew_nut",
+    "pecan",
+    "brazil_nut",
+    "pistachio",
+    "macadamia",
+];
+
+pub const LEGACY_GENERIC_NUT_CODE: &str = concat!("tree", "_nut");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceFile {

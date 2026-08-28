@@ -115,9 +115,8 @@ Notes:
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
 - `grams`, `grams_per_measure_unit`, and `purchase_quantity_grams` must be positive.
-- `allergens` contains the canonical allergen codes documented under food rules. Use the precise
-  tree-nut code when it is known; reserve `tree_nut` for a genuinely generic or unspecified
-  tree-nut declaration rather than adding it alongside a precise code.
+- `allergens` contains the canonical allergen codes documented under food rules. Nut allergens
+  must use explicit named nut codes; generic nut-group codes are not supported.
 - Keys use lowercase `snake_case` and must remain identical in every language.
 - Localize the display `name` rather than creating separate item records for different languages.
 
@@ -262,12 +261,11 @@ Food rules:
 - `quantity` must be positive. `quantity_unit` must be `portion`, `g`, or `unit`; omitted values default to `1.0` and `portion`.
 - Every `item_keys` entry must resolve to an existing item or dish.
 - Canonical allergen codes are `gluten`, `wheat`, `rye`, `barley`, `oat`,
-  `spelt`, `crustacean`, `mollusc`, `egg`, `fish`, `peanut`, `soy`, `milk`, `tree_nut`,
+  `spelt`, `crustacean`, `mollusc`, `egg`, `fish`, `peanut`, `soy`, `milk`,
   `almond`, `hazelnut`, `walnut`, `cashew_nut`, `pecan`, `brazil_nut`,
   `pistachio`, `macadamia`, `celery`, `mustard`, `lupin`, `sesame`, and `sulfite`.
-  Use the individual tree-nut code when it is known. Reserve `tree_nut` for a genuinely generic
-  or unspecified tree-nut declaration; broad `tree_nut` allergy profiles already match each
-  individual tree-nut code.
+  Nut allergens must use one or more explicit named nut codes. Generic nut-group allergen codes
+  are not supported.
 
 ## 8. Stock entry
 

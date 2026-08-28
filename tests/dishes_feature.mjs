@@ -18,7 +18,7 @@ const dishes = [
     name: "Carrot Cake",
     origin_country: "GB",
     nutri_score: "C",
-    components: [{ key: "mixed_nuts", name: "Mixed nuts", allergens: ["tree_nut"] }],
+    components: [{ key: "mixed_nuts", name: "Mixed nuts", allergens: ["walnut"] }],
     per_serving: { cost: 2.5, kcal: 500 },
   },
   {
@@ -40,12 +40,10 @@ assert.equal(countryFlag("France"), "");
 assert.equal(allergenIcon("Peanut butter"), "🥜");
 assert.equal(allergenIcon("milk"), "🥛");
 assert.equal(allergenIcon("unknown allergen"), "⚠️");
-assert.equal(allergenCodesOverlap("pistachio", "tree_nut"), true);
-assert.equal(allergenCodesOverlap("tree_nut", "walnut"), true);
+assert.equal(allergenCodesOverlap("pistachio", "pistachio"), true);
 assert.equal(allergenCodesOverlap("pistachio", "walnut"), false);
-assert.equal(dishFilterAllergenMatches("tree_nut", "brazil_nut"), true);
 assert.equal(dishFilterAllergenMatches("brazil_nut", "brazil_nut"), true);
-assert.equal(dishFilterAllergenMatches("brazil_nut", "tree_nut"), false);
+assert.equal(dishFilterAllergenMatches("brazil_nut", "walnut"), false);
 
 const badges = dishPreferenceBadges({
   key: "pad_thai",
@@ -111,8 +109,6 @@ assert.ok(filterDishes(dishes, { ...baseFilters, allergens: new Set(["brazil_nut
   .some((dish) => dish.key === "carrot_cake"));
 assert.ok(!filterDishes(dishes, { ...baseFilters, allergens: new Set(["brazil_nut"]) })
   .some((dish) => dish.key === "brazil_bites"));
-assert.ok(!filterDishes(dishes, { ...baseFilters, allergens: new Set(["tree_nut"]) })
-  .some((dish) => dish.key === "carrot_cake"));
 assert.deepEqual(
   filterDishes(dishes, { ...baseFilters, countries: new Set(["FR", "JP"]), allergens: new Set() })
     .map((dish) => dish.key),

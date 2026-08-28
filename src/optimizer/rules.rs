@@ -19,24 +19,8 @@ fn rule_matches_item(rule_item: &str, item_key: &str, dishes: &HashMap<&str, &Di
         })
 }
 
-fn is_specific_tree_nut(allergen: &str) -> bool {
-    matches!(
-        allergen,
-        "almond"
-            | "hazelnut"
-            | "walnut"
-            | "cashew_nut"
-            | "pecan"
-            | "brazil_nut"
-            | "pistachio"
-            | "macadamia"
-    )
-}
-
 fn allergens_overlap(rule_allergen: &str, ingredient_allergen: &str) -> bool {
     rule_allergen == ingredient_allergen
-        || (rule_allergen == "tree_nut" && is_specific_tree_nut(ingredient_allergen))
-        || (ingredient_allergen == "tree_nut" && is_specific_tree_nut(rule_allergen))
 }
 
 fn allergen_matches_item(
@@ -351,17 +335,17 @@ mod preference_tests {
     }
 
     #[test]
-    fn specific_nut_allergies_conservatively_block_generic_tree_nut_labels() {
-        let ice_cream = ingredient("ice_cream", &["tree_nut"]);
-        let ingredients = HashMap::from([(ice_cream.key.as_str(), &ice_cream)]);
+    fn specific_nut_allergies_match_only_the_same_named_nut() {
+        let cream = ingredient("nut_cream", &["hazelnut"]);
+        let ingredients = HashMap::from([(cream.key.as_str(), &cream)]);
         let mut allergy = rule("allergy", "placeholder");
         allergy.item_keys.clear();
         allergy.allergens = vec!["pistachio".to_string()];
         let allergic = person(vec![allergy]);
 
-        assert!(person_forbids_item(
+        assert!(!person_forbids_item(
             &allergic,
-            "ice_cream",
+            "nut_cream",
             "Afternoon snack",
             "en",
             &ingredients,
