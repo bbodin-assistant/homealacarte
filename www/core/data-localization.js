@@ -98,7 +98,12 @@ export function renderLocalizedInputs(
   values = {},
   displayLocale = "",
 ) {
-  const locales = uniqueLocales([...supportedLocales, ...Object.keys(values)]);
+  const allLocales = uniqueLocales([...supportedLocales, ...Object.keys(values)]);
+  const hasExistingValue = Object.values(values)
+    .some((value) => String(value || "").trim());
+  const locales = hasExistingValue
+    ? allLocales
+    : uniqueLocales([displayLocale]).slice(0, 1);
   const documentRef = container.ownerDocument;
   const fields = locales.map((locale) => {
     const label = documentRef.createElement("label");
