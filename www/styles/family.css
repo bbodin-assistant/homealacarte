@@ -123,13 +123,15 @@
 .family-add-card small { font-size: 11px; }
 .family-add-card:hover { border-color: var(--accent); background: var(--surface); transform: translateY(-2px); }
 .menu-item-dialog.family-dialog { width: min(860px, calc(100vw - 32px)); }
-.family-food-rules { display: grid; gap: 12px; padding: 15px; background: color-mix(in srgb, var(--paper) 72%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
-.family-food-rules-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.family-food-rules { min-width: 0; width: 100%; box-sizing: border-box; overflow: hidden; display: grid; gap: 12px; padding: 15px; background: color-mix(in srgb, var(--paper) 72%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
+.family-food-rules-heading { min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.family-food-rules-heading > div { min-width: 0; flex: 1 1 320px; }
+#family-food-rule-add { max-width: 100%; flex: 0 1 auto; }
 .family-food-rules-heading strong { font-size: 12px; }
 .family-food-rules-heading p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
-.family-food-rules-list { display: grid; gap: 10px; }
+.family-food-rules-list { min-width: 0; display: grid; gap: 10px; }
 .family-food-rules-empty { margin: 0; color: var(--muted); font-size: 10px; font-style: italic; }
-.family-food-rule { position: relative; display: grid; grid-template-columns: minmax(130px, .8fr) minmax(150px, 1fr) minmax(230px, 1.5fr) 90px 100px 34px; gap: 9px; align-items: end; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.family-food-rule { position: relative; width: 100%; max-width: 100%; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, .65fr) minmax(0, .75fr) 34px; gap: 9px; align-items: end; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .family-food-rule > label, .food-rule-items-field { min-width: 0; display: grid; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 800; }
 .family-food-rule select, .family-food-rule input { min-width: 0; width: 100%; }
 .food-rule-item-picker { position: relative; min-width: 0; }
