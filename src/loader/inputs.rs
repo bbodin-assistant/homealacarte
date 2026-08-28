@@ -75,7 +75,6 @@ fn one() -> f64 {
     1.0
 }
 
-
 #[derive(Debug, Deserialize)]
 pub(crate) struct PersonInput {
     pub(crate) key: String,
@@ -96,6 +95,8 @@ pub(crate) struct StockInput {
     pub(crate) quantity_unit: Option<String>,
     #[serde(default)]
     pub(crate) notes: String,
+    #[serde(default)]
+    pub(crate) added_at: String,
 }
 
 #[derive(Debug, Deserialize)]

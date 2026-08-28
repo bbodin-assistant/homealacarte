@@ -27,13 +27,14 @@
 .stock-panel summary span:first-child { display: grid; gap: 3px; }
 .stock-panel summary strong { font-family: Georgia, serif; font-size: 18px; font-weight: 500; }
 .stock-panel summary small { color: var(--muted); font-size: 11px; }
-.stock-list { max-height: 520px; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); overflow: auto; border-top: 1px solid var(--line); }
-.stock-row { display: grid; grid-template-columns: minmax(0, 1fr) 84px 86px 32px; gap: 7px; align-items: center; padding: 9px 11px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.stock-list { max-height: 620px; display: grid; grid-template-columns: 1fr; overflow: auto; border-top: 1px solid var(--line); }
+.stock-row { display: grid; grid-template-columns: minmax(0, 1fr) 100px 100px 32px; gap: 9px; align-items: center; padding: 11px 13px; border-bottom: 1px solid var(--line); }
 .stock-row .stock-notes { grid-column: 1 / -2; grid-row: 2; }
 .stock-row .remove-stock { grid-column: 4; grid-row: 1; }
-.stock-row-name { min-width: 0; display: grid; gap: 3px; font-size: 11px; }
+.stock-row-name { min-width: 0; display: grid; gap: 3px; font-size: 12px; }
 .stock-row-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stock-row-name small { overflow: hidden; color: var(--muted); font-size: 9px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.stock-added-at { width: max-content; margin-top: 2px; color: var(--accent-dark); font-size: 9px; font-style: normal; font-weight: 700; }
 .stock-row input, .stock-row select, .stock-add input, .stock-add select, .custom-row input, .custom-add input, .custom-add select, .purchase-add input, .purchase-add select, .purchase-batch-form input, .purchase-batch-form textarea { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface-strong); outline: 0; }
 .stock-row input:focus, .stock-row select:focus, .stock-add input:focus, .stock-add select:focus, .custom-row input:focus, .custom-add input:focus, .custom-add select:focus, .purchase-add input:focus, .purchase-add select:focus, .purchase-batch-form input:focus, .purchase-batch-form textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(180,94,70,.10); }
 .custom-add input[readonly] { color: var(--muted); background: #f0ede7; cursor: default; }
@@ -105,6 +106,9 @@
   .purchase-history-row > span:nth-of-type(4) { grid-column: 1 / -1; }
 }
 @media(max-width:620px) {
+  .stock-row { grid-template-columns: minmax(0, 1fr) 82px 82px 32px; }
+  .stock-add { grid-template-columns: 1fr 90px 90px; }
+  .stock-add label:nth-child(4), .stock-add button { grid-column: 1 / -1; }
   .purchase-add, .purchase-batch-form { grid-template-columns: 1fr; }
   .purchase-batch-list, .purchase-batch-error, .purchase-batch-form button { grid-column: auto; }
 }

@@ -1,11 +1,18 @@
 import { estimatedStockValue } from "../core/stock-availability.js?v=homealacarte-77";
 
+function localDate() {
+  const date = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export function stockPayload(rows = []) {
-  return rows.map(({ item_key, quantity, quantity_unit, notes, household }) => ({
+  return rows.map(({ item_key, quantity, quantity_unit, notes, added_at, household }) => ({
     item_key,
     quantity: Number(quantity),
     quantity_unit,
     notes: notes || "",
+    added_at: added_at || "",
     household: Boolean(household),
   }));
 }
@@ -29,6 +36,7 @@ export function addStockQuantity(state, itemKey, quantity, quantityUnit, notes =
     }
     current.quantity = Number(current.quantity) + amountInCurrentUnit;
     if (notes) current.notes = notes;
+    if (!current.added_at) current.added_at = localDate();
   } else {
     state.stockDraft.push({
       item_key: itemKey,
@@ -39,6 +47,7 @@ export function addStockQuantity(state, itemKey, quantity, quantityUnit, notes =
       measure_unit: option.measure_unit,
       grams_per_measure_unit: gramsPerUnit,
       notes,
+      added_at: localDate(),
       household,
     });
   }
@@ -119,13 +128,24 @@ export function createStockFeature({
     select("#empty-stock").disabled = state.stockDraft.length === 0;
     const query = select("#stock-search").value.trim().toLocaleLowerCase(state.language);
     const visibleItems = state.stockDraft.filter((item) => !query
-      || `${item.name} ${displayCategory(item.category)} ${item.notes || ""}`
+      || `${item.name} ${displayCategory(item.category)} ${item.notes || ""} ${item.added_at || ""}`
         .toLocaleLowerCase(state.language).includes(query));
-    select("#stock-list").innerHTML = visibleItems.map((item) => `
+    const dateFormat = new Intl.DateTimeFormat(state.language || undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+    select("#stock-list").innerHTML = visibleItems.map((item) => {
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(item.added_at || "")
+        ? dateFormat.format(new Date(`${item.added_at}T00:00:00Z`))
+        : item.added_at || "";
+      return `
       <div class="stock-row" data-stock-key="${escapeHtml(item.item_key)}" data-stock-household="${item.household ? "true" : "false"}">
         <strong class="stock-row-name">
           <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
           <small>${escapeHtml(displayCategory(item.category))}</small>
+          ${date ? `<time class="stock-added-at" datetime="${escapeHtml(item.added_at)}">✦ ${escapeHtml(date)}</time>` : ""}
         </strong>
         <input class="stock-control" data-stock-field="quantity" type="number" min="0" step="any" value="${formatInputNumber(item.quantity)}">
         <select class="stock-control" data-stock-field="quantity_unit">
@@ -138,8 +158,8 @@ export function createStockFeature({
         <button class="icon-button remove-stock" type="button" title="${escapeHtml(translate("remove_stock"))}" aria-label="${escapeHtml(translate("remove_stock"))}">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
         </button>
-      </div>
-    `).join("") || `<p class="stock-empty">${escapeHtml(translate(query ? "no_matching_items" : "empty"))}</p>`;
+      </div>`;
+    }).join("") || `<p class="stock-empty">${escapeHtml(translate(query ? "no_matching_items" : "empty"))}</p>`;
 
     select("#stock-add-item").innerHTML = `<option value=""></option>${(state.snapshot?.stock_options || [])
       .map((item) => `<option value="${escapeHtml(item.item_key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)

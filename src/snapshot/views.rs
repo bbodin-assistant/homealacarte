@@ -211,6 +211,7 @@ pub fn build_snapshot(
                     measure_unit: ingredient.measure_unit.clone(),
                     grams_per_measure_unit: ingredient.grams_per_measure_unit,
                     notes: dataset.stock_notes.get(key).cloned().unwrap_or_default(),
+                    added_at: dataset.stock_added_at.get(key).cloned().unwrap_or_default(),
                     household: false,
                 }
             })
@@ -232,6 +233,7 @@ pub fn build_snapshot(
             measure_unit: item.measure_unit.clone(),
             grams_per_measure_unit: 1.0,
             notes: dataset.stock_notes.get(key).cloned().unwrap_or_default(),
+            added_at: dataset.stock_added_at.get(key).cloned().unwrap_or_default(),
             household: true,
         })
     }));
@@ -253,6 +255,7 @@ pub fn build_snapshot(
             measure_unit: item.measure_unit.clone(),
             grams_per_measure_unit: item.grams_per_measure_unit,
             notes: dataset.stock_notes.get(&item.key).cloned().unwrap_or_default(),
+            added_at: dataset.stock_added_at.get(&item.key).cloned().unwrap_or_default(),
             household: false,
         })
         .chain(dataset.household_items.iter().map(|item| StockItemView {
@@ -264,6 +267,7 @@ pub fn build_snapshot(
             measure_unit: item.measure_unit.clone(),
             grams_per_measure_unit: 1.0,
             notes: dataset.stock_notes.get(&item.key).cloned().unwrap_or_default(),
+            added_at: dataset.stock_added_at.get(&item.key).cloned().unwrap_or_default(),
             household: true,
         }))
         .collect::<Vec<_>>();
