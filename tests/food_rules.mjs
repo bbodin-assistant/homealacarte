@@ -24,10 +24,15 @@ assert.match(feature, /data-food-rule-period-\$\{boundary\}-month/);
 assert.match(feature, /annualPeriodIsValid/);
 assert.match(feature, /value="allergy"/);
 assert.match(feature, /value="favorite"/);
+assert.match(feature, /value="like"/);
+assert.match(feature, /value="dislike"/);
 assert.equal(foodRuleAcceptsItem("allergy", "ingredient"), true);
 assert.equal(foodRuleAcceptsItem("allergy", "dish"), false);
 assert.equal(foodRuleAcceptsItem("favorite", "dish"), true);
 assert.equal(foodRuleAcceptsItem("favorite", "ingredient"), false);
+assert.equal(foodRuleAcceptsItem("like", "dish"), true);
+assert.equal(foodRuleAcceptsItem("like", "ingredient"), false);
+assert.equal(foodRuleAcceptsItem("dislike", "ingredient"), true);
 assert.equal(foodRuleAcceptsItem("never", "dish"), true);
 for (const allergen of ["walnut", "cashew_nut", "pistachio", "milk", "egg", "gluten", "mollusc", "lupin"]) {
   assert.ok(ALLERGEN_CODES.includes(allergen), `missing major allergen code: ${allergen}`);
@@ -38,7 +43,9 @@ assert.match(translations, /food_rule_period:/);
 assert.match(translations, /food_rule_never:/);
 assert.match(guide, /"kind": "routine"/);
 assert.match(guide, /"kind": "never"/);
+assert.match(guide, /"kind": "like"/);
+assert.match(guide, /"kind": "dislike"/);
 assert.match(guide, /"days": \["monday"/);
 assert.match(guide, /"period_start": "09-01"/);
 
-console.log("Family profiles expose routine, forbidden, allergy, and favorite rule types with appropriate item scopes.");
+console.log("Family profiles expose generator rules and inert like/dislike libraries with appropriate item scopes.");

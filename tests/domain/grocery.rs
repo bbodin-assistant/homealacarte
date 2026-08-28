@@ -5,6 +5,31 @@ use std::collections::HashSet;
 
 
 use crate::support::synthetic_dataset;
+
+#[test]
+fn purchased_dishes_keep_nutrition_but_skip_their_components_in_groceries() {
+    let mut source = synthetic_dataset();
+    source.content = source.content.replacen(
+        r#""name": "Synthetic salad","#,
+        r#""name": "Synthetic salad", "grocery_exempt": true,"#,
+        1,
+    );
+    let mut engine = Engine::default();
+    let snapshot = engine
+        .load(
+            vec![source],
+            AppConfig {
+                language: "en".to_string(),
+            },
+        )
+        .unwrap();
+
+    let dish = snapshot.dishes.iter().find(|dish| dish.key == "test_salad").unwrap();
+    assert!(dish.grocery_exempt);
+    assert!(dish.per_serving.kcal > 0.0);
+    assert!(!snapshot.grocery.items.iter().any(|item| item.name == "Test tomato"));
+}
+
 #[test]
 fn synthetic_data_supports_groceries_stock_export_and_pdf() {
     let mut engine = Engine::default();

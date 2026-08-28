@@ -133,6 +133,7 @@ Notes:
   },
   "origin_country": "FR",
   "auto_menu_main": true,
+  "grocery_exempt": false,
   "servings": 4.0,
   "components": [
     {
@@ -153,6 +154,7 @@ Rules:
 
 - `components[*].item_key` must reference an item.
 - `auto_menu_main` defaults to `true`. Set it to `false` for breakfasts, snacks, desserts, and drinks so automatic generation does not use them as lunch or dinner.
+- `grocery_exempt` defaults to `false`. Set it to `true` only for a ready-to-eat dish that is bought or ordered as a whole (for example a restaurant pizza). Its components still provide nutrition and allergens, but are not added to the grocery list.
 - `servings` and component quantities must be positive.
 - Common component units: `g`, `L`, `pieces`.
 - Localize the dish `name` rather than creating separate records for different languages.
@@ -231,6 +233,16 @@ Rules:
       "kind": "favorite",
       "meal": "any",
       "item_keys": ["tomato"]
+    },
+    {
+      "kind": "like",
+      "meal": "any",
+      "item_keys": ["tomato_emmental_toast"]
+    },
+    {
+      "kind": "dislike",
+      "meal": "any",
+      "item_keys": ["tomato"]
     }
   ]
 }
@@ -238,13 +250,14 @@ Rules:
 
 Food rules:
 
-- Valid `kind` codes are `routine`, `never`, `allergy`, and `favorite`.
+- Valid `kind` codes are `routine`, `never`, `allergy`, `favorite`, `like`, and `dislike`.
 - `routine`: on each selected and available day, schedule one of `item_keys` at `meal`; one key expresses a fixed habit.
 - `days` applies only to `routine`. An omitted or empty list means every available day. Otherwise use any of `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`. Days on non-routine rules are ignored.
 - `period_start` and `period_end` optionally limit a `routine` to an inclusive annual period. Both must be present together in `MM-DD` format. Omit both for a year-round rule. A period whose start follows its end (for example `11-01` to `02-28`) wraps across New Year. Periods on non-routine rules are ignored.
 - `never`: exclude a listed dish or item at the selected meal. Listing an ingredient also excludes dishes containing that ingredient. Use `meal: "any"` to apply the rule to every meal.
 - `allergy`: exclude a listed dish or item, and dishes containing a listed ingredient, at every meal. Use `meal: "any"`; allergy matching is global rather than meal-specific.
 - `favorite`: make matching candidate dishes, including dishes containing a listed ingredient, preferred during automatic menu generation without forcing their selection. Use `meal: "any"`; favorite matching is currently global rather than meal-specific.
+- `like` and `dislike`: store a person's preference library for future automatic rules. They deliberately have no effect on menu generation yet, use `meal: "any"`, and ignore days and annual periods. A `like` entry accepts dishes; a `dislike` entry accepts foods or dishes.
 - Meal codes are `any`, `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, and `anytime`. `any` is the all-meals rule code and cannot be used by a `routine` rule.
 - `quantity` must be positive. `quantity_unit` must be `portion`, `g`, or `unit`; omitted values default to `1.0` and `portion`.
 - Every `item_keys` entry must resolve to an existing item or dish.

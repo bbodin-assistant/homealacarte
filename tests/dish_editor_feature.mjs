@@ -28,6 +28,8 @@ assert.match(dialogs, /id="new-dish-name-fields"/);
 assert.doesNotMatch(dialogs, /id="new-dish-name-(?:en|fr)"/);
 assert.match(dialogs, /id="new-dish-origin-country"/);
 assert.match(dialogs, /class="show-only-control new-dish-auto-menu-control"/);
+assert.match(dialogs, /id="new-dish-grocery-exempt"/);
+assert.match(feature, /grocery_exempt: select\("#new-dish-grocery-exempt"\)\.checked/);
 assert.doesNotMatch(dialogs, /dialog-field-wide show-only-control/);
 assert.match(app, /const locales = Object\.keys\(translations\)/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
