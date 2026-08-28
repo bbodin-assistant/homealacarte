@@ -33,9 +33,18 @@ export function isSpecificTreeNut(code) {
   return SPECIFIC_TREE_NUT_CODES.has(code);
 }
 
-export function allergenLabel(code, language = "en") {
-  const locale = String(language || "en").toLowerCase().startsWith("fr") ? "fr" : "en";
-  return LABELS[locale][code] || code;
+function localizedLabels(language) {
+  const entries = Object.entries(LABELS);
+  const requested = String(language || "").trim().toLowerCase();
+  const primary = requested.split("-")[0];
+  return entries.find(([locale]) => locale.toLowerCase() === requested)?.[1]
+    || entries.find(([locale]) => locale.toLowerCase().split("-")[0] === primary)?.[1]
+    || entries[0]?.[1]
+    || {};
+}
+
+export function allergenLabel(code, language) {
+  return localizedLabels(language)[code] || code;
 }
 
 export function allergenIcon(code) {
