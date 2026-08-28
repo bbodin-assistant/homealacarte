@@ -1,11 +1,8 @@
 const PURCHASE_DESCRIPTION_PREFIX = "Purchase · ";
-function text(value, maxLength = 200) {
-  return String(value || "").trim().slice(0, maxLength);
-}
+function text(value, maxLength = 200) { return String(value || "").trim().slice(0, maxLength); }
 function plainNumber(value) {
   const number = Number(value);
-  if (!Number.isFinite(number)) return "";
-  return Number(number.toFixed(6)).toString();
+  return Number.isFinite(number) ? Number(number.toFixed(6)).toString() : "";
 }
 function decimal(value) {
   const normalized = String(value || "")

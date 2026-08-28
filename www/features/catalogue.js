@@ -50,8 +50,7 @@ function priceHistoryFormPayload(selector) {
 }
 
 function priceHistoryFormIsValid(history) {
-  return history.every((observation) =>
-    Number.isFinite(observation.price) && observation.price >= 0);
+  return history.every((observation) => Number.isFinite(observation.price) && observation.price >= 0);
 }
 
 function priceHistoryRowMarkup(observation = {}) {
