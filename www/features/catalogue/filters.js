@@ -53,7 +53,7 @@ export function sortCatalogueItems(
 function numericDishCount(row) {
   const usage = row.querySelector(".item-catalogue-usage small:not(.in-stock)");
   const match = usage?.textContent?.match(/([0-9][0-9\s.,]*)\s*$/);
-  if (!match) return row.dataset.itemKind === "food" ? 0 : 0;
+  if (!match) return 0;
   return Number(match[1].replace(/[^0-9]/g, "")) || 0;
 }
 
@@ -143,4 +143,69 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
   else start();
 }
 
-if (typeof document !== "undefined") installCatalogueHeaderSorting(document);
+export function installCatalogueCategorySearch(documentRef = globalThis.document) {
+  if (!documentRef || documentRef.documentElement?.dataset.catalogueCategorySearch === "true") return;
+  documentRef.documentElement.dataset.catalogueCategorySearch = "true";
+
+  function install() {
+    const select = documentRef.querySelector("#item-category-filter");
+    if (!select || documentRef.querySelector("#item-category-search")) return;
+    const datalist = documentRef.createElement("datalist");
+    datalist.id = "item-category-options";
+    const input = documentRef.createElement("input");
+    input.id = "item-category-search";
+    input.type = "search";
+    input.setAttribute("list", datalist.id);
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("aria-label", select.closest("label")?.querySelector("span")?.textContent?.trim() || "Category");
+    input.style.cssText = "width:100%;min-width:0;height:39px;padding:8px 10px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;font:inherit;font-size:11px";
+    select.before(input);
+    select.after(datalist);
+    select.hidden = true;
+
+    const refresh = () => {
+      const options = [...select.options].filter((option) => option.value);
+      datalist.innerHTML = options
+        .map((option) => `<option value="${option.textContent.replaceAll('"', '&quot;')}"></option>`)
+        .join("");
+      input.value = select.value ? select.selectedOptions[0]?.textContent?.trim() || "" : "";
+      input.placeholder = select.options[0]?.textContent?.trim() || "";
+    };
+    const apply = () => {
+      const value = input.value.trim();
+      if (!value) {
+        if (select.value) {
+          select.value = "";
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        return;
+      }
+      const match = [...select.options].find((option) => option.value && (
+        option.textContent.trim().toLocaleLowerCase() === value.toLocaleLowerCase()
+        || option.value.toLocaleLowerCase() === value.toLocaleLowerCase()
+      ));
+      if (match && select.value !== match.value) {
+        select.value = match.value;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    };
+    input.addEventListener("input", apply);
+    input.addEventListener("change", apply);
+    new MutationObserver(refresh).observe(select, { childList: true, subtree: true });
+    refresh();
+  }
+
+  const start = () => {
+    install();
+    if (!documentRef.querySelector("#item-category-search")) {
+      new MutationObserver(install).observe(documentRef.body, { childList: true, subtree: true });
+    }
+  };
+  if (documentRef.readyState === "loading") documentRef.addEventListener("DOMContentLoaded", start, { once: true });
+  else start();
+}
+
+if (typeof document !== "undefined") {
+  installCatalogueHeaderSorting(document);
+  installCatalogueCategorySearch(document);
+}
