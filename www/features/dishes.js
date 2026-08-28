@@ -1,72 +1,15 @@
 import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
+import {
+  allergenCodesOverlap,
+  allergenIcon,
+  allergenLabel,
+} from "../core/allergens.js?v=homealacarte-100";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
 
-export { countryFlag };
+export { allergenCodesOverlap, allergenIcon, countryFlag };
 
-function normalizedPreferenceName(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
-
-export function allergenIcon(value) {
-  const name = normalizedPreferenceName(value);
-  if (/peanut|nut|noix|noisette|amande|cajou|pistache|pecan/.test(name)) return "🥜";
-  if (/milk|lait|fromage|cheese|yaourt|yogurt/.test(name)) return "🥛";
-  if (/egg|oeuf/.test(name)) return "🥚";
-  if (/wheat|gluten|ble|farine/.test(name)) return "🌾";
-  if (/fish|poisson|saumon|salmon|thon|tuna|cabillaud|cod/.test(name)) return "🐟";
-  if (/shellfish|crustace|crevette|shrimp|crab|homard|lobster/.test(name)) return "🦐";
-  if (/soy|soja/.test(name)) return "🫘";
-  if (/sesame/.test(name)) return "🌱";
-  return "⚠️";
-}
-
-function allergenLabel(code) {
-  return {
-    gluten: "Gluten",
-    wheat: "Wheat",
-    rye: "Rye",
-    barley: "Barley",
-    oat: "Oats",
-    spelt: "Spelt",
-    crustacean: "Crustaceans",
-    mollusc: "Molluscs",
-    egg: "Eggs",
-    fish: "Fish",
-    sesame: "Sesame",
-    peanut: "Peanuts",
-    soy: "Soy",
-    milk: "Milk",
-    tree_nut: "Tree nuts",
-    almond: "Almonds",
-    hazelnut: "Hazelnuts",
-    walnut: "Walnuts",
-    cashew_nut: "Cashews",
-    pecan: "Pecans",
-    brazil_nut: "Brazil nuts",
-    pistachio: "Pistachios",
-    macadamia: "Macadamia nuts",
-    celery: "Celery",
-    mustard: "Mustard",
-    lupin: "Lupin",
-    sulfite: "Sulfites",
-  }[code] || code;
-}
-
-const SPECIFIC_TREE_NUT_CODES = new Set([
-  "almond", "hazelnut", "walnut", "cashew_nut", "pecan", "brazil_nut", "pistachio", "macadamia",
-]);
-
-export function allergenCodesOverlap(ruleAllergen, ingredientAllergen) {
-  return ruleAllergen === ingredientAllergen
-    || (ruleAllergen === "tree_nut" && SPECIFIC_TREE_NUT_CODES.has(ingredientAllergen))
-    || (ingredientAllergen === "tree_nut" && SPECIFIC_TREE_NUT_CODES.has(ruleAllergen));
-}
-
-export function dishPreferenceBadges(dish, people = []) {
+export function dishPreferenceBadges(dish, people = [], language = "en") {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
   const badges = [];
   const favoritePeople = [];
@@ -98,7 +41,7 @@ export function dishPreferenceBadges(dish, people = []) {
           if (!matches.length) continue;
           const entry = allergyBadges.get(`allergen:${allergen}`) || {
             icon: allergenIcon(allergen),
-            label: allergenLabel(allergen),
+            label: allergenLabel(allergen, language),
             people: [],
           };
           entry.people.push(person.name);
@@ -221,7 +164,7 @@ export function createDishesFeature({
       const limitingIngredient = dish.components
         .find((component) => component.key === availability.limitingKey)?.name || "";
       const originFlag = countryFlag(dish.origin_country);
-      const preferenceBadges = dishPreferenceBadges(dish, state.snapshot.people || []);
+      const preferenceBadges = dishPreferenceBadges(dish, state.snapshot.people || [], state.language);
       const badgeMarkup = preferenceBadges.map((badge) =>
         `<span class="dish-preference-badge ${escapeHtml(badge.kind)}" title="${escapeHtml(badge.title)}" aria-label="${escapeHtml(badge.title)}">${badge.icon}</span>`).join("");
       return `

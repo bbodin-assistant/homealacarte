@@ -4,6 +4,7 @@ import {
   menuUsageContext,
   priceChartGeometry,
 } from "../core/item-details.js?v=homealacarte-77";
+import { allergenIcon, allergenLabel } from "../core/allergens.js?v=homealacarte-100";
 
 const EDITABLE_DETAIL_FIELDS = {
   sugars_g: { label: "sugars_grams", kind: "number", reference: "nutrition" },
@@ -89,6 +90,15 @@ function detailFields(rows, itemKey = "") {
         : `<dd>${raw ? value : escapeHtml(value)}</dd>`}
     </div>
   `).join("")}</dl>`;
+}
+
+function ingredientAllergensMarkup(allergens = []) {
+  if (!allergens.length) return null;
+  return `<span class="item-detail-allergens">${allergens.map((code) => `
+    <span class="item-detail-allergen">
+      <span aria-hidden="true">${allergenIcon(code)}</span>
+      ${escapeHtml(allergenLabel(code, state.language))}
+    </span>`).join("")}</span>`;
 }
 
 function ingredientStockPresentation(itemKey) {
@@ -208,6 +218,7 @@ function itemInformationMarkup(items, groceryItem) {
     [translate("description_status"), food
       ? translate(item.incomplete ? "ingredient_incomplete" : "ingredient_complete")
       : translate("ingredient_complete")],
+    ...(food ? [[translate("allergens"), ingredientAllergensMarkup(item.allergens), true]] : []),
   ], food ? item.key : "");
   const nutrition = food ? detailFields([
     [translate("nutrition_reference_grams"), detailValue(item.grams, " g")],

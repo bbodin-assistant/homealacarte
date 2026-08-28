@@ -96,6 +96,7 @@ Agent rules:
   "saturated_fat_g": 0.0,
   "fruit_vegetable_legume_percent": 0.0,
   "incomplete": false,
+  "allergens": [],
   "purchase_quantity_grams": 100.0,
   "purchase_unit": "package description",
   "price_per_kg": 0.0,
@@ -114,6 +115,9 @@ Notes:
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
 - `grams`, `grams_per_measure_unit`, and `purchase_quantity_grams` must be positive.
+- `allergens` contains the canonical allergen codes documented under food rules. Use the precise
+  tree-nut code when it is known; reserve `tree_nut` for a genuinely generic or unspecified
+  tree-nut declaration rather than adding it alongside a precise code.
 - Keys use lowercase `snake_case` and must remain identical in every language.
 - Localize the display `name` rather than creating separate item records for different languages.
 
@@ -245,8 +249,9 @@ Food rules:
   `spelt`, `crustacean`, `mollusc`, `egg`, `fish`, `peanut`, `soy`, `milk`, `tree_nut`,
   `almond`, `hazelnut`, `walnut`, `cashew_nut`, `pecan`, `brazil_nut`,
   `pistachio`, `macadamia`, `celery`, `mustard`, `lupin`, `sesame`, and `sulfite`.
-  Use the individual tree-nut code when it is known; an ingredient may also
-  carry `tree_nut` to support broader allergy profiles.
+  Use the individual tree-nut code when it is known. Reserve `tree_nut` for a genuinely generic
+  or unspecified tree-nut declaration; broad `tree_nut` allergy profiles already match each
+  individual tree-nut code.
 
 ## 8. Stock entry
 

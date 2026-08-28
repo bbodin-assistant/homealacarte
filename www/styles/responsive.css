@@ -60,7 +60,7 @@
   .dish-filter-panel { grid-template-columns: 1fr 1fr; }
   .dish-filter-panel .search { grid-column: 1 / -1; }
   .new-dish-component-head, .new-dish-component-row { grid-template-columns: minmax(180px, 1fr) 76px 82px 96px 32px; }
-  .ingredient-editor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ingredient-editor-grid, .ingredient-allergen-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .data-management-grid { grid-template-columns: 1fr; }
   .data-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -167,7 +167,7 @@
   .ingredient-editor { padding: 16px; }
   .item-filter-panel { grid-template-columns: 1fr; }
   .item-category-filter select { width: 100%; min-width: 0; }
-  .ingredient-editor-heading, .ingredient-editor-grid { grid-template-columns: 1fr; }
+  .ingredient-editor-heading, .ingredient-editor-grid, .ingredient-allergen-options { grid-template-columns: 1fr; }
   .ingredient-stock-detail-card { grid-template-columns: 1fr 1fr; }
   .ingredient-stock-current, .ingredient-stock-detail-card .button, .ingredient-stock-feedback { grid-column: 1 / -1; }
   .item-price-history-heading { align-items: stretch; flex-direction: column; }

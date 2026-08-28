@@ -8,7 +8,7 @@ PERSONAL_OVERLAY_DIR ?= ./perso-data
 PERSONAL_MERGED_IMPORT ?= ./private-import/homealacarte-merged.json
 PERSONAL_MERGE_AUDIT ?= ./private-import/homealacarte-merge-audit.json
 
-.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-architecture test-browser-startup test-row-sync-browser test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
+.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-architecture test-browser-startup test-catalogue-allergens-browser test-row-sync-browser test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
 
 build: rust-build web-build
 
@@ -56,6 +56,7 @@ test-web:
 	node --check www/features/ui-consistency.js
 	node tests/menu_rows.mjs
 	node tests/food_rules.mjs
+	node tests/allergens.mjs
 	node tests/profile_rules.mjs
 	node tests/format.mjs
 	node tests/data_localization_ui.mjs
@@ -96,6 +97,9 @@ test-web:
 
 test-browser-startup: web-build
 	bash tests/browser_startup.sh
+
+test-catalogue-allergens-browser: web-build
+	bash tests/catalogue_allergens_browser.sh
 
 test-row-sync-browser:
 	bash tests/row_sync_browser.sh

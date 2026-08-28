@@ -12,6 +12,7 @@ import {
   sortCatalogueItems,
 } from "./catalogue/filters.js?v=homealacarte-84";
 import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-83";
+import { enforceIngredientTreeNutSelection, ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-100";
 
 export function createCatalogueFeature({
   state,
@@ -118,6 +119,9 @@ function focusItemName(prefix) {
   input?.focus();
 }
 
+function renderIngredientAllergenOptions(selectedAllergens = []) {
+  select("#ingredient-allergens").innerHTML = ingredientAllergenOptions(selectedAllergens, state.language, escapeHtml);
+}
 function ingredientFormPayload() {
   const existing = state.snapshot.ingredients
     .find((ingredient) => ingredient.key === state.ingredientSelectedKey);
@@ -130,7 +134,8 @@ function ingredientFormPayload() {
     name_i18n: nameI18n,
     custom: existing ? Boolean(existing.custom) : true,
     incomplete: select("#ingredient-incomplete").checked,
-    allergens: existing?.allergens || [],
+    allergens: [...select("#ingredient-allergens").querySelectorAll("input:checked")]
+      .map((input) => input.value),
     grams: Number(select("#ingredient-grams").value),
     kcal: Number(select("#ingredient-kcal").value),
     protein_g: Number(select("#ingredient-protein").value),
@@ -158,7 +163,6 @@ function ingredientFormPayload() {
 function ingredientFormSignature() {
   return JSON.stringify(ingredientFormPayload());
 }
-
 function ingredientFormIsValid(ingredient) {
   if (!ingredient
     || !ingredient.name
@@ -189,7 +193,6 @@ function ingredientFormIsValid(ingredient) {
         && ingredient.fruit_vegetable_legume_percent >= 0
         && ingredient.fruit_vegetable_legume_percent <= 100));
 }
-
 function updateIngredientSaveState() {
   updateIngredientPurchasePrice();
   const payload = ingredientFormPayload();
@@ -238,6 +241,7 @@ function populateIngredientForm(key) {
   select("#ingredient-source").value = ingredient.source;
   select("#ingredient-url").value = ingredient.url;
   select("#ingredient-incomplete").checked = Boolean(ingredient.incomplete);
+  renderIngredientAllergenOptions(ingredient.allergens);
   renderPriceHistoryForm("#ingredient-price-history-list", ingredient.price_history);
   updateIngredientPurchasePrice();
   const status = select("#ingredient-completeness");
@@ -382,6 +386,7 @@ function openNewCatalogueItem() {
     select("#ingredient-source").value = "";
     select("#ingredient-url").value = "";
     select("#ingredient-incomplete").checked = true;
+    renderIngredientAllergenOptions();
     renderPriceHistoryForm("#ingredient-price-history-list");
     select("#ingredient-completeness").className = "ingredient-completeness incomplete";
     select("#ingredient-completeness").textContent = translate("ingredient_incomplete");
@@ -551,7 +556,7 @@ function renderItemsCatalogue() {
     ${rows.map((item) => `
       <div class="item-catalogue-row" role="button" tabindex="0" data-item-details="${escapeHtml(encodeURIComponent(item.key))}" data-item-kind="${item.item_kind}" aria-label="${escapeHtml(`${translate("details")}: ${item.name}`)}">
         <strong class="item-catalogue-name">
-          <span class="item-catalogue-name-line"><span>${item.catalogue_incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>${item.item_kind === "food" ? itemPriceTrendMarkup(item) : ""}</span>
+          <span class="item-catalogue-name-line"><span>${item.catalogue_incomplete ? "⚠ " : ""}${escapeHtml(item.name)}</span>${item.item_kind === "food" ? `${ingredientAllergenBadges(item.allergens, state.language, escapeHtml)}${itemPriceTrendMarkup(item)}` : ""}</span>
           ${item.item_kind === "food" ? ingredientUsageMarkup(item) : ""}
           ${item.item_kind === "food" && item.missing_nutri_score
             ? `<small>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: item.missing_nutri_score }))}</small>`
@@ -669,7 +674,10 @@ select("#item-catalogue").addEventListener("keydown", (event) => {
 });
 selectAll(".item-editor-back").forEach((button) => button.addEventListener("click", closeItemEditor));
 select("#ingredient-form").addEventListener("input", updateIngredientSaveState);
-select("#ingredient-form").addEventListener("change", updateIngredientSaveState);
+select("#ingredient-form").addEventListener("change", (event) => {
+  if (event.target.matches("#ingredient-allergens input")) enforceIngredientTreeNutSelection(select("#ingredient-allergens"), event.target);
+  updateIngredientSaveState();
+});
 select("#ingredient-price-history-add").addEventListener("click", () => {
   addPriceHistoryFormRow("#ingredient-price-history-list");
   updateIngredientSaveState();

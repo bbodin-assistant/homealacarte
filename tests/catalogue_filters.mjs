@@ -128,5 +128,9 @@ assert.match(feature, /sortCatalogueItems/);
 assert.match(feature, /catalogueItemIsIncomplete/);
 assert.match(feature, /ingredientCatalogueStats/);
 assert.match(feature, /current_stock/);
+assert.match(index, /id="ingredient-allergens"/);
+assert.match(feature, /ingredientAllergenOptions/);
+assert.match(feature, /#ingredient-allergens.*input:checked/);
+assert.match(feature, /renderIngredientAllergenOptions\(ingredient\.allergens\)/);
 
 console.log("Catalogue filters cover sorting, incomplete food detection, dish counts, and stock summaries.");

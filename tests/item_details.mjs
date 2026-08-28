@@ -88,6 +88,8 @@ const [app, itemDetailsFeature, catalogueFeature, index, stockFeature, extraNeed
 assert.match(catalogueFeature, /data-item-details=/);
 assert.match(catalogueFeature, /openDetails/);
 assert.match(itemDetailsFeature, /priceHistoryMarkup/);
+assert.match(itemDetailsFeature, /ingredientAllergensMarkup/);
+assert.match(itemDetailsFeature, /translate\("allergens"\)/);
 assert.match(itemDetailsFeature, /grocery-details-edit/);
 assert.match(catalogueFeature, /price_history: priceHistoryFormPayload\("#ingredient-price-history-list"\)/);
 assert.match(catalogueFeature, /price_history: priceHistoryFormPayload\("#household-item-price-history-list"\)/);

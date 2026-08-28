@@ -15,7 +15,7 @@ import {
   submitPrivacyRequest,
   synchronizePrivateState,
 } from "./storage.js?v=homealacarte-99";
-import { translations } from "./translations.js?v=homealacarte-99";
+import { translations } from "./translations.js?v=homealacarte-100";
 import {
   defaultLocale,
   hasTranslation,
@@ -43,7 +43,7 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-99";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-100";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
 import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-1";

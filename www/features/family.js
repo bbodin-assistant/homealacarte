@@ -1,14 +1,12 @@
+import { ALLERGEN_CODES, allergenLabel } from "../core/allergens.js?v=homealacarte-100";
+
+export { ALLERGEN_CODES };
+
 export function foodRuleAcceptsItem(kind, itemKind) {
   if (kind === "allergy") return itemKind !== "dish";
   if (kind === "favorite") return itemKind === "dish";
   return true;
 }
-
-export const ALLERGEN_CODES = [
-  "gluten", "wheat", "rye", "barley", "oat", "spelt", "crustacean", "mollusc", "egg", "fish",
-  "peanut", "soy", "milk", "tree_nut", "almond", "hazelnut", "walnut", "cashew_nut",
-  "pecan", "brazil_nut", "pistachio", "macadamia", "celery", "mustard", "lupin", "sesame", "sulfite",
-];
 
 export function createFamilyFeature({
   state,
@@ -38,71 +36,18 @@ function familyMemberIcon(kind) {
 }
 
 function preferenceText(key) {
+  if (ALLERGEN_CODES.includes(key)) return allergenLabel(key, state.language);
   const french = String(state.language || "").toLowerCase().startsWith("fr");
   const labels = french ? {
     allergy: "Allergie",
     favorite: "Plat favori",
     forbidden: "Interdit / ne jamais proposer",
     allergens: "Allergènes",
-    sesame: "Sésame",
-    peanut: "Arachides / cacahuètes",
-    tree_nut: "Fruits à coque",
-    gluten: "Gluten",
-    wheat: "Blé",
-    rye: "Seigle",
-    barley: "Orge",
-    oat: "Avoine",
-    spelt: "Épeautre",
-    crustacean: "Crustacés",
-    mollusc: "Mollusques",
-    egg: "Œufs",
-    fish: "Poisson",
-    soy: "Soja",
-    milk: "Lait",
-    almond: "Amandes",
-    hazelnut: "Noisettes",
-    walnut: "Noix",
-    cashew_nut: "Noix de cajou",
-    pecan: "Noix de pécan",
-    brazil_nut: "Noix du Brésil",
-    pistachio: "Pistaches",
-    macadamia: "Noix de macadamia",
-    celery: "Céleri",
-    mustard: "Moutarde",
-    lupin: "Lupin",
-    sulfite: "Sulfites",
   } : {
     allergy: "Allergy",
     favorite: "Favorite dish",
     forbidden: "Forbidden / never propose",
     allergens: "Allergens",
-    sesame: "Sesame",
-    peanut: "Peanuts",
-    tree_nut: "Tree nuts",
-    gluten: "Gluten",
-    wheat: "Wheat",
-    rye: "Rye",
-    barley: "Barley",
-    oat: "Oats",
-    spelt: "Spelt",
-    crustacean: "Crustaceans",
-    mollusc: "Molluscs",
-    egg: "Eggs",
-    fish: "Fish",
-    soy: "Soy",
-    milk: "Milk",
-    almond: "Almonds",
-    hazelnut: "Hazelnuts",
-    walnut: "Walnuts",
-    cashew_nut: "Cashews",
-    pecan: "Pecans",
-    brazil_nut: "Brazil nuts",
-    pistachio: "Pistachios",
-    macadamia: "Macadamia nuts",
-    celery: "Celery",
-    mustard: "Mustard",
-    lupin: "Lupin",
-    sulfite: "Sulfites",
   };
   return labels[key] || key;
 }
