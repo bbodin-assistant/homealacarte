@@ -49,12 +49,25 @@ pub fn default_language() -> String {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PurchaseDetails {
+    pub quantity: f64,
+    pub unit: String,
+    pub total_paid: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub store: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub purchase_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PriceObservation {
     #[serde(default)]
     pub date: String,
     pub price: f64,
     #[serde(default)]
     pub description: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub purchase: Option<PurchaseDetails>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

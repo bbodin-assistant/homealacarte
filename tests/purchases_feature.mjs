@@ -5,6 +5,7 @@ import {
   collectPurchaseHistory,
   parsePurchaseBatch,
   parsePurchaseDescription,
+  purchaseDetails,
 } from "../www/core/purchases.js";
 import { groupPurchaseHistoryByDate } from "../www/features/grocery.js";
 import {
@@ -117,16 +118,31 @@ assert.equal(updated.items.find((item) => item.key === "tomato").price_per_kg, 1
 assert.equal(updated.stock.find((row) => row.item_key === "tomato").quantity, 3);
 assert.equal(updated.items.find((item) => item.key === "soap").estimated_price, 2.2);
 assert.equal(updated.stock.find((row) => row.item_key === "soap").quantity, 3);
-assert.deepEqual(
-  parsePurchaseDescription(updated.items.find((item) => item.key === "tomato").price_history.at(-1).description),
-  {
+const tomatoObservation = updated.items.find((item) => item.key === "tomato").price_history.at(-1);
+assert.equal(tomatoObservation.description, "Market");
+assert.deepEqual(tomatoObservation.purchase, {
+  quantity: 2,
+  unit: "piece",
+  total_paid: 3,
+  store: "Market",
+  purchase_id: "purchase-test-1",
+});
+assert.deepEqual(purchaseDetails(tomatoObservation), {
     quantity: 2,
     unit: "piece",
     totalPrice: 3,
     store: "Market",
     purchaseId: "purchase-test-1",
-  },
-);
+});
+assert.deepEqual(parsePurchaseDescription(
+  "Purchase · qty=2 piece · total=3 EUR · store=Market · id=legacy-1",
+), {
+  quantity: 2,
+  unit: "piece",
+  totalPrice: 3,
+  store: "Market",
+  purchaseId: "legacy-1",
+});
 
 const withNewItems = applyPurchaseToDocument(updated, {
   date: "2026-08-18",
@@ -238,10 +254,10 @@ assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(shell, /\["list", "stock", "needs", "purchases"\]/);
 assert.match(worker, /type === "record-purchase"/);
-assert.match(worker, /core\/purchases\.js\?v=homealacarte-1/);
+assert.match(worker, /core\/purchases\.js\?v=homealacarte-2/);
 assert.match(worker, /homealacarte_web\.js\?v=homealacarte-94/);
-assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-1/);
-assert.match(composition, /features\/grocery\.js\?v=homealacarte-79/);
+assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-2/);
+assert.match(composition, /features\/grocery\.js\?v=homealacarte-80/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
 assert.match(app, /feature-composition\.js\?v=homealacarte-103/);
 assert.match(app, /worker\.js\?v=homealacarte-94/);

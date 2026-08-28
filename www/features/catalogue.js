@@ -1,4 +1,4 @@
-import { latestPriceTrend } from "../core/item-details.js?v=homealacarte-77";
+import { latestPriceTrend } from "../core/item-details.js?v=homealacarte-78";
 import {
   displayLocalizedName,
   localizedFormValues,
@@ -42,6 +42,9 @@ function priceHistoryFormPayload(selector) {
       date: row.querySelector("[data-price-observation-date]").value,
       price: priceInput.value === "" ? Number.NaN : Number(priceInput.value),
       description: row.querySelector("[data-price-observation-description]").value.trim(),
+      ...(row.dataset.priceObservationPurchase
+        ? { purchase: JSON.parse(row.dataset.priceObservationPurchase) }
+        : {}),
     };
   });
 }
@@ -53,7 +56,9 @@ function priceHistoryFormIsValid(history) {
 
 function priceHistoryRowMarkup(observation = {}) {
   return `
-    <div class="item-price-history-row">
+    <div class="item-price-history-row"${observation.purchase
+      ? ` data-price-observation-purchase="${escapeHtml(JSON.stringify(observation.purchase))}"`
+      : ""}>
       <label class="item-price-history-date">
         <span class="sr-only">${escapeHtml(translate("observation_date"))}</span>
         <input type="text" inputmode="numeric" placeholder="${escapeHtml(translate("date_format_hint"))}" value="${escapeHtml(observation.date || "")}" data-price-observation-date>

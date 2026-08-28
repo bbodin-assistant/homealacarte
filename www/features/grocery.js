@@ -1,7 +1,7 @@
 import {
   collectPurchaseHistory,
   parsePurchaseBatch,
-} from "../core/purchases.js?v=homealacarte-1";
+} from "../core/purchases.js?v=homealacarte-2";
 
 const PURCHASE_STRINGS = {
   en: {
@@ -288,7 +288,7 @@ export function createGroceryFeature({
           const unitLabel = row.household ? row.purchaseUnit || "unit" : "kg";
           const recordedPrice = `${formatMoney(row.price)} / ${escapeHtml(unitLabel)}`;
           const source = purchase
-            ? purchase.store || strings.purchaseSource
+            ? purchase.store || row.description || strings.purchaseSource
             : row.description || "—";
           return `<div class="purchase-history-row">
             <strong><span>${escapeHtml(row.itemName)}</span></strong>

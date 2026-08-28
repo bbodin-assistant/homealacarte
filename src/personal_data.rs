@@ -337,13 +337,14 @@ fn current_price_observation(object: &Map<String, Value>, source_name: &str) -> 
 
 fn price_observation_identity(value: &Value) -> String {
     format!(
-        "{}|{}|{}",
+        "{}|{}|{}|{}",
         value.get("date").and_then(Value::as_str).unwrap_or(""),
         value.get("price").and_then(Value::as_f64).unwrap_or(0.0),
         value
             .get("description")
             .and_then(Value::as_str)
             .unwrap_or(""),
+        value.get("purchase").map(Value::to_string).unwrap_or_default(),
     )
 }
 

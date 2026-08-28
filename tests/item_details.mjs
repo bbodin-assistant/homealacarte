@@ -17,7 +17,12 @@ const apple = {
   purchase_quantity_grams: 1000,
   price_history: [
     { date: "2026-01-02", price: 2.8, description: "Estimate" },
-    { date: "2026-07-25", price: 3.2, description: "Receipt" },
+    {
+      date: "2026-07-25",
+      price: 3.2,
+      description: "Receipt",
+      purchase: { quantity: 1000, unit: "g", total_paid: 3.2 },
+    },
   ],
 };
 const soap = {
@@ -50,6 +55,7 @@ const history = combinedPriceHistory([apple, {
   ],
 }]);
 assert.equal(history.length, 3);
+assert.deepEqual(history[1].purchase, { quantity: 1000, unit: "g", total_paid: 3.2 });
 assert.equal(history[2].price, 3.5);
 assert.deepEqual(latestPriceTrend([apple]), {
   direction: "up",

@@ -67,17 +67,6 @@ function uniqueItemKey(name, items, reserved = new Set()) {
   }
   return key;
 }
-function sanitizeDescriptionValue(value) { return text(value, 160).replaceAll(" · ", " / "); }
-function purchaseDescription({ quantity, displayUnit, totalPrice, store, purchaseId, lineIndex }) {
-  const parts = [
-    "Purchase",
-    `qty=${plainNumber(quantity)} ${sanitizeDescriptionValue(displayUnit) || "unit"}`,
-    `total=${plainNumber(totalPrice)} EUR`,
-  ];
-  if (text(store, 160)) parts.push(`store=${sanitizeDescriptionValue(store)}`);
-  parts.push(`id=${sanitizeDescriptionValue(purchaseId)}-${lineIndex + 1}`);
-  return parts.join(" · ");
-}
 export function parsePurchaseDescription(description) {
   const source = String(description || "").trim();
   if (!source.startsWith(PURCHASE_DESCRIPTION_PREFIX)) return null;
@@ -98,6 +87,23 @@ export function parsePurchaseDescription(description) {
     store: fields.find((field) => field.startsWith("store="))?.slice(6) || "",
     purchaseId: fields.find((field) => field.startsWith("id="))?.slice(3) || "",
   };
+}
+export function purchaseDetails(observation) {
+  const purchase = observation?.purchase;
+  const quantity = Number(purchase?.quantity);
+  const totalPrice = Number(purchase?.total_paid);
+  const unit = text(purchase?.unit, 60);
+  if (Number.isFinite(quantity) && quantity > 0
+    && Number.isFinite(totalPrice) && totalPrice >= 0 && unit) {
+    return {
+      quantity,
+      unit,
+      totalPrice,
+      store: text(purchase.store, 160),
+      purchaseId: text(purchase.purchase_id, 120),
+    };
+  }
+  return parsePurchaseDescription(observation?.description);
 }
 function validObservation(observation) {
   const date = text(observation?.date, 40);
@@ -121,7 +127,7 @@ export function collectPurchaseHistory(snapshot) {
         date: text(observation.date, 40),
         price,
         description: String(observation.description || ""),
-        purchase: parsePurchaseDescription(observation.description),
+        purchase: purchaseDetails(observation),
       });
     }
   };
@@ -301,14 +307,14 @@ export function applyPurchaseToDocument(sourceDocument, rawPurchase) {
     } else if (!originalKeys.has(item.key)) {
       throw new Error(`purchase_duplicate_item_key:${index + 1}`);
     }
-    const description = purchaseDescription({
+    const purchaseDetails = {
       quantity: line.quantity,
-      displayUnit: line.displayUnit,
-      totalPrice: line.totalPrice,
+      unit: line.displayUnit,
+      total_paid: line.totalPrice,
       store: purchase.store,
-      purchaseId: purchase.purchaseId,
-      lineIndex: index,
-    });
+      purchase_id: `${purchase.purchaseId}-${index + 1}`,
+    };
+    const description = purchase.store || "Purchase";
     if (isFoodItem(item)) {
       const gramsPerUnit = Number(item.grams_per_measure_unit || 0);
       if (!Number.isFinite(gramsPerUnit) || gramsPerUnit <= 0) {
@@ -328,6 +334,7 @@ export function applyPurchaseToDocument(sourceDocument, rawPurchase) {
         date: purchase.date,
         price: pricePerKg,
         description,
+        purchase: purchaseDetails,
       });
       updateStock(document, item, line, grams);
       return;
@@ -347,6 +354,7 @@ export function applyPurchaseToDocument(sourceDocument, rawPurchase) {
       date: purchase.date,
       price: unitPrice,
       description,
+      purchase: purchaseDetails,
     });
     updateStock(document, item, line);
   });

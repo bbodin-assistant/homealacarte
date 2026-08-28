@@ -24,6 +24,7 @@ pub(crate) fn preserve_price_history(
             date: date.trim().to_string(),
             price,
             description: description.to_string(),
+            purchase: None,
         });
     }
     history.sort_by(|left, right| {

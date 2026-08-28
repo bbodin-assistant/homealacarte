@@ -36,11 +36,11 @@ export function combinedPriceHistory(items) {
         date: String(row.date || "").trim(),
         price,
         description: String(row.description || "").trim(),
+        ...(row.purchase ? { purchase: structuredClone(row.purchase) } : {}),
       };
-      observations.set(
-        `${observation.date}\u001f${observation.price}\u001f${observation.description}`,
-        observation,
-      );
+      const identity = `${observation.date}\u001f${observation.price}\u001f${observation.description}`;
+      const existing = observations.get(identity);
+      if (!existing?.purchase || observation.purchase) observations.set(identity, observation);
     }
   }
   return [...observations.values()].sort((left, right) =>

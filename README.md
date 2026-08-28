@@ -118,6 +118,11 @@ kilogram and household prices are per purchase unit. The existing current-price
 fields remain available for planning and are selected from the latest dated
 observation during a merge.
 
+When an observation comes from an actual purchase, its optional `purchase`
+object stores the structured `quantity`, `unit`, and `total_paid` values, plus
+an optional `store` and `purchase_id`. These values are not encoded in the
+free-text description.
+
 Food items include nutrition and gram-conversion fields. General items may omit
 nutrition. Imports are strict and reject obsolete or unknown structures.
 

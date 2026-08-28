@@ -3,7 +3,7 @@ import {
   combinedPriceHistory,
   menuUsageContext,
   priceChartGeometry,
-} from "../core/item-details.js?v=homealacarte-77";
+} from "../core/item-details.js?v=homealacarte-78";
 import { allergenIcon, allergenLabel } from "../core/allergens.js?v=homealacarte-100";
 
 const EDITABLE_DETAIL_FIELDS = {

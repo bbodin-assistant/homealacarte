@@ -24,6 +24,7 @@ pub(crate) fn normalize_price_history(
             date: current_date.trim().to_string(),
             price: current_price,
             description: current_description.to_string(),
+            purchase: None,
         });
     }
     for entry in &mut history {
@@ -32,6 +33,20 @@ pub(crate) fn normalize_price_history(
         }
         entry.date = entry.date.trim().to_string();
         entry.description = entry.description.trim().to_string();
+        if let Some(purchase) = &mut entry.purchase {
+            if !purchase.quantity.is_finite() || purchase.quantity <= 0.0 {
+                return Err("price history purchase contains an invalid quantity".to_string());
+            }
+            if purchase.unit.trim().is_empty() {
+                return Err("price history purchase contains an empty unit".to_string());
+            }
+            if !purchase.total_paid.is_finite() || purchase.total_paid < 0.0 {
+                return Err("price history purchase contains an invalid total paid".to_string());
+            }
+            purchase.unit = purchase.unit.trim().to_string();
+            purchase.store = purchase.store.trim().to_string();
+            purchase.purchase_id = purchase.purchase_id.trim().to_string();
+        }
     }
     history.sort_by(|left, right| {
         left.date
