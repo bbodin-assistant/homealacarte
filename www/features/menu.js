@@ -1,4 +1,5 @@
 import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
+import { dishAllergenBadges } from "./dishes/allergen-display.js?v=homealacarte-103";
 import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-81";
 import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-81";
 import {
@@ -236,6 +237,18 @@ export function createMenuFeature({
       state.dishDetailsOriginal = dishMenuEditorSignature();
       updateDishMenuSaveState();
     }
+    const allergenBadges = dish
+      ? dishAllergenBadges(dish, state.snapshot.people || [], state.language)
+        .filter((badge) => badge.code)
+      : [];
+    select("#dish-details-allergens-section").hidden = allergenBadges.length === 0;
+    select("#dish-details-allergens").innerHTML = allergenBadges.map((badge) => `
+      <span class="dish-details-allergen${badge.householdWarning ? " household-warning" : ""}" title="${escapeHtml(badge.title)}">
+        <span class="dish-details-allergen-icon" aria-hidden="true">${badge.icon}</span>
+        <strong>${escapeHtml(badge.label)}</strong>
+      </span>
+    `).join("");
+
     select("#dish-details-metrics").hidden = !dish;
     select("#dish-details-ingredients-section").hidden = !dish;
     if (dish) {

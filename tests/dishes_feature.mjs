@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   allergenIcon,
   allergenCodesOverlap,
   countryFlag,
   dishFilterAllergenMatches,
+  dishAllergenCodes,
   dishPreferenceBadges,
   dishRangeMaximums,
   filterDishes,
@@ -67,6 +69,28 @@ const badges = dishPreferenceBadges({
 assert.deepEqual(badges.map((badge) => badge.kind), ["favorite", "forbidden", "allergy"]);
 assert.ok(badges.find((badge) => badge.kind === "allergy")?.icon.startsWith("<svg"));
 assert.match(badges.find((badge) => badge.kind === "allergy")?.title || "", /Alex/);
+assert.equal(badges.find((badge) => badge.kind === "allergy")?.householdWarning, true);
+
+const multiAllergenDish = {
+  key: "custard_toast",
+  components: [
+    { key: "custard", name: "Custard", allergens: ["milk", "egg"] },
+    { key: "topping", name: "Sesame topping", allergens: ["sesame", "milk"] },
+  ],
+};
+assert.deepEqual(dishAllergenCodes(multiAllergenDish), ["milk", "egg", "sesame"]);
+const allDishAllergenBadges = dishPreferenceBadges(multiAllergenDish, [], "en")
+  .filter((badge) => badge.kind === "allergy");
+assert.deepEqual(allDishAllergenBadges.map((badge) => badge.code), ["milk", "egg", "sesame"]);
+assert.ok(allDishAllergenBadges.every((badge) => badge.icon.startsWith("<svg")));
+assert.ok(allDishAllergenBadges.every((badge) => badge.householdWarning === false));
+
+const dialogSource = readFileSync(new URL("../www/views/dialogs.html", import.meta.url), "utf8");
+const refinementSource = readFileSync(new URL("../www/styles/ui-refinements.css", import.meta.url), "utf8");
+assert.match(dialogSource, /dish-details-allergens-section/);
+assert.match(dialogSource, /dish-details-allergens/);
+assert.match(refinementSource, /\.dish-filter-panel\.panel[\s\S]*?overflow:\s*visible/);
+assert.match(refinementSource, /\.dish-preference-badge\.allergy[\s\S]*?border-radius:\s*50%/);
 
 assert.deepEqual(
   filterDishes(dishes, {
