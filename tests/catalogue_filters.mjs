@@ -82,6 +82,10 @@ assert.deepEqual(
     .map((item) => item.name),
   ["Apple", "Carrot", "Soap"],
 );
+assert.deepEqual(
+  sortCatalogueItems(catalogueRows, { key: "original" }).map((item) => item.name),
+  ["Soap", "Carrot", "Apple"],
+);
 
 const dishes = [
   { components: [{ key: "tomato" }, { key: "salt" }] },
@@ -111,9 +115,10 @@ assert.deepEqual(
   { dishCount: 0, stockQuantity: null },
 );
 
-const [feature, index] = await Promise.all([
+const [feature, index, filters] = await Promise.all([
   readFile(new URL("../www/features/catalogue.js", import.meta.url), "utf8"),
   readFile(new URL("../www/views/catalogue.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/features/catalogue/filters.js", import.meta.url), "utf8"),
 ]);
 assert.match(index, /id="item-search"/);
 assert.match(index, /id="item-category-filter"/);
@@ -128,9 +133,12 @@ assert.match(feature, /sortCatalogueItems/);
 assert.match(feature, /catalogueItemIsIncomplete/);
 assert.match(feature, /ingredientCatalogueStats/);
 assert.match(feature, /current_stock/);
+assert.match(filters, /data-catalogue-sort/);
+assert.match(filters, /item-dish-count/);
+assert.match(filters, /value="original"/);
 assert.match(index, /id="ingredient-allergens"/);
 assert.match(feature, /ingredientAllergenOptions/);
 assert.match(feature, /#ingredient-allergens.*input:checked/);
 assert.match(feature, /renderIngredientAllergenOptions\(ingredient\.allergens\)/);
 
-console.log("Catalogue filters cover sorting, incomplete food detection, dish counts, and stock summaries.");
+console.log("Catalogue filters cover header sorting, original order, incomplete food detection, dish counts, and stock summaries.");

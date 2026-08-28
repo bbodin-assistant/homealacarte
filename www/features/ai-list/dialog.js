@@ -4,7 +4,7 @@ export function installAiListUi({ documentRef, select, maxTextChars }) {
     const style = documentRef.createElement("style");
     style.id = "ai-list-styles";
     style.textContent = `
-      .ai-list-button{white-space:nowrap}.ai-list-dialog{width:min(720px,calc(100vw - 28px))}
+      .ai-list-button{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}.ai-list-button::before{content:"✦";font-size:13px;line-height:1}.ai-list-button::after{content:"✧";font-size:9px;line-height:1;opacity:.7;margin-left:-3px;margin-top:-8px}.ai-list-dialog{width:min(720px,calc(100vw - 28px))}
       .ai-list-form{display:grid;gap:0}.ai-list-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:20px 24px}
       .ai-list-wide{grid-column:1/-1}.ai-list-fields textarea{min-height:210px;resize:vertical}
       .ai-list-model-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}

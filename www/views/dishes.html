@@ -11,10 +11,16 @@
             </button>
           </div>
           <div class="dish-filter-panel panel">
-            <label class="search standalone">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
-              <input id="dish-search" type="search" placeholder="Rechercher un plat…">
-            </label>
+            <div class="dish-filter-primary">
+              <label class="search standalone">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+                <input id="dish-search" type="search" placeholder="Rechercher un plat…">
+              </label>
+              <div class="dish-select-filters">
+                <select id="dish-country-filter" aria-label="Pays"><option value="">🌍</option></select>
+                <select id="dish-allergen-filter" aria-label="Allergène à éviter"><option value="">⚠️</option></select>
+              </div>
+            </div>
             <fieldset class="dish-range-filter">
               <legend data-i18n="cost_per_portion">Coût par portion</legend>
               <output id="dish-cost-output">0 € – 15 €</output>

@@ -20,6 +20,7 @@ fn stock_unit_changes_preserve_the_physical_quantity_and_selected_unit() {
             quantity: 1.0,
             quantity_unit: "unit".to_string(),
             notes: Some("Bien mûres".to_string()),
+            added_at: None,
             household: false,
         }])
         .unwrap();
@@ -34,6 +35,7 @@ fn stock_unit_changes_preserve_the_physical_quantity_and_selected_unit() {
             quantity: 150.0,
             quantity_unit: "g".to_string(),
             notes: Some("Sans emballage".to_string()),
+            added_at: None,
             household: false,
         }])
         .unwrap();

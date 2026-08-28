@@ -3,7 +3,13 @@ use crate::engine::Engine;
 use crate::model::*;
 use serde_json::{Value, json};
 
-fn quantity_row(key: &str, quantity: f64, quantity_unit: &str, note: Option<&String>) -> Value {
+fn quantity_row(
+    key: &str,
+    quantity: f64,
+    quantity_unit: &str,
+    note: Option<&String>,
+    added_at: Option<&String>,
+) -> Value {
     let mut row = json!({
         "item_key": key,
         "quantity": quantity,
@@ -11,6 +17,9 @@ fn quantity_row(key: &str, quantity: f64, quantity_unit: &str, note: Option<&Str
     });
     if let Some(note) = note.filter(|value| !value.trim().is_empty()) {
         row["notes"] = Value::String(note.clone());
+    }
+    if let Some(added_at) = added_at.filter(|value| !value.trim().is_empty()) {
+        row["added_at"] = Value::String(added_at.clone());
     }
     row
 }
@@ -38,11 +47,18 @@ impl Engine {
                         display_quantity,
                         if uses_unit { "unit" } else { "g" },
                         dataset.stock_notes.get(key),
+                        dataset.stock_added_at.get(key),
                     )
                 })
                 .collect();
             stock.extend(dataset.household_stock.iter().map(|(key, quantity)| {
-                quantity_row(key, *quantity, "unit", dataset.stock_notes.get(key))
+                quantity_row(
+                    key,
+                    *quantity,
+                    "unit",
+                    dataset.stock_notes.get(key),
+                    dataset.stock_added_at.get(key),
+                )
             }));
             let extra_needs: Vec<Value> = dataset
                 .household_needs
@@ -53,6 +69,7 @@ impl Engine {
                         *quantity,
                         "unit",
                         dataset.household_need_notes.get(key),
+                        None,
                     )
                 })
                 .collect();
@@ -102,11 +119,18 @@ impl Engine {
                     display_quantity,
                     if uses_unit { "unit" } else { "g" },
                     dataset.stock_notes.get(key),
+                    dataset.stock_added_at.get(key),
                 )
             })
             .collect::<Vec<_>>();
         stock.extend(dataset.household_stock.iter().map(|(key, quantity)| {
-            quantity_row(key, *quantity, "unit", dataset.stock_notes.get(key))
+            quantity_row(
+                key,
+                *quantity,
+                "unit",
+                dataset.stock_notes.get(key),
+                dataset.stock_added_at.get(key),
+            )
         }));
         let extra_needs = dataset
             .household_needs
@@ -117,6 +141,7 @@ impl Engine {
                     *quantity,
                     "unit",
                     dataset.household_need_notes.get(key),
+                    None,
                 )
             })
             .collect::<Vec<_>>();

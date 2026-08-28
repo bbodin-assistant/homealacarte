@@ -281,6 +281,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
     let mut stock = BTreeMap::new();
     let mut stock_units = BTreeMap::new();
     let mut stock_notes = BTreeMap::new();
+    let mut stock_added_at = BTreeMap::new();
     let mut household_stock = BTreeMap::new();
     let stock_values = section_values(&documents, "stock")?;
     for (path, value) in stock_values {
@@ -306,6 +307,17 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         } else {
             return Err(format!("{path}: stock references unknown item: {key}"));
         }
+        let added_at = input.added_at.trim();
+        if !added_at.is_empty() {
+            stock_added_at
+                .entry(key.clone())
+                .and_modify(|current: &mut String| {
+                    if added_at < current.as_str() {
+                        *current = added_at.to_string();
+                    }
+                })
+                .or_insert_with(|| added_at.to_string());
+        }
         append_note(&mut stock_notes, &key, &input.notes);
     }
     Ok(Dataset {
@@ -316,6 +328,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         stock,
         stock_units,
         stock_notes,
+        stock_added_at,
         household_items,
         household_needs,
         household_need_notes,

@@ -131,6 +131,7 @@ fn legacy_personal_files_become_one_valid_current_document() {
             quantity: 2.0,
             quantity_unit: "unit".to_string(),
             notes: None,
+            added_at: None,
             household: false,
         }])
         .unwrap();

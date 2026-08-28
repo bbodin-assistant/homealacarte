@@ -291,6 +291,7 @@ pub struct Dataset {
     pub stock: BTreeMap<String, f64>,
     pub stock_units: BTreeMap<String, String>,
     pub stock_notes: BTreeMap<String, String>,
+    pub stock_added_at: BTreeMap<String, String>,
     pub household_items: Vec<HouseholdItem>,
     pub household_needs: BTreeMap<String, f64>,
     pub household_need_notes: BTreeMap<String, String>,
@@ -349,6 +350,8 @@ pub struct StockUpdate {
     #[serde(default)]
     pub notes: Option<String>,
     #[serde(default)]
+    pub added_at: Option<String>,
+    #[serde(default)]
     pub household: bool,
 }
 
@@ -363,6 +366,8 @@ pub struct StockItemView {
     pub grams_per_measure_unit: f64,
     #[serde(default)]
     pub notes: String,
+    #[serde(default)]
+    pub added_at: String,
     #[serde(default)]
     pub household: bool,
 }

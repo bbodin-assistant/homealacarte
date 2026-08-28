@@ -123,47 +123,54 @@
 .family-add-card small { font-size: 11px; }
 .family-add-card:hover { border-color: var(--accent); background: var(--surface); transform: translateY(-2px); }
 .menu-item-dialog.family-dialog { width: min(860px, calc(100vw - 32px)); }
-.family-food-rules { display: grid; gap: 12px; padding: 15px; background: color-mix(in srgb, var(--paper) 72%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
-.family-food-rules-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-.family-food-rules-heading strong { font-size: 12px; }
-.family-food-rules-heading p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
-.family-food-rules-list { display: grid; gap: 10px; }
-.family-food-rules-empty { margin: 0; color: var(--muted); font-size: 10px; font-style: italic; }
-.family-food-rule { position: relative; display: grid; grid-template-columns: minmax(130px, .8fr) minmax(150px, 1fr) minmax(230px, 1.5fr) 90px 100px 34px; gap: 9px; align-items: end; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
-.family-food-rule > label, .food-rule-items-field { min-width: 0; display: grid; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 800; }
-.family-food-rule select, .family-food-rule input { min-width: 0; width: 100%; }
+.family-food-rules { min-width: 0; width: 100%; box-sizing: border-box; overflow: hidden; display: grid; gap: 14px; padding: 16px; background: color-mix(in srgb, var(--paper) 72%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
+.family-food-rules-heading { min-width: 0; display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.family-food-rules-heading > div { min-width: 0; flex: 1 1 320px; }
+#family-food-rule-add { max-width: 100%; flex: 0 1 auto; }
+.family-food-rules-heading strong { font-size: 14px; }
+.family-food-rules-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.family-food-rules-list { min-width: 0; display: grid; gap: 16px; }
+.family-food-rules-empty { margin: 0; color: var(--muted); font-size: 11px; font-style: italic; }
+.family-food-rule { position: relative; width: 100%; max-width: 100%; box-sizing: border-box; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px 14px; align-items: end; padding: 16px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 3px 12px color-mix(in srgb, var(--ink) 8%, transparent); }
+.family-food-rule > label, .food-rule-items-field { min-width: 0; display: grid; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 800; line-height: 1.3; }
+.family-food-rule > label:first-child { grid-column: span 4; }
+.family-food-rule > label:nth-child(2) { grid-column: span 3; }
+.family-food-rule > .food-rule-items-field { grid-column: span 4; }
+.family-food-rule > label[data-routine-field] { grid-column: span 3; }
+.family-food-rule select, .family-food-rule input { min-width: 0; width: 100%; min-height: 40px; font-size: 12px; }
+.family-food-rule [data-food-rule-kind] { font-weight: 700; }
 .food-rule-item-picker { position: relative; min-width: 0; }
-.food-rule-item-selection { min-height: 38px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; padding: 5px 7px; background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 9px; cursor: text; }
+.food-rule-item-selection { min-height: 40px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 8px; background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 9px; cursor: text; }
 .food-rule-item-selection:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
 .food-rule-selected-items { display: contents; }
-.food-rule-selected-item { min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; padding: 3px 6px 3px 4px; color: var(--accent-dark); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line)); border-radius: 7px; cursor: pointer; font: inherit; font-size: 9px; font-weight: 750; }
+.food-rule-selected-item { min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px 4px 5px; color: var(--accent-dark); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line)); border-radius: 7px; cursor: pointer; font: inherit; font-size: 10px; font-weight: 750; }
 .food-rule-selected-item > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.food-rule-selected-check { width: 14px; height: 14px; flex: 0 0 auto; display: grid; place-items: center; color: white; background: var(--accent); border-radius: 3px; font-size: 9px; line-height: 1; }
-.food-rule-selected-remove { color: var(--muted); font-size: 13px; font-weight: 500; line-height: 1; }
+.food-rule-selected-check { width: 15px; height: 15px; flex: 0 0 auto; display: grid; place-items: center; color: white; background: var(--accent); border-radius: 3px; font-size: 9px; line-height: 1; }
+.food-rule-selected-remove { color: var(--muted); font-size: 14px; font-weight: 500; line-height: 1; }
 .food-rule-selected-item:hover .food-rule-selected-remove { color: var(--accent-dark); }
-.family-food-rule [data-food-rule-item-search] { min-width: 110px; width: auto; flex: 1 1 130px; padding: 4px 2px; color: var(--ink); background: transparent; border: 0; outline: 0; font: inherit; font-size: 10px; }
-.family-food-rule [data-food-rule-items] { position: absolute; top: calc(100% + 5px); right: 0; left: 0; z-index: 12; max-height: 190px; overflow: auto; padding: 5px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 9px; box-shadow: 0 12px 30px rgba(66,52,39,.15); }
-.family-food-rule .food-rule-choice { display: flex; align-items: center; gap: 7px; padding: 7px; color: var(--ink); border-radius: 6px; font-size: 10px; font-weight: 600; cursor: pointer; }
+.family-food-rule [data-food-rule-item-search] { min-width: 110px; width: auto; flex: 1 1 130px; padding: 4px 2px; color: var(--ink); background: transparent; border: 0; outline: 0; font: inherit; font-size: 12px; }
+.family-food-rule [data-food-rule-items] { position: absolute; top: calc(100% + 5px); right: 0; left: 0; z-index: 12; max-height: 210px; overflow: auto; padding: 6px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 9px; box-shadow: 0 12px 30px rgba(66,52,39,.15); }
+.family-food-rule .food-rule-choice { display: flex; align-items: center; gap: 8px; padding: 8px; color: var(--ink); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
 .family-food-rule .food-rule-choice:hover { background: var(--accent-soft); }
-.family-food-rule .food-rule-choice input { width: 15px; height: 15px; flex: 0 0 auto; accent-color: var(--accent); }
-.food-rule-items-empty { margin: 0; padding: 9px; color: var(--muted); font-size: 10px; font-weight: 500; text-align: center; }
-.food-rule-allergens-field { grid-column: 1 / -1; display: grid; gap: 6px; color: var(--muted); font-size: 9px; font-weight: 800; }
-.family-food-rule [data-food-rule-allergens] { display: flex; flex-wrap: wrap; gap: 6px; }
-.family-food-rule .food-rule-allergen { display: flex; align-items: center; gap: 5px; padding: 5px 8px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; font-size: 10px; font-weight: 600; cursor: pointer; }
-.family-food-rule .food-rule-allergen input { width: 14px; height: 14px; flex: 0 0 auto; accent-color: var(--accent); }
-.family-food-rule .remove-food-rule { align-self: center; }
-.food-rule-days-field { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; color: var(--muted); font-size: 9px; font-weight: 800; }
-.food-rule-days-field small { font-size: 9px; font-weight: 500; }
-.family-food-rule [data-food-rule-days] { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
-.family-food-rule .food-rule-day { display: flex; align-items: center; gap: 5px; padding: 5px 8px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; font-size: 10px; font-weight: 600; cursor: pointer; }
-.family-food-rule .food-rule-day input { width: 14px; height: 14px; flex: 0 0 auto; accent-color: var(--accent); }
-.food-rule-period-field { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; color: var(--muted); font-size: 9px; font-weight: 800; }
-.food-rule-period-field > small { font-size: 9px; font-weight: 500; }
-.food-rule-period-boundaries { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-.food-rule-period-boundary { display: grid; gap: 5px; }
-.food-rule-period-controls { display: grid; grid-template-columns: minmax(120px, 1fr) 72px; gap: 7px; }
+.family-food-rule .food-rule-choice input { width: 16px; height: 16px; min-height: 0; flex: 0 0 auto; accent-color: var(--accent); }
+.food-rule-items-empty { margin: 0; padding: 10px; color: var(--muted); font-size: 11px; font-weight: 500; text-align: center; }
+.food-rule-allergens-field { grid-column: 1 / -1; display: grid; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.family-food-rule [data-food-rule-allergens] { display: flex; flex-wrap: wrap; gap: 7px; }
+.family-food-rule .food-rule-allergen { display: flex; align-items: center; gap: 6px; padding: 6px 9px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.family-food-rule .food-rule-allergen input { width: 15px; height: 15px; min-height: 0; flex: 0 0 auto; accent-color: var(--accent); }
+.family-food-rule .remove-food-rule { grid-column: 12; grid-row: 1; align-self: end; justify-self: end; }
+.food-rule-days-field { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.food-rule-days-field small { font-size: 10px; font-weight: 500; line-height: 1.4; }
+.family-food-rule [data-food-rule-days] { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 7px; }
+.family-food-rule .food-rule-day { display: flex; align-items: center; gap: 6px; padding: 6px 9px; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.family-food-rule .food-rule-day input { width: 15px; height: 15px; min-height: 0; flex: 0 0 auto; accent-color: var(--accent); }
+.food-rule-period-field { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.food-rule-period-field > small { font-size: 10px; font-weight: 500; line-height: 1.4; }
+.food-rule-period-boundaries { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.food-rule-period-boundary { display: grid; gap: 7px; }
+.food-rule-period-controls { display: grid; grid-template-columns: minmax(120px, 1fr) 76px; gap: 8px; }
 .family-food-rule.never-rule [data-routine-field] { display: none; }
-.family-rules-summary { margin: -5px 0 12px; color: var(--accent-dark); font-size: 10px; font-weight: 800; }
+.family-rules-summary { margin: -5px 0 12px; color: var(--accent-dark); font-size: 11px; font-weight: 800; }
 .family-role-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
 .family-role-picker legend {
   margin-bottom: 8px;
@@ -191,3 +198,16 @@
 .family-role-options input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .role-icon { width: 52px; height: 52px; display: grid; place-items: center; color: inherit; background: var(--surface-strong); border-radius: 50%; }
 .role-icon svg { width: 39px; height: 39px; stroke-width: 2.2; }
+
+@media (max-width: 700px) {
+  .family-food-rule { grid-template-columns: minmax(0, 1fr); }
+  .family-food-rule > label:first-child,
+  .family-food-rule > label:nth-child(2),
+  .family-food-rule > .food-rule-items-field,
+  .family-food-rule > label[data-routine-field],
+  .family-food-rule .food-rule-allergens-field,
+  .family-food-rule .food-rule-days-field,
+  .family-food-rule .food-rule-period-field { grid-column: 1; }
+  .family-food-rule .remove-food-rule { grid-column: 1; grid-row: auto; justify-self: end; }
+  .food-rule-period-boundaries { grid-template-columns: 1fr; }
+}

@@ -27,6 +27,19 @@ fn preserve_or_replace_note(
     }
 }
 
+fn preserve_or_set_added_at(
+    added: &mut BTreeMap<String, String>,
+    previous: &BTreeMap<String, String>,
+    key: &str,
+    edited: Option<&str>,
+) {
+    if let Some(value) = edited.map(str::trim).filter(|value| !value.is_empty()) {
+        added.insert(key.to_string(), value.to_string());
+    } else if let Some(value) = previous.get(key) {
+        added.insert(key.to_string(), value.clone());
+    }
+}
+
 impl Engine {
     pub fn replace_stock(&mut self, inputs: Vec<StockUpdate>) -> Result<AppSnapshot, String> {
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
@@ -49,7 +62,9 @@ impl Engine {
         let mut stock_units = BTreeMap::new();
         let mut household_stock = BTreeMap::new();
         let previous_notes = dataset.stock_notes.clone();
+        let previous_added_at = dataset.stock_added_at.clone();
         let mut stock_notes = BTreeMap::new();
+        let mut stock_added_at = BTreeMap::new();
         for (index, input) in inputs.into_iter().enumerate() {
             let key = input.item_key.trim();
             if input.household {
@@ -80,6 +95,12 @@ impl Engine {
                         key,
                         input.notes.as_deref(),
                     );
+                    preserve_or_set_added_at(
+                        &mut stock_added_at,
+                        &previous_added_at,
+                        key,
+                        input.added_at.as_deref(),
+                    );
                 }
                 continue;
             }
@@ -104,11 +125,18 @@ impl Engine {
                     key,
                     input.notes.as_deref(),
                 );
+                preserve_or_set_added_at(
+                    &mut stock_added_at,
+                    &previous_added_at,
+                    key,
+                    input.added_at.as_deref(),
+                );
             }
         }
         dataset.stock = stock;
         dataset.stock_units = stock_units;
         dataset.stock_notes = stock_notes;
+        dataset.stock_added_at = stock_added_at;
         dataset.household_stock = household_stock;
         self.snapshot()
     }
@@ -139,6 +167,7 @@ impl Engine {
                 } else {
                     dataset.household_stock.remove(key);
                     dataset.stock_notes.remove(key);
+                    dataset.stock_added_at.remove(key);
                 }
                 continue;
             }
@@ -164,6 +193,7 @@ impl Engine {
                     dataset.stock.remove(&key);
                     dataset.stock_units.remove(&key);
                     dataset.stock_notes.remove(&key);
+                    dataset.stock_added_at.remove(&key);
                 }
             }
         }
