@@ -77,6 +77,35 @@ export function updateStockItem(item, field, value) {
   return false;
 }
 
+export function sortStockRows(rows = [], { key = "name", direction = "asc", locale } = {}) {
+  const multiplier = direction === "desc" ? -1 : 1;
+  const collator = new Intl.Collator(locale || undefined, { numeric: true, sensitivity: "base" });
+  const value = (row) => {
+    if (key === "quantity") return Number(row.quantity) || 0;
+    if (key === "added_at") return String(row.added_at || "");
+    if (key === "category") return String(row.category || "");
+    return String(row.name || "");
+  };
+  return [...rows].sort((left, right) => {
+    const leftValue = value(left);
+    const rightValue = value(right);
+    if (key === "added_at") {
+      if (!leftValue && rightValue) return 1;
+      if (leftValue && !rightValue) return -1;
+    }
+    const comparison = typeof leftValue === "number"
+      ? leftValue - rightValue
+      : collator.compare(leftValue, rightValue);
+    if (comparison) return comparison * multiplier;
+    return collator.compare(String(left.name || ""), String(right.name || ""));
+  });
+}
+
+function sortIndicator(activeKey, direction, key) {
+  if (activeKey !== key) return "";
+  return direction === "desc" ? " ↓" : " ↑";
+}
+
 export function createStockFeature({
   state,
   select,
@@ -92,6 +121,8 @@ export function createStockFeature({
   send,
 }) {
   let mounted = false;
+  let sortKey = "name";
+  let sortDirection = "asc";
 
   function payload() {
     return stockPayload(state.stockDraft);
@@ -106,11 +137,17 @@ export function createStockFeature({
     select("#stock-total").textContent = formatMoney(total);
   }
 
+  function updateAddButton() {
+    const button = select("#stock-add-form")?.querySelector('button[type="submit"]');
+    if (button) button.disabled = !select("#stock-add-item")?.value;
+  }
+
   function setAddUnit() {
     const option = (state.snapshot?.stock_options || [])
       .find((item) => item.item_key === select("#stock-add-item").value);
     if (!option) {
       select("#stock-add-unit").innerHTML = "";
+      updateAddButton();
       return;
     }
     select("#stock-add-unit").innerHTML = option.household
@@ -120,6 +157,7 @@ export function createStockFeature({
         : `<option value="unit">${escapeHtml(option.measure_unit)}</option>`}`;
     const current = state.stockDraft.find((item) => item.item_key === option.item_key);
     select("#stock-add-unit").value = current?.quantity_unit || option.quantity_unit;
+    updateAddButton();
   }
 
   function render() {
@@ -127,28 +165,32 @@ export function createStockFeature({
     setCountBadge("#stock-tab-count", state.stockDraft.length);
     select("#empty-stock").disabled = state.stockDraft.length === 0;
     const query = select("#stock-search").value.trim().toLocaleLowerCase(state.language);
-    const visibleItems = state.stockDraft.filter((item) => !query
+    const visibleItems = sortStockRows(state.stockDraft.filter((item) => !query
       || `${item.name} ${displayCategory(item.category)} ${item.notes || ""} ${item.added_at || ""}`
-        .toLocaleLowerCase(state.language).includes(query));
+        .toLocaleLowerCase(state.language).includes(query)), {
+      key: sortKey,
+      direction: sortDirection,
+      locale: state.language,
+    });
     const dateFormat = new Intl.DateTimeFormat(state.language || undefined, {
       year: "numeric",
       month: "short",
       day: "numeric",
       timeZone: "UTC",
     });
-    select("#stock-list").innerHTML = visibleItems.map((item) => {
+    const rows = visibleItems.map((item) => {
       const date = /^\d{4}-\d{2}-\d{2}$/.test(item.added_at || "")
         ? dateFormat.format(new Date(`${item.added_at}T00:00:00Z`))
         : item.added_at || "";
       return `
       <div class="stock-row" data-stock-key="${escapeHtml(item.item_key)}" data-stock-household="${item.household ? "true" : "false"}">
-        <strong class="stock-row-name">
-          <span title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
-          <small>${escapeHtml(displayCategory(item.category))}</small>
-          ${date ? `<time class="stock-added-at" datetime="${escapeHtml(item.added_at)}">✦ ${escapeHtml(date)}</time>` : ""}
-        </strong>
-        <input class="stock-control" data-stock-field="quantity" type="number" min="0" step="any" value="${formatInputNumber(item.quantity)}">
-        <select class="stock-control" data-stock-field="quantity_unit">
+        <strong class="stock-row-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</strong>
+        <span class="stock-category" title="${escapeHtml(displayCategory(item.category))}">${escapeHtml(displayCategory(item.category))}</span>
+        ${date
+          ? `<time class="stock-added-at" datetime="${escapeHtml(item.added_at)}">${escapeHtml(date)}</time>`
+          : `<span class="stock-added-at missing">—</span>`}
+        <input class="stock-control" data-stock-field="quantity" type="number" min="0" step="any" value="${formatInputNumber(item.quantity)}" aria-label="${escapeHtml(translate("quantity"))}">
+        <select class="stock-control" data-stock-field="quantity_unit" aria-label="${escapeHtml(translate("unit"))}">
           ${item.household
             ? `<option value="unit">${escapeHtml(item.measure_unit)}</option>`
             : `<option value="g" ${item.quantity_unit === "g" ? "selected" : ""}>g</option>
@@ -160,6 +202,18 @@ export function createStockFeature({
         </button>
       </div>`;
     }).join("") || `<p class="stock-empty">${escapeHtml(translate(query ? "no_matching_items" : "empty"))}</p>`;
+    select("#stock-list").innerHTML = `
+      <div class="stock-head">
+        <button type="button" data-stock-sort="name">${escapeHtml(translate("name"))}${sortIndicator(sortKey, sortDirection, "name")}</button>
+        <button type="button" data-stock-sort="category">${escapeHtml(translate("category"))}${sortIndicator(sortKey, sortDirection, "category")}</button>
+        <button type="button" data-stock-sort="added_at">${escapeHtml(translate("date"))}${sortIndicator(sortKey, sortDirection, "added_at")}</button>
+        <button type="button" data-stock-sort="quantity">${escapeHtml(translate("quantity"))}${sortIndicator(sortKey, sortDirection, "quantity")}</button>
+        <span>${escapeHtml(translate("unit"))}</span>
+        <span>${escapeHtml(translate("notes"))}</span>
+        <span></span>
+      </div>
+      ${rows}
+    `;
 
     select("#stock-add-item").innerHTML = `<option value=""></option>${(state.snapshot?.stock_options || [])
       .map((item) => `<option value="${escapeHtml(item.item_key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)
@@ -170,7 +224,6 @@ export function createStockFeature({
       true,
     );
     setAddUnit();
-    select("#stock-add-form").querySelector("button").disabled = !select("#stock-add-item").value;
   }
 
   function scheduleUpdate() {
@@ -218,6 +271,17 @@ export function createStockFeature({
     });
 
     select("#stock-list").addEventListener("click", (event) => {
+      const sort = event.target.closest("[data-stock-sort]");
+      if (sort) {
+        const key = sort.dataset.stockSort;
+        if (sortKey === key) sortDirection = sortDirection === "asc" ? "desc" : "asc";
+        else {
+          sortKey = key;
+          sortDirection = "asc";
+        }
+        render();
+        return;
+      }
       const button = event.target.closest(".remove-stock");
       const row = event.target.closest("[data-stock-key]");
       if (!button || !row) return;
