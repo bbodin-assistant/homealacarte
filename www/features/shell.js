@@ -197,13 +197,12 @@ export function createShellFeature({
     }
   }
 
-  function scrollPrimaryViewToTop(tab) {
-    const view = select(`.view[data-view="${tab}"]`);
-    if (typeof view?.scrollIntoView === "function") {
-      view.scrollIntoView({ block: "start", inline: "nearest" });
+  function scrollPrimaryViewToTop() {
+    const scrollRoot = documentRef.scrollingElement || documentRef.documentElement;
+    if (typeof scrollRoot?.scrollTo === "function") {
+      scrollRoot.scrollTo({ top: 0, left: 0, behavior: "auto" });
       return;
     }
-    const scrollRoot = documentRef.scrollingElement || documentRef.documentElement;
     if (scrollRoot) scrollRoot.scrollTop = 0;
   }
 
@@ -214,7 +213,7 @@ export function createShellFeature({
     selectAll(".view").forEach((view) => view.classList.toggle("active", view.dataset.view === tab));
     historyRef.replaceState(null, "", `#${tab}`);
     if (tab === "data") renderDataOverview();
-    if (resetSubview) scrollPrimaryViewToTop(tab);
+    if (resetSubview) scrollPrimaryViewToTop();
   }
 
   function selectLanguage(language) {
