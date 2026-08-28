@@ -9,7 +9,7 @@ import { dishStockAvailability } from "../core/stock-availability.js?v=homealaca
 
 export { allergenCodesOverlap, allergenIcon, countryFlag };
 
-export function dishPreferenceBadges(dish, people = [], language = "en") {
+export function dishPreferenceBadges(dish, people = [], language) {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
   const badges = [];
   const favoritePeople = [];
