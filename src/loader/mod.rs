@@ -120,17 +120,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         let allergens = input
             .allergens
             .into_iter()
-            .flat_map(|allergen| {
-                let allergen = allergen.trim().to_lowercase();
-                if allergen == crate::model::LEGACY_GENERIC_NUT_CODE {
-                    crate::model::NUT_ALLERGEN_CODES
-                        .iter()
-                        .map(|code| (*code).to_string())
-                        .collect::<Vec<_>>()
-                } else {
-                    vec![allergen]
-                }
-            })
+            .map(|allergen| allergen.trim().to_lowercase())
             .filter(|allergen| !allergen.is_empty() && seen_allergens.insert(allergen.clone()))
             .collect::<Vec<_>>();
         if let Some(allergen) = allergens

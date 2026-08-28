@@ -122,17 +122,7 @@ pub(crate) fn normalize_food_rules(
         rule.allergens = rule
             .allergens
             .into_iter()
-            .flat_map(|allergen| {
-                let allergen = allergen.trim().to_lowercase();
-                if allergen == crate::model::LEGACY_GENERIC_NUT_CODE {
-                    crate::model::NUT_ALLERGEN_CODES
-                        .iter()
-                        .map(|code| (*code).to_string())
-                        .collect::<Vec<_>>()
-                } else {
-                    vec![allergen]
-                }
-            })
+            .map(|allergen| allergen.trim().to_lowercase())
             .filter(|allergen| !allergen.is_empty() && allergens.insert(allergen.clone()))
             .collect();
         if rule.kind != "allergy" {

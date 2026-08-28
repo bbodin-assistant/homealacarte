@@ -32,19 +32,6 @@ pub const ALLERGEN_CODES: [&str; 26] = [
     "sulfite",
 ];
 
-pub const NUT_ALLERGEN_CODES: [&str; 8] = [
-    "almond",
-    "hazelnut",
-    "walnut",
-    "cashew_nut",
-    "pecan",
-    "brazil_nut",
-    "pistachio",
-    "macadamia",
-];
-
-pub const LEGACY_GENERIC_NUT_CODE: &str = concat!("tree", "_nut");
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceFile {
     pub path: String,
