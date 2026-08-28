@@ -29,6 +29,11 @@ jobs:
             exit "$status"
           fi
           python3 scripts/remove_generic_nut_fix.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("www/features/catalogue/allergens.js")
+          path.write_text(path.read_text(encoding="utf-8").rstrip() + "\n", encoding="utf-8")
+          PY
           legacy="$(printf '%s%s' tree _nut)"
           if git grep -n "$legacy"; then
             echo "Generic nut allergen code still exists in tracked files."
