@@ -3,7 +3,7 @@ import {
   allergenCodesOverlap,
   allergenIconSvg,
   allergenLabel,
-} from "../../core/allergens.js?v=homealacarte-103";
+} from "../../core/allergens.js?v=homealacarte-104";
 
 function componentAllergenCodes(component) {
   const seen = new Set();

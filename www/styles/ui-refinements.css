@@ -155,6 +155,8 @@
 .dish-filter-option input { flex: 0 0 auto; accent-color: var(--accent); }
 .dish-filter-option strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dish-country-option-flag { font-size: 16px; line-height: 1; }
+.dish-filter-summary-icon { width: 16px; height: 16px; display: inline-grid; flex: 0 0 auto; place-items: center; }
+.dish-filter-summary-icon svg { width: 100%; height: 100%; display: block; }
 .dish-allergen-option-icon,
 .dish-preference-badge.allergy {
   width: 22px;

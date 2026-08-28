@@ -259,7 +259,7 @@ assert.match(worker, /homealacarte_web\.js\?v=homealacarte-94/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-2/);
 assert.match(composition, /features\/grocery\.js\?v=homealacarte-80/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-103/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-104/);
 assert.match(app, /worker\.js\?v=homealacarte-94/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");

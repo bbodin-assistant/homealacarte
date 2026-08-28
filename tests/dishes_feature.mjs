@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  allergenIcon,
   allergenCodesOverlap,
   countryFlag,
   dishFilterAllergenMatches,
@@ -39,9 +38,6 @@ assert.equal(countryFlag("fr"), "🇫🇷");
 assert.equal(countryFlag("JP"), "🇯🇵");
 assert.equal(countryFlag(""), "");
 assert.equal(countryFlag("France"), "");
-assert.equal(allergenIcon("Peanut butter"), "🥜");
-assert.equal(allergenIcon("milk"), "🥛");
-assert.equal(allergenIcon("unknown allergen"), "⚠️");
 assert.equal(allergenCodesOverlap("pistachio", "pistachio"), true);
 assert.equal(allergenCodesOverlap("pistachio", "walnut"), false);
 assert.equal(dishFilterAllergenMatches("brazil_nut", "brazil_nut"), true);

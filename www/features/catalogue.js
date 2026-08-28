@@ -12,7 +12,7 @@ import {
   sortCatalogueItems,
 } from "./catalogue/filters.js?v=homealacarte-102";
 import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-83";
-import { ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-100";
+import { ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-104";
 
 export function createCatalogueFeature({
   state,

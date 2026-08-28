@@ -1,4 +1,4 @@
-import { ALLERGEN_CODES, allergenLabel } from "../core/allergens.js?v=homealacarte-100";
+import { ALLERGEN_CODES, allergenLabel } from "../core/allergens.js?v=homealacarte-104";
 
 export { ALLERGEN_CODES };
 

@@ -90,8 +90,9 @@
 .item-detail-fields > div { min-width: 0; display: grid; align-content: start; gap: 7px; padding: 13px 14px; background: var(--surface); }
 .item-detail-fields dt { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .07em; line-height: 1.35; text-transform: uppercase; }
 .item-detail-fields dd { min-width: 0; margin: 0; color: var(--ink); overflow-wrap: anywhere; font-size: 14px; font-weight: 650; line-height: 1.4; white-space: pre-wrap; }
-.item-detail-allergens { display: flex; flex-wrap: wrap; gap: 6px; }
-.item-detail-allergen { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; color: #7f2924; background: #f9dfdc; border: 1px solid #e8b8b3; border-radius: 999px; font-size: 10px; font-weight: 800; }
+.item-detail-allergens { display: inline-flex; width: fit-content; max-width: 100%; }
+.item-detail-allergens .item-allergen-badges { flex-wrap: wrap; gap: 3px; }
+.item-detail-allergens .allergen-icon { width: 16px; height: 16px; display: block; }
 .item-detail-fields dd.item-detail-missing { display: flex; align-items: center; gap: 7px; width: fit-content; padding: 5px 8px; color: #962f29; background: #f9dfdc; border: 1px solid #e8b8b3; border-radius: 7px; font-size: 12px; font-weight: 900; }
 .item-detail-missing-button { display: flex; align-items: center; gap: 7px; width: fit-content; padding: 5px 8px; color: #962f29; background: #f9dfdc; border: 1px solid #e8b8b3; border-radius: 7px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 900; text-align: left; }
 .item-detail-missing-button:hover { background: #f4cac6; border-color: #d98f88; }

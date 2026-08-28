@@ -1,5 +1,5 @@
 import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
-import { dishAllergenBadges } from "./dishes/allergen-display.js?v=homealacarte-103";
+import { dishAllergenBadges } from "./dishes/allergen-display.js?v=homealacarte-104";
 import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-81";
 import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-81";
 import {

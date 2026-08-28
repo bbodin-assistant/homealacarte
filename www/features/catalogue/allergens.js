@@ -2,7 +2,7 @@ import {
   ALLERGEN_CODES,
   allergenIconSvg,
   allergenLabel,
-} from "../../core/allergens.js?v=homealacarte-100";
+} from "../../core/allergens.js?v=homealacarte-104";
 
 export function ingredientAllergenOptions(selectedAllergens, language, escapeHtml) {
   const selected = new Set(selectedAllergens || []);

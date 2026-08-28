@@ -2,15 +2,14 @@ import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
 import {
   ALLERGEN_CODES,
   allergenCodesOverlap,
-  allergenIcon,
   allergenIconSvg,
   allergenLabel,
-} from "../core/allergens.js?v=homealacarte-100";
+} from "../core/allergens.js?v=homealacarte-104";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
-import { dishAllergenBadges, dishAllergenCodes } from "./dishes/allergen-display.js?v=homealacarte-103";
+import { dishAllergenBadges, dishAllergenCodes } from "./dishes/allergen-display.js?v=homealacarte-104";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
 
-export { allergenCodesOverlap, allergenIcon, countryFlag };
+export { allergenCodesOverlap, countryFlag };
 
 export { dishAllergenCodes };
 

@@ -25,10 +25,6 @@ const LABELS = {
   },
 };
 
-const NUT_CODES = new Set([
-  "almond", "hazelnut", "walnut", "cashew_nut", "pecan", "brazil_nut", "pistachio", "macadamia",
-]);
-
 const ALLERGEN_SVG_MARKS = Object.freeze({
   gluten: '<path d="M12 21V5M12 8 8 5M12 11 16 8M12 14 8 11M12 17 16 14"/><path d="M8 5c-2 1-3 3-2 5M16 8c2 1 3 3 2 5"/>',
   wheat: '<path d="M12 21V4"/><path d="m12 7-4-3c-1 3 1 5 4 5M12 10l4-3c1 3-1 5-4 5M12 14l-4-3c-1 3 1 5 4 5M12 17l4-3c1 3-1 5-4 5"/>',
@@ -79,25 +75,6 @@ export function allergenIconSvg(code) {
     return '<svg class="allergen-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18h.01"/></svg>';
   }
   return `<svg class="allergen-icon allergen-icon-${code}" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${mark}</svg>`;
-}
-
-export function allergenIcon(code) {
-  const value = String(code || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-  if (["gluten", "wheat", "rye", "barley", "oat", "spelt"].includes(value)
-    || /gluten|wheat|ble|farine/.test(value)) return "🌾";
-  if (["peanut", ...NUT_CODES].includes(value)
-    || /peanut|nut|noix|noisette|amande|cajou|pistache|pecan/.test(value)) return "🥜";
-  if (value === "milk" || /milk|lait|fromage|cheese|yaourt|yogurt/.test(value)) return "🥛";
-  if (value === "egg" || /egg|oeuf/.test(value)) return "🥚";
-  if (value === "fish" || /fish|poisson|saumon|salmon|thon|tuna|cabillaud|cod/.test(value)) return "🐟";
-  if (["crustacean", "mollusc"].includes(value)
-    || /shellfish|crustace|crevette|shrimp|crab|homard|lobster/.test(value)) return "🦐";
-  if (value === "soy" || /soy|soja/.test(value)) return "🫘";
-  if (value === "sesame" || /sesame/.test(value)) return "◌";
-  return "⚠️";
 }
 
 export function allergenCodesOverlap(ruleAllergen, ingredientAllergen) {
