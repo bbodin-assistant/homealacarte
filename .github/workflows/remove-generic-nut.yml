@@ -17,7 +17,22 @@ jobs:
         with:
           fetch-depth: 0
       - name: Apply migration
-        run: python3 scripts/remove_generic_nut_once.py
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/remove_generic_nut_once.py > /tmp/generic-nut-migration.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/generic-nut-migration.log
+          if [[ "$status" -ne 1 ]] || ! grep -q "legacy generic nut code remains" /tmp/generic-nut-migration.log; then
+            exit "$status"
+          fi
+          python3 scripts/remove_generic_nut_fix.py
+          legacy="$(printf '%s%s' tree _nut)"
+          if git grep -n "$legacy"; then
+            echo "Generic nut allergen code still exists in tracked files."
+            exit 1
+          fi
       - name: Commit migration
         run: |
           git config user.name "bbodin-assistant"
