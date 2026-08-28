@@ -62,6 +62,15 @@ function sortIndicator(activeKey, direction, key) {
   return direction === "desc" ? " ↓" : " ↑";
 }
 
+function enhanceCatalogueEditButtons(catalogue) {
+  catalogue.querySelectorAll("[data-item-edit]").forEach((button) => {
+    if (button.dataset.catalogueEditIcon === "true") return;
+    button.dataset.catalogueEditIcon = "true";
+    button.className = "icon-button item-edit-icon";
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4ZM13.5 6.5l4 4"/></svg>';
+  });
+}
+
 export function installCatalogueHeaderSorting(documentRef = globalThis.document) {
   if (!documentRef || documentRef.documentElement?.dataset.catalogueHeaderSorting === "true") return;
   documentRef.documentElement.dataset.catalogueHeaderSorting = "true";
@@ -88,17 +97,17 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
     const labels = keys.map((key, index) =>
       sortSelect.querySelector(`option[value="${key}"]`)?.textContent?.trim() || fallbacks[index]);
     const signature = JSON.stringify({ activeKey, direction, labels });
-    head.style.gridTemplateColumns = "minmax(180px,1.2fr) 130px minmax(180px,1fr) 72px auto";
+    head.style.gridTemplateColumns = "minmax(180px,1.2fr) 130px minmax(180px,1fr) 82px 72px";
     if (head.dataset.catalogueSortSignature !== signature) {
       head.dataset.catalogueSortSignature = signature;
       head.innerHTML = `${keys.map((key, index) => `
-        <button type="button" data-catalogue-sort="${key}" style="justify-self:start;padding:0;color:inherit;background:none;border:0;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit">
+        <button type="button" data-catalogue-sort="${key}" style="justify-self:${key === "dishes" ? "center" : "start"};padding:0;color:inherit;background:none;border:0;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit">
           ${labels[index]}${sortIndicator(activeKey, direction, key)}
         </button>`).join("")}<span></span>`;
     }
 
     catalogue.querySelectorAll(".item-catalogue-row").forEach((row) => {
-      row.style.gridTemplateColumns = "minmax(180px,1.2fr) 130px minmax(180px,1fr) 72px auto";
+      row.style.gridTemplateColumns = "minmax(180px,1.2fr) 130px minmax(180px,1fr) 82px 72px";
       let countCell = row.querySelector(".item-dish-count");
       if (!countCell) {
         countCell = documentRef.createElement("span");
@@ -107,8 +116,10 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
       }
       const count = String(numericDishCount(row));
       if (countCell.textContent !== count) countCell.textContent = count;
+      countCell.style.textAlign = "center";
       row.querySelector(".item-catalogue-usage small:not(.in-stock)")?.remove();
     });
+    enhanceCatalogueEditButtons(catalogue);
 
     if (filterPanel) {
       filterPanel.dataset.catalogueSortKey = sortSelect.value;
@@ -125,14 +136,10 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
     event.preventDefault();
     event.stopPropagation();
     const key = button.dataset.catalogueSort;
-    const sameKey = sortSelect.value === key;
-    if (!sameKey) {
-      sortSelect.value = key;
-      directionButton.dataset.direction = "asc";
-    } else if (directionButton.dataset.direction === "asc") {
-      directionButton.dataset.direction = "desc";
+    if (sortSelect.value === key) {
+      directionButton.dataset.direction = directionButton.dataset.direction === "asc" ? "desc" : "asc";
     } else {
-      sortSelect.value = "original";
+      sortSelect.value = key;
       directionButton.dataset.direction = "asc";
     }
     sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
