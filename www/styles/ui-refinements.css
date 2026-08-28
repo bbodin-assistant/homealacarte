@@ -1,0 +1,235 @@
+/* Follow-up UI refinements for dense tabular controls and filters. */
+
+/* Stock: use the same explicit-column language as extra needs. */
+.stock-list {
+  max-height: 620px;
+  display: block;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+}
+.stock-head,
+.stock-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 1.15fr) minmax(120px, .8fr) 125px 88px 96px minmax(160px, 1fr) 32px;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 11px;
+}
+.stock-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  color: var(--muted);
+  background: #f3efe7;
+  border-bottom: 1px solid var(--line);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.stock-head button {
+  justify-self: start;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.stock-head button:hover,
+.stock-head button:focus-visible { color: var(--ink); }
+.stock-row { border-bottom: 1px solid var(--line); }
+.stock-row-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stock-category {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stock-added-at {
+  width: auto;
+  margin: 0;
+  color: var(--ink);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.stock-added-at.missing { color: var(--muted); font-weight: 500; }
+.stock-row .stock-notes,
+.stock-row .remove-stock {
+  grid-column: auto;
+  grid-row: auto;
+}
+.stock-row .stock-control { min-width: 0; }
+
+/* Dish filters: compact multi-select popovers with a clear visual hierarchy. */
+.dish-filter-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.dish-filter-primary {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+.dish-filter-pickers { display: flex; align-items: center; gap: 8px; }
+.dish-filter-picker { position: relative; min-width: 150px; }
+.dish-filter-picker > summary {
+  min-height: 39px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 10px;
+  list-style: none;
+  white-space: nowrap;
+}
+.dish-filter-picker > summary::-webkit-details-marker { display: none; }
+.dish-filter-picker > summary::after {
+  margin-left: auto;
+  color: var(--muted);
+  content: "▾";
+}
+.dish-filter-picker[open] > summary { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(180,94,70,.09); }
+.dish-filter-count {
+  min-width: 18px;
+  padding: 2px 5px;
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+  text-align: center;
+}
+.dish-filter-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(310px, calc(100vw - 32px));
+  max-height: 340px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 8px;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: 0 16px 38px rgba(47,43,39,.18);
+}
+.dish-filter-options.allergen-options { width: min(460px, calc(100vw - 32px)); }
+.dish-filter-option {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 8px;
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 9px;
+}
+.dish-filter-option:hover { background: var(--paper); border-color: var(--line); }
+.dish-filter-option:has(input:checked) { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.dish-filter-option input { flex: 0 0 auto; accent-color: var(--accent); }
+.dish-filter-option strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dish-country-option-flag { font-size: 16px; line-height: 1; }
+.dish-allergen-option-icon,
+.dish-preference-badge.allergy {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+}
+.dish-allergen-option-icon svg,
+.dish-preference-badge.allergy svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.dish-filter-secondary {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(80px, 1fr);
+  gap: 18px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.dish-filter-secondary #dish-clear-filters {
+  justify-self: end;
+  align-self: end;
+  padding: 7px 10px;
+  font-size: 9px;
+}
+.dish-filter-empty { grid-column: 1 / -1; margin: 0; padding: 8px; color: var(--muted); text-align: center; }
+.dish-preference-badge.allergy { padding: 2px; background: #f9dfdc; border-radius: 6px; }
+
+/* Catalogue: filter actions stay compact and dish counts line up with their header. */
+.item-filter-panel {
+  grid-template-columns: minmax(240px, 1fr) 240px auto minmax(70px, 1fr);
+  gap: 10px;
+}
+#item-clear-filters {
+  justify-self: end;
+  align-self: end;
+  padding: 7px 10px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.item-dish-count {
+  justify-self: center;
+  width: 100%;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.item-catalogue-actions {
+  width: 72px;
+  justify-content: flex-end;
+}
+.item-edit-icon svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+
+@media(max-width: 980px) {
+  .stock-head,
+  .stock-row { grid-template-columns: minmax(150px, 1fr) 115px 115px 78px 88px minmax(130px, .8fr) 32px; }
+  .dish-filter-primary { grid-template-columns: 1fr; }
+  .dish-filter-pickers { flex-wrap: wrap; }
+  .dish-filter-secondary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dish-filter-secondary #dish-clear-filters { grid-column: 2; }
+}
+
+@media(max-width: 700px) {
+  .stock-list { overflow-x: auto; }
+  .stock-head,
+  .stock-row { min-width: 760px; }
+  .dish-filter-pickers { display: grid; grid-template-columns: 1fr 1fr; }
+  .dish-filter-picker { min-width: 0; }
+  .dish-filter-options,
+  .dish-filter-options.allergen-options { right: auto; left: 0; grid-template-columns: 1fr; }
+  .dish-filter-secondary { grid-template-columns: 1fr; }
+  .dish-filter-secondary #dish-clear-filters { grid-column: auto; justify-self: end; }
+  .item-filter-panel { grid-template-columns: 1fr; }
+  #item-clear-filters { justify-self: end; }
+}
