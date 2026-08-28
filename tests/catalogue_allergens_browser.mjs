@@ -65,7 +65,6 @@ const initialBadge = await evaluate(`(() => {
   return row?.querySelector(".item-allergen-badges")?.getAttribute("aria-label") || "";
 })()`);
 assert.match(initialBadge, /Hazelnuts|Noisettes/);
-assert.doesNotMatch(initialBadge, /Tree nuts|Fruits à coque/);
 
 await evaluate(`(() => {
   const row = [...document.querySelectorAll("#item-catalogue .item-catalogue-row")]
@@ -74,25 +73,10 @@ await evaluate(`(() => {
 })()`);
 await waitFor(
   `!document.querySelector("#ingredient-form").hidden
-    && document.querySelector('#ingredient-allergens input[value="hazelnut"]:checked')
-    && !document.querySelector('#ingredient-allergens input[value="tree_nut"]:checked')`,
+    && document.querySelector('#ingredient-allergens input[value="hazelnut"]:checked')`,
   "the populated allergen editor",
 );
 
-await evaluate(`(() => {
-  const input = document.querySelector('#ingredient-allergens input[value="tree_nut"]');
-  input.checked = true;
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-})()`);
-assert.equal(await evaluate(`Boolean(document.querySelector('#ingredient-allergens input[value="tree_nut"]:checked'))`), true);
-assert.equal(await evaluate(`Boolean(document.querySelector('#ingredient-allergens input[value="hazelnut"]:checked'))`), false);
-await evaluate(`(() => {
-  const input = document.querySelector('#ingredient-allergens input[value="hazelnut"]');
-  input.checked = true;
-  input.dispatchEvent(new Event("change", { bubbles: true }));
-})()`);
-assert.equal(await evaluate(`Boolean(document.querySelector('#ingredient-allergens input[value="tree_nut"]:checked'))`), false);
-assert.equal(await evaluate(`Boolean(document.querySelector('#ingredient-allergens input[value="hazelnut"]:checked'))`), true);
 
 await evaluate(`(() => {
   const input = document.querySelector('#ingredient-allergens input[value="milk"]');
@@ -133,7 +117,6 @@ const detailAllergens = await evaluate(
 );
 assert.match(detailAllergens, /Hazelnuts|Noisettes/);
 assert.match(detailAllergens, /Milk|Lait/);
-assert.doesNotMatch(detailAllergens, /Tree nuts|Fruits à coque/);
 
 socket.close();
 console.log("Catalogue allergen editing persists and updates catalogue and detail displays in Chromium.");

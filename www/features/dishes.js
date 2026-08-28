@@ -3,12 +3,19 @@ import {
   ALLERGEN_CODES,
   allergenCodesOverlap,
   allergenIcon,
+  allergenIconSvg,
   allergenLabel,
 } from "../core/allergens.js?v=homealacarte-100";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
 
 export { allergenCodesOverlap, allergenIcon, countryFlag };
+
+function componentAllergenIcon(component, key) {
+  if (ALLERGEN_CODES.includes(key)) return allergenIconSvg(key);
+  const declared = (component?.allergens || []).find((code) => ALLERGEN_CODES.includes(code));
+  return declared ? allergenIconSvg(declared) : allergenIcon(`${key} ${component?.name || ""}`);
+}
 
 export function dishPreferenceBadges(dish, people = [], language) {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
@@ -31,7 +38,11 @@ export function dishPreferenceBadges(dish, people = [], language) {
           const component = components.get(key);
           if (!component) continue;
           const label = component.name || key;
-          const entry = allergyBadges.get(key) || { icon: allergenIcon(`${key} ${label}`), label, people: [] };
+          const entry = allergyBadges.get(key) || {
+            icon: componentAllergenIcon(component, key),
+            label,
+            people: [],
+          };
           entry.people.push(person.name);
           allergyBadges.set(key, entry);
         }
@@ -41,7 +52,7 @@ export function dishPreferenceBadges(dish, people = [], language) {
               .some((ingredientAllergen) => allergenCodesOverlap(allergen, ingredientAllergen)));
           if (!matches.length) continue;
           const entry = allergyBadges.get(`allergen:${allergen}`) || {
-            icon: allergenIcon(allergen),
+            icon: allergenIconSvg(allergen),
             label: allergenLabel(allergen, language),
             people: [],
           };
@@ -81,19 +92,28 @@ export function dishRangeMaximums(dishes) {
   };
 }
 
-function dishHasAllergen(dish, allergen) {
+export function dishFilterAllergenMatches(selectedAllergen, ingredientAllergen) {
+  return selectedAllergen === ingredientAllergen
+    && ALLERGEN_CODES.includes(selectedAllergen);
+}
+
+function dishHasFilteredAllergen(dish, selectedAllergens) {
+  if (!selectedAllergens?.size) return false;
   return (dish.components || []).some((component) => (component.allergens || [])
-    .some((ingredientAllergen) => allergenCodesOverlap(allergen, ingredientAllergen)));
+    .some((ingredientAllergen) => [...selectedAllergens]
+      .some((selectedAllergen) => dishFilterAllergenMatches(selectedAllergen, ingredientAllergen))));
 }
 
 export function filterDishes(dishes, filters) {
-  const search = filters.search.toLowerCase().trim();
+  const search = String(filters.search || "").toLowerCase().trim();
+  const countries = filters.countries instanceof Set ? filters.countries : new Set();
+  const allergens = filters.allergens instanceof Set ? filters.allergens : new Set();
   return dishes.filter((dish) => {
     const matchesSearch = !search
       || `${dish.name} ${dish.key}`.toLowerCase().includes(search);
     return matchesSearch
-      && (!filters.country || dish.origin_country === filters.country)
-      && (!filters.allergen || !dishHasAllergen(dish, filters.allergen))
+      && (!countries.size || countries.has(String(dish.origin_country || "").toUpperCase()))
+      && !dishHasFilteredAllergen(dish, allergens)
       && matchesSelectedNutriScores(dish, filters.nutriScores)
       && dish.per_serving.cost >= filters.minimumCost
       && dish.per_serving.cost <= filters.maximumCost
@@ -115,6 +135,16 @@ export function createDishesFeature({
   dishNutriScoreDetail,
   openDetails,
 }) {
+  function selectedFilterValues(selector) {
+    return new Set(selectAll(`${selector} input:checked`).map((input) => input.value));
+  }
+
+  function updateFilterCount(selector, count) {
+    const badge = select(selector);
+    badge.textContent = String(count);
+    badge.hidden = count === 0;
+  }
+
   function updateRangeTrack(pair) {
     const minimum = select(`#dish-${pair}-min`);
     const maximum = select(`#dish-${pair}-max`);
@@ -148,31 +178,31 @@ export function createDishesFeature({
   }
 
   function configureSelectFilters() {
-    const countrySelect = select("#dish-country-filter");
-    const allergenSelect = select("#dish-allergen-filter");
-    const selectedCountry = countrySelect.value;
-    const selectedAllergen = allergenSelect.value;
+    const selectedCountries = selectedFilterValues("#dish-country-options");
+    const selectedAllergens = selectedFilterValues("#dish-allergen-options");
     const countries = [...new Set((state.snapshot.dishes || [])
       .map((dish) => String(dish.origin_country || "").trim().toUpperCase())
       .filter(Boolean))].sort();
-    countrySelect.innerHTML = [
-      `<option value="">🌍 ${escapeHtml(translate("all") || "All")}</option>`,
-      ...countries.map((country) => `<option value="${escapeHtml(country)}">${countryFlag(country)} ${escapeHtml(country)}</option>`),
-    ].join("");
-    if (countries.includes(selectedCountry)) countrySelect.value = selectedCountry;
-    allergenSelect.innerHTML = [
-      `<option value="">⚠️ ${escapeHtml(translate("all") || "All")}</option>`,
-      ...ALLERGEN_CODES.map((code) => `<option value="${escapeHtml(code)}">${allergenIcon(code)} ${escapeHtml(allergenLabel(code, state.language))}</option>`),
-    ].join("");
-    if (ALLERGEN_CODES.includes(selectedAllergen)) allergenSelect.value = selectedAllergen;
+    select("#dish-country-options").innerHTML = countries.map((country) => `
+      <label class="dish-filter-option">
+        <input type="checkbox" value="${escapeHtml(country)}" ${selectedCountries.has(country) ? "checked" : ""}>
+        <span class="dish-country-option-flag" aria-hidden="true">${countryFlag(country)}</span>
+        <strong>${escapeHtml(country)}</strong>
+      </label>`).join("") || `<p class="dish-filter-empty">—</p>`;
+    select("#dish-allergen-options").innerHTML = ALLERGEN_CODES.map((code) => `
+      <label class="dish-filter-option allergen">
+        <input type="checkbox" value="${escapeHtml(code)}" ${selectedAllergens.has(code) ? "checked" : ""}>
+        <span class="dish-allergen-option-icon" aria-hidden="true">${allergenIconSvg(code)}</span>
+        <strong>${escapeHtml(allergenLabel(code, state.language))}</strong>
+      </label>`).join("");
   }
 
   function render() {
     renderAudit();
     const filters = {
       search: select("#dish-search").value,
-      country: select("#dish-country-filter").value,
-      allergen: select("#dish-allergen-filter").value,
+      countries: selectedFilterValues("#dish-country-options"),
+      allergens: selectedFilterValues("#dish-allergen-options"),
       minimumCost: Number(select("#dish-cost-min").value),
       maximumCost: Number(select("#dish-cost-max").value),
       minimumKcal: Number(select("#dish-kcal-min").value),
@@ -181,6 +211,8 @@ export function createDishesFeature({
         selectAll("[data-dish-nutri-score]:checked").map((input) => input.value),
       ),
     };
+    updateFilterCount("#dish-country-count", filters.countries.size);
+    updateFilterCount("#dish-allergen-count", filters.allergens.size);
     select("#dish-cost-output").textContent =
       `${formatMoney(filters.minimumCost)} – ${formatMoney(filters.maximumCost)}`;
     select("#dish-kcal-output").textContent =
@@ -222,7 +254,10 @@ export function createDishesFeature({
     configureSelectFilters();
     const maximums = dishRangeMaximums(state.snapshot.dishes);
     const signature = `${maximums.cost}|${maximums.kcal}`;
-    if (state.dishRangeSignature === signature) return;
+    if (state.dishRangeSignature === signature) {
+      render();
+      return;
+    }
     state.dishRangeSignature = signature;
     Object.entries(maximums).forEach(([pair, maximum]) => {
       const minimumControl = select(`#dish-${pair}-min`);
@@ -251,13 +286,11 @@ export function createDishesFeature({
     if (event.target.matches("input[type='range']")) updateRange(event.target);
     else if (event.target.matches("input")) render();
   });
-  select(".dish-filter-panel").addEventListener("change", (event) => {
-    if (event.target.matches("select")) render();
-  });
   select("#dish-clear-filters").addEventListener("click", () => {
     select("#dish-search").value = "";
-    select("#dish-country-filter").value = "";
-    select("#dish-allergen-filter").value = "";
+    selectAll("#dish-country-options input, #dish-allergen-options input").forEach((input) => {
+      input.checked = false;
+    });
     select("#dish-cost-min").value = "0";
     select("#dish-cost-max").value = select("#dish-cost-max").max;
     select("#dish-kcal-min").value = "0";

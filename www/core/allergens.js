@@ -1,6 +1,6 @@
 export const ALLERGEN_CODES = Object.freeze([
   "gluten", "wheat", "rye", "barley", "oat", "spelt", "crustacean", "mollusc", "egg", "fish",
-  "peanut", "soy", "milk", "tree_nut", "almond", "hazelnut", "walnut", "cashew_nut",
+  "peanut", "soy", "milk", "almond", "hazelnut", "walnut", "cashew_nut",
   "pecan", "brazil_nut", "pistachio", "macadamia", "celery", "mustard", "lupin", "sesame", "sulfite",
 ]);
 
@@ -9,7 +9,7 @@ const LABELS = {
     gluten: "Gluten", wheat: "Blé", rye: "Seigle", barley: "Orge", oat: "Avoine",
     spelt: "Épeautre", crustacean: "Crustacés", mollusc: "Mollusques", egg: "Œufs",
     fish: "Poisson", peanut: "Arachides / cacahuètes", soy: "Soja", milk: "Lait",
-    tree_nut: "Fruits à coque", almond: "Amandes", hazelnut: "Noisettes", walnut: "Noix",
+    almond: "Amandes", hazelnut: "Noisettes", walnut: "Noix",
     cashew_nut: "Noix de cajou", pecan: "Noix de pécan", brazil_nut: "Noix du Brésil",
     pistachio: "Pistaches", macadamia: "Noix de macadamia", celery: "Céleri",
     mustard: "Moutarde", lupin: "Lupin", sesame: "Sésame", sulfite: "Sulfites",
@@ -17,7 +17,7 @@ const LABELS = {
   en: {
     gluten: "Gluten", wheat: "Wheat", rye: "Rye", barley: "Barley", oat: "Oats",
     spelt: "Spelt", crustacean: "Crustaceans", mollusc: "Molluscs", egg: "Eggs",
-    fish: "Fish", peanut: "Peanuts", soy: "Soy", milk: "Milk", tree_nut: "Tree nuts",
+    fish: "Fish", peanut: "Peanuts", soy: "Soy", milk: "Milk",
     almond: "Almonds", hazelnut: "Hazelnuts", walnut: "Walnuts", cashew_nut: "Cashews",
     pecan: "Pecans", brazil_nut: "Brazil nuts", pistachio: "Pistachios",
     macadamia: "Macadamia nuts", celery: "Celery", mustard: "Mustard", lupin: "Lupin",
@@ -25,7 +25,7 @@ const LABELS = {
   },
 };
 
-const SPECIFIC_TREE_NUT_CODES = new Set([
+const NUT_CODES = new Set([
   "almond", "hazelnut", "walnut", "cashew_nut", "pecan", "brazil_nut", "pistachio", "macadamia",
 ]);
 
@@ -43,7 +43,6 @@ const ALLERGEN_SVG_MARKS = Object.freeze({
   peanut: '<path d="M8 4c3-2 6 1 5 4 4-1 6 3 4 6-2 4-5 7-8 6-3-1-3-5-1-7-3-2-3-7 0-9Z"/><path d="m8 8 8 7M7 13l6 6M11 5l6 5"/>',
   soy: '<path d="M4 15c5-8 10-10 16-8-1 7-6 12-13 12-2 0-4-2-3-4Z"/><circle cx="9" cy="14" r="2"/><circle cx="14" cy="10" r="2"/>',
   milk: '<path d="M7 6h10l2 4v11H5V10l2-4Z"/><path d="M8 3h8v3H8ZM5 10h14M12 10v11"/>',
-  tree_nut: '<circle cx="8" cy="14" r="4"/><circle cx="16" cy="14" r="4"/><path d="M8 10c0-3 2-5 4-7M16 10c0-3-2-5-4-7"/>',
   almond: '<path d="M12 3c5 4 6 10 0 18C6 13 7 7 12 3Z"/><path d="m9 8 6 8M15 8l-6 8"/>',
   hazelnut: '<path d="M7 9c0-4 10-4 10 0 2 2 2 8-1 11H8c-3-3-3-9-1-11Z"/><path d="M7 9c3-3 7-3 10 0M9 6c1-2 2-3 3-3s2 1 3 3"/>',
   walnut: '<path d="M12 4c-4-3-8 1-7 5-3 3 0 7 3 7-1 4 3 6 4 3 1 3 5 1 4-3 3 0 6-4 3-7 1-4-3-8-7-5Z"/><path d="M12 5v14M8 8c3 1 2 3 4 4M16 8c-3 1-2 3-4 4M8 16c2-2 2-3 4-4M16 16c-2-2-2-3-4-4"/>',
@@ -59,9 +58,6 @@ const ALLERGEN_SVG_MARKS = Object.freeze({
   sulfite: '<path d="M9 3h6M10 3v6l-5 9c-1 2 0 3 2 3h10c2 0 3-1 2-3l-5-9V3"/><path d="M7 16h10M9 13h6"/>',
 });
 
-export function isSpecificTreeNut(code) {
-  return SPECIFIC_TREE_NUT_CODES.has(code);
-}
 
 function localizedLabels(language) {
   const entries = Object.entries(LABELS);
@@ -92,7 +88,7 @@ export function allergenIcon(code) {
     .toLowerCase();
   if (["gluten", "wheat", "rye", "barley", "oat", "spelt"].includes(value)
     || /gluten|wheat|ble|farine/.test(value)) return "🌾";
-  if (["peanut", "tree_nut", ...SPECIFIC_TREE_NUT_CODES].includes(value)
+  if (["peanut", ...NUT_CODES].includes(value)
     || /peanut|nut|noix|noisette|amande|cajou|pistache|pecan/.test(value)) return "🥜";
   if (value === "milk" || /milk|lait|fromage|cheese|yaourt|yogurt/.test(value)) return "🥛";
   if (value === "egg" || /egg|oeuf/.test(value)) return "🥚";
@@ -106,6 +102,5 @@ export function allergenIcon(code) {
 
 export function allergenCodesOverlap(ruleAllergen, ingredientAllergen) {
   return ruleAllergen === ingredientAllergen
-    || (ruleAllergen === "tree_nut" && SPECIFIC_TREE_NUT_CODES.has(ingredientAllergen))
-    || (ingredientAllergen === "tree_nut" && SPECIFIC_TREE_NUT_CODES.has(ruleAllergen));
+    && ALLERGEN_CODES.includes(ruleAllergen);
 }

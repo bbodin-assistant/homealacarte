@@ -12,7 +12,7 @@ import {
   sortCatalogueItems,
 } from "./catalogue/filters.js?v=homealacarte-102";
 import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-83";
-import { enforceIngredientTreeNutSelection, ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-100";
+import { ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-100";
 
 export function createCatalogueFeature({
   state,
@@ -674,10 +674,7 @@ select("#item-catalogue").addEventListener("keydown", (event) => {
 });
 selectAll(".item-editor-back").forEach((button) => button.addEventListener("click", closeItemEditor));
 select("#ingredient-form").addEventListener("input", updateIngredientSaveState);
-select("#ingredient-form").addEventListener("change", (event) => {
-  if (event.target.matches("#ingredient-allergens input")) enforceIngredientTreeNutSelection(select("#ingredient-allergens"), event.target);
-  updateIngredientSaveState();
-});
+select("#ingredient-form").addEventListener("change", updateIngredientSaveState);
 select("#ingredient-price-history-add").addEventListener("click", () => {
   addPriceHistoryFormRow("#ingredient-price-history-list");
   updateIngredientSaveState();

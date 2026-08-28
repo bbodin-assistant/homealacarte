@@ -3,6 +3,7 @@ import {
   countryFlag,
   displayLocalizedName,
   isLanguageTag,
+  localizedNameCaption,
   localizedNameValues,
   normalizeLocalizedName,
   patchConsolidatedRecord,
@@ -47,6 +48,8 @@ assert.equal(toastNames["en-GB"], "Cheese toast");
 assert.equal(toastNames["fr-FR"], "Tartine au fromage");
 assert.equal(toastNames.es, "Tostada");
 assert.equal(toastNames["zh-CN"], "");
+assert.match(localizedNameCaption("fr", "fr"), /^Nom \(.+ · FR\)$/);
+assert.match(localizedNameCaption("en", "en"), /^Name \(.+ · EN\)$/);
 
 assert.equal(
   displayLocalizedName({ en: "Toast", fr: "Tartine", es: "Tostada" }, "es", locales),
@@ -97,4 +100,4 @@ const clearedOrigin = JSON.parse(patchConsolidatedRecord(source, "dishes", "toas
 }));
 assert.equal(Object.hasOwn(clearedOrigin.dishes[0], "origin_country"), false);
 
-console.log("Localized editor helpers accept arbitrary locale tags without dropping existing variants.");
+console.log("Localized editor helpers label names explicitly and accept arbitrary locale tags without dropping variants.");

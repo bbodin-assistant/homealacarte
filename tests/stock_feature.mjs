@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   addStockQuantity,
+  sortStockRows,
   stockPayload,
   updateStockItem,
 } from "../www/features/stock.js";
@@ -66,4 +67,13 @@ assert.deepEqual(stockPayload(state.stockDraft), [
   },
 ]);
 
-console.log("Stock feature preserves payloads, added dates, and unit conversions after extraction.");
+const sortable = [
+  { name: "Soap", category: "Home", quantity: 3, added_at: "2026-08-27" },
+  { name: "Rice", category: "Food", quantity: 2.2, added_at: "2026-08-28" },
+  { name: "Old", category: "Food", quantity: 8, added_at: "" },
+];
+assert.deepEqual(sortStockRows(sortable, { key: "name", direction: "asc", locale: "en" }).map((row) => row.name), ["Old", "Rice", "Soap"]);
+assert.deepEqual(sortStockRows(sortable, { key: "quantity", direction: "desc", locale: "en" }).map((row) => row.name), ["Old", "Soap", "Rice"]);
+assert.deepEqual(sortStockRows(sortable, { key: "added_at", direction: "desc", locale: "en" }).map((row) => row.name), ["Rice", "Soap", "Old"]);
+
+console.log("Stock feature preserves payloads, added dates, sortable columns, and unit conversions after extraction.");
