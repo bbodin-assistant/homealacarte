@@ -7,22 +7,18 @@ import {
   allergenLabel,
 } from "../core/allergens.js?v=homealacarte-100";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
+import { dishAllergenBadges, dishAllergenCodes } from "./dishes/allergen-display.js?v=homealacarte-103";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
 
 export { allergenCodesOverlap, allergenIcon, countryFlag };
 
-function componentAllergenIcon(component, key) {
-  if (ALLERGEN_CODES.includes(key)) return allergenIconSvg(key);
-  const declared = (component?.allergens || []).find((code) => ALLERGEN_CODES.includes(code));
-  return declared ? allergenIconSvg(declared) : allergenIcon(`${key} ${component?.name || ""}`);
-}
+export { dishAllergenCodes };
 
 export function dishPreferenceBadges(dish, people = [], language) {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
   const badges = [];
   const favoritePeople = [];
   const forbiddenPeople = [];
-  const allergyBadges = new Map();
 
   for (const person of people || []) {
     for (const rule of person.food_rules || []) {
@@ -33,33 +29,6 @@ export function dishPreferenceBadges(dish, people = [], language) {
         const matchesDish = (rule.item_keys || []).some((key) => key === dish.key || components.has(key));
         if (matchesDish) forbiddenPeople.push(person.name);
       }
-      if (rule.kind === "allergy") {
-        for (const key of rule.item_keys || []) {
-          const component = components.get(key);
-          if (!component) continue;
-          const label = component.name || key;
-          const entry = allergyBadges.get(key) || {
-            icon: componentAllergenIcon(component, key),
-            label,
-            people: [],
-          };
-          entry.people.push(person.name);
-          allergyBadges.set(key, entry);
-        }
-        for (const allergen of rule.allergens || []) {
-          const matches = [...components.values()]
-            .filter((component) => (component.allergens || [])
-              .some((ingredientAllergen) => allergenCodesOverlap(allergen, ingredientAllergen)));
-          if (!matches.length) continue;
-          const entry = allergyBadges.get(`allergen:${allergen}`) || {
-            icon: allergenIconSvg(allergen),
-            label: allergenLabel(allergen, language),
-            people: [],
-          };
-          entry.people.push(person.name);
-          allergyBadges.set(`allergen:${allergen}`, entry);
-        }
-      }
     }
   }
 
@@ -69,13 +38,7 @@ export function dishPreferenceBadges(dish, people = [], language) {
   if (forbiddenPeople.length) {
     badges.push({ kind: "forbidden", icon: "⛔", title: `Forbidden: ${[...new Set(forbiddenPeople)].join(", ")}` });
   }
-  for (const allergy of allergyBadges.values()) {
-    badges.push({
-      kind: "allergy",
-      icon: allergy.icon,
-      title: `${allergy.label}: ${[...new Set(allergy.people)].join(", ")}`,
-    });
-  }
+  badges.push(...dishAllergenBadges(dish, people, language));
   return badges;
 }
 
@@ -228,11 +191,11 @@ export function createDishesFeature({
       const originFlag = countryFlag(dish.origin_country);
       const preferenceBadges = dishPreferenceBadges(dish, state.snapshot.people || [], state.language);
       const badgeMarkup = preferenceBadges.map((badge) =>
-        `<span class="dish-preference-badge ${escapeHtml(badge.kind)}" title="${escapeHtml(badge.title)}" aria-label="${escapeHtml(badge.title)}">${badge.icon}</span>`).join("");
+        `<span class="dish-preference-badge ${escapeHtml(badge.kind)}${badge.householdWarning ? " household-warning" : ""}" title="${escapeHtml(badge.title)}" aria-label="${escapeHtml(badge.title)}">${badge.icon}</span>`).join("");
       return `
-        <article class="dish-card${preferenceBadges.some((badge) => badge.kind === "allergy" || badge.kind === "forbidden") ? " preference-warning" : ""}">
+        <article class="dish-card${preferenceBadges.some((badge) => badge.kind === "forbidden" || badge.householdWarning) ? " preference-warning" : ""}">
           <button class="dish-card-open" type="button" data-dish-key="${escapeHtml(encodeURIComponent(dish.key))}">
-            <div class="dish-title"><h2>${originFlag ? `<span class="dish-origin-flag" title="${escapeHtml(dish.origin_country)}" aria-hidden="true">${originFlag}</span> ` : ""}${escapeHtml(dish.name)}${badgeMarkup ? ` <span class="dish-preference-badges">${badgeMarkup}</span>` : ""}</h2></div>
+            <div class="dish-title"><h2>${originFlag ? `<span class="dish-origin-flag" title="${escapeHtml(dish.origin_country)}" aria-hidden="true">${originFlag}</span> ` : ""}${escapeHtml(dish.name)}</h2>${badgeMarkup ? `<span class="dish-preference-badges">${badgeMarkup}</span>` : ""}</div>
             <div class="dish-metrics">
               <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(translate("per_serving"))}</span></div>
               ${dish.nutri_score

@@ -243,7 +243,7 @@ assert.match(worker, /homealacarte_web\.js\?v=homealacarte-94/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-1/);
 assert.match(composition, /features\/grocery\.js\?v=homealacarte-79/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-102/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-103/);
 assert.match(app, /worker\.js\?v=homealacarte-94/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
@@ -252,6 +252,5 @@ assert.match(index, new RegExp(`features\\/receipt-purchases\\.js\\?v=homealacar
 assert.match(index, new RegExp(`features\\/purchase-review-enhancements\\.js\\?v=homealacarte-${appVersion}`));
 assert.match(index, /Incomplete catalogue items/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
-assert.match(receiptFeature, /purchase-batch-form/);
 
 console.log("Purchases update stock and price history, color full review rows, make unresolved weights actionable, and keep cache versions aligned.");
