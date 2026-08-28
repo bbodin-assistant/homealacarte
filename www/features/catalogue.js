@@ -10,7 +10,7 @@ import {
   catalogueItemIsIncomplete,
   filterCatalogueItems,
   sortCatalogueItems,
-} from "./catalogue/filters.js?v=homealacarte-84";
+} from "./catalogue/filters.js?v=homealacarte-102";
 import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-83";
 import { enforceIngredientTreeNutSelection, ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-100";
 

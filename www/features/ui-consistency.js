@@ -1,7 +1,7 @@
 import {
   catalogueItemIsIncomplete,
   filterCatalogueItems,
-} from "./catalogue/filters.js?v=homealacarte-84";
+} from "./catalogue/filters.js?v=homealacarte-102";
 import { ingredientNutriScoreMissing } from "../core/nutrition.js?v=homealacarte-77";
 
 export const CALENDAR_DATE_SELECTOR = [

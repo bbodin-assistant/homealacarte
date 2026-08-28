@@ -83,15 +83,19 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
     const filterPanel = documentRef.querySelector("#item-filter-panel");
     const activeKey = sortSelect.value === "original" ? "" : sortSelect.value;
     const direction = directionButton.dataset.direction || "asc";
-    const currentLabels = [...head.children].map((node) => node.textContent.trim());
-    const dishLabel = sortSelect.querySelector('option[value="dishes"]')?.textContent?.trim() || "Dishes";
-    const labels = [currentLabels[0] || "Name", currentLabels[1] || "Type", currentLabels[2] || "Category", dishLabel];
     const keys = ["name", "type", "category", "dishes"];
+    const fallbacks = ["Name", "Type", "Category", "Dishes"];
+    const labels = keys.map((key, index) =>
+      sortSelect.querySelector(`option[value="${key}"]`)?.textContent?.trim() || fallbacks[index]);
+    const signature = JSON.stringify({ activeKey, direction, labels });
     head.style.gridTemplateColumns = "minmax(180px,1.2fr) 130px minmax(180px,1fr) 72px auto";
-    head.innerHTML = `${keys.map((key, index) => `
-      <button type="button" data-catalogue-sort="${key}" style="justify-self:start;padding:0;color:inherit;background:none;border:0;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit">
-        ${labels[index]}${sortIndicator(activeKey, direction, key)}
-      </button>`).join("")}<span></span>`;
+    if (head.dataset.catalogueSortSignature !== signature) {
+      head.dataset.catalogueSortSignature = signature;
+      head.innerHTML = `${keys.map((key, index) => `
+        <button type="button" data-catalogue-sort="${key}" style="justify-self:start;padding:0;color:inherit;background:none;border:0;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit">
+          ${labels[index]}${sortIndicator(activeKey, direction, key)}
+        </button>`).join("")}<span></span>`;
+    }
 
     catalogue.querySelectorAll(".item-catalogue-row").forEach((row) => {
       row.style.gridTemplateColumns = "minmax(180px,1.2fr) 130px minmax(180px,1fr) 72px auto";
@@ -101,7 +105,8 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
         countCell.className = "item-dish-count";
         row.querySelector(".item-catalogue-actions")?.before(countCell);
       }
-      countCell.textContent = String(numericDishCount(row));
+      const count = String(numericDishCount(row));
+      if (countCell.textContent !== count) countCell.textContent = count;
       row.querySelector(".item-catalogue-usage small:not(.in-stock)")?.remove();
     });
 
@@ -136,7 +141,7 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
   const observer = new MutationObserver(enhance);
   const start = () => {
     const catalogue = documentRef.querySelector("#item-catalogue");
-    if (catalogue) observer.observe(catalogue, { childList: true, subtree: true });
+    if (catalogue) observer.observe(catalogue, { childList: true });
     enhance();
   };
   if (documentRef.readyState === "loading") documentRef.addEventListener("DOMContentLoaded", start, { once: true });
