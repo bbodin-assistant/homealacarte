@@ -47,7 +47,7 @@ const currentState = { language: "fr", colorTheme: 0, nonPersistingRequestIds: n
 await bootstrapApplication({
   state: currentState,
   requestedTab: "family",
-  loadPrivateState: async () => ({ ...saved, version: 11 }),
+  loadPrivateState: async () => ({ ...saved, version: 12 }),
   applyColorTheme: () => {},
   applyTranslations: () => {},
   switchTab: () => {},

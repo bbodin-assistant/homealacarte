@@ -4,7 +4,9 @@ import {
   mergeBundledDishClassifications,
   mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
+  mergeBundledFoodRuleDependencies,
   mergeBundledFoodRules,
+  mergeBundledFoodRulesInSources,
 } from "../www/core/profile-rules.js";
 
 const description = "Keep this original description.";
@@ -44,6 +46,51 @@ const modifiedPreserved = mergeBundledFoodRules(
   bundled,
 );
 assert.deepEqual(modifiedPreserved[0].food_rules, [modifiedExistingRule]);
+
+const summerRule = {
+  kind: "routine",
+  meal: "breakfast",
+  item_keys: ["summer_salad"],
+  quantity: 1,
+  quantity_unit: "portion",
+};
+const seasonalDefaults = [{
+  key: "Bruno",
+  food_rules: [
+    { ...summerRule, period_start: "07-01", period_end: "08-31" },
+    {
+      ...summerRule,
+      item_keys: ["autumn_salad"],
+      period_start: "09-01",
+      period_end: "10-31",
+    },
+  ],
+}];
+const seasonal = mergeBundledFoodRules(
+  [{ key: "Bruno", food_rules: [{ ...summerRule, days: [] }] }],
+  seasonalDefaults,
+);
+assert.equal(seasonal[0].food_rules.length, 2);
+assert.equal(seasonal[0].food_rules[0].period_start, "07-01");
+assert.equal(seasonal[0].food_rules[1].period_end, "10-31");
+
+const seasonalSources = mergeBundledFoodRulesInSources([{
+  path: "people.json",
+  content: JSON.stringify({ people: [{ key: "Bruno", food_rules: [{ ...summerRule, days: [] }] }] }),
+}], seasonalDefaults);
+assert.equal(JSON.parse(seasonalSources[0].content).people[0].food_rules.length, 2);
+
+const dependencies = mergeBundledFoodRuleDependencies(
+  [{ path: "existing.json", content: JSON.stringify({ items: [{ key: "apple" }] }) }],
+  seasonalDefaults,
+  [{ key: "autumn_salad", components: [{ item_key: "apple" }, { item_key: "pear" }] }],
+  [{ key: "apple" }, { key: "pear" }],
+);
+assert.equal(dependencies.length, 2);
+assert.deepEqual(JSON.parse(dependencies[1].content), {
+  items: [{ key: "pear" }],
+  dishes: [{ key: "autumn_salad", components: [{ item_key: "apple" }, { item_key: "pear" }] }],
+});
 
 const sources = [{
   path: "saved.json",

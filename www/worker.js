@@ -1,4 +1,4 @@
-import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-93";
+import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-94";
 import { patchConsolidatedRecord } from "./core/data-localization.js?v=homealacarte-80";
 import { applyPurchaseToDocument } from "./core/purchases.js?v=homealacarte-1";
 
@@ -8,7 +8,7 @@ let activeLanguage = "";
 
 async function ensureEngine() {
   if (!readyPromise) {
-    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-93", self.location.href);
+    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-94", self.location.href);
     readyPromise = init({ module_or_path: wasmUrl }).then(() => {
       engine = new HomeALaCarteEngine();
     });

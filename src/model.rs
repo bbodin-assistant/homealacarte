@@ -163,6 +163,10 @@ pub struct FoodRule {
     pub allergens: Vec<String>,
     #[serde(default)]
     pub days: Vec<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub period_start: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub period_end: String,
     #[serde(default = "default_rule_quantity")]
     pub quantity: f64,
     #[serde(default = "default_rule_quantity_unit")]
@@ -212,6 +216,8 @@ pub struct MenuRow {
 pub struct AutoMenuAvailability {
     pub person_key: String,
     pub day: String,
+    #[serde(default)]
+    pub date: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

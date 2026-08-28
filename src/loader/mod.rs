@@ -5,7 +5,8 @@ pub(crate) use self::localization::{
     localized_menu_rows,
 };
 pub(crate) use self::menu::{
-    FOOD_RULE_DAYS, merge_menu_rows, normalize_food_rules, normalize_menu,
+    FOOD_RULE_DAYS, annual_date_ordinal, merge_menu_rows, normalize_food_rules,
+    normalize_menu,
 };
 use self::dishes::flatten_dishes;
 use self::inputs::{Document, DishInput, HouseholdItemInput, HouseholdQuantityInput, IngredientInput, PersonInput, StockInput};

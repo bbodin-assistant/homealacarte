@@ -16,8 +16,8 @@ const request = buildAutoMenuRequest(
     samePortionForEveryone: true,
   },
   [
-    { person_key: "alex", day: "Monday" },
-    { person_key: "alex", day: "Tuesday" },
+    { person_key: "alex", day: "Monday", date: "2026-08-24" },
+    { person_key: "alex", day: "Tuesday", date: "2026-08-25" },
   ],
   [{ day: "Tuesday", meal: "Dinner" }],
   ["curry"],
@@ -29,7 +29,7 @@ assert.deepEqual(request, {
   max_portions: 2,
   portion_step: 0.25,
   same_portion_for_everyone: true,
-  availability: [{ person_key: "alex", day: "Tuesday" }],
+  availability: [{ person_key: "alex", day: "Tuesday", date: "2026-08-25" }],
   slots: [{ day: "Tuesday", meal: "Dinner" }],
   candidate_dish_keys: ["curry"],
 });
@@ -42,6 +42,7 @@ assert.match(feature, /countryFlag/);
 assert.match(feature, /function dishDisplayName/);
 assert.match(feature, /menuWeek\(state\.snapshot\.days, 0\)/);
 assert.match(feature, /generationRows: rows/);
+assert.match(feature, /data-auto-availability-date/);
 assert.match(feature, /dateMenuRowsForWeek/);
 assert.match(worker, /data\.generationRows/);
 assert.match(worker, /finally/);

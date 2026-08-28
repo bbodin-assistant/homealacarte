@@ -175,9 +175,9 @@ export function createAutoMenuFeature({
         <thead><tr><th>${escapeHtml(translate("people"))}</th>${week.map(({ day, date }) => `<th>${escapeHtml(day)}<br><small>${escapeHtml(date)}</small></th>`).join("")}</tr></thead>
         <tbody>${people.map((person) => `<tr>
           <td><strong>${escapeHtml(person.name)}</strong><span>${person.kcal_target == null ? escapeHtml(translate("excluded_without_calorie_target")) : `${formatNumber(person.kcal_target, 0)} kcal`}</span></td>
-          ${week.map(({ day }) => {
+          ${week.map(({ day, date }) => {
             const key = autoMenuSettingKey(person.key, day);
-            return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" ${state.autoMenuAvailability[key] ? "checked" : ""} ${person.kcal_target == null ? "disabled" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
+            return `<td><input type="checkbox" data-auto-availability-person="${escapeHtml(encodeURIComponent(person.key))}" data-auto-availability-day="${escapeHtml(encodeURIComponent(day))}" data-auto-availability-date="${escapeHtml(date)}" ${state.autoMenuAvailability[key] ? "checked" : ""} ${person.kcal_target == null ? "disabled" : ""} aria-label="${escapeHtml(`${person.name} · ${day}`)}"></td>`;
           }).join("")}
         </tr>`).join("")}</tbody>
       </table>`;
@@ -258,6 +258,7 @@ export function createAutoMenuFeature({
     const availability = selectAll("#auto-menu-availability input:checked").map((input) => ({
       person_key: decodeURIComponent(input.dataset.autoAvailabilityPerson),
       day: decodeURIComponent(input.dataset.autoAvailabilityDay),
+      date: input.dataset.autoAvailabilityDate,
     }));
     const slots = selectAll("#auto-menu-slots input:checked").map((input) => ({
       day: decodeURIComponent(input.dataset.autoSlotDay),

@@ -198,6 +198,7 @@
   .family-food-rules-heading .button { align-self: start; }
   .family-food-rule { grid-template-columns: 1fr 1fr 34px; }
   .family-food-rule .food-rule-items-field { grid-column: 1 / -1; }
+  .food-rule-period-boundaries { grid-template-columns: 1fr; }
   .data-overview-heading { align-items: stretch; flex-direction: column; }
   .data-sync-state { align-self: flex-start; }
   .data-facts { grid-template-columns: 1fr; }

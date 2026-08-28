@@ -25,6 +25,27 @@ pub(crate) const FOOD_RULE_DAYS: [&str; 7] = [
     "sunday",
 ];
 
+pub(crate) fn annual_date_ordinal(value: &str) -> Option<u16> {
+    let bytes = value.as_bytes();
+    if bytes.len() != 5
+        || bytes[2] != b'-'
+        || !bytes[..2].iter().all(u8::is_ascii_digit)
+        || !bytes[3..].iter().all(u8::is_ascii_digit)
+    {
+        return None;
+    }
+    let month = value[..2].parse::<u16>().ok()?;
+    let day = value[3..].parse::<u16>().ok()?;
+    let days_before_month = [
+        0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335,
+    ];
+    let month_length = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if !(1..=12).contains(&month) || day == 0 || day > month_length[month as usize] {
+        return None;
+    }
+    Some(days_before_month[month as usize] + day)
+}
+
 pub(crate) fn normalize_food_rules(
     rules: Vec<FoodRule>,
     valid_items: &HashSet<String>,
@@ -35,6 +56,8 @@ pub(crate) fn normalize_food_rules(
         rule.kind = rule.kind.trim().to_lowercase();
         rule.meal = rule.meal.trim().to_lowercase();
         rule.quantity_unit = rule.quantity_unit.trim().to_lowercase();
+        rule.period_start = rule.period_start.trim().to_string();
+        rule.period_end = rule.period_end.trim().to_string();
         if !matches!(
             rule.kind.as_str(),
             "routine" | "never" | "allergy" | "favorite"
@@ -66,6 +89,21 @@ pub(crate) fn normalize_food_rules(
         }
         if rule.kind != "routine" {
             rule.days.clear();
+            rule.period_start.clear();
+            rule.period_end.clear();
+        } else if rule.period_start.is_empty() != rule.period_end.is_empty() {
+            return Err(format!(
+                "{context} food rule {} requires both period boundaries",
+                index + 1
+            ));
+        } else if (!rule.period_start.is_empty()
+            && annual_date_ordinal(&rule.period_start).is_none())
+            || (!rule.period_end.is_empty() && annual_date_ordinal(&rule.period_end).is_none())
+        {
+            return Err(format!(
+                "{context} food rule {} has invalid annual period",
+                index + 1
+            ));
         }
         if !rule.quantity.is_finite() || rule.quantity <= 0.0 {
             return Err(format!("{context} food rule {} has invalid quantity", index + 1));

@@ -4,11 +4,13 @@ import {
   mergeBundledIngredientNutrition,
   mergeDuplicateIngredient,
   mergeBundledFoodRules,
-} from "./profile-rules.js?v=homealacarte-77";
+  mergeBundledFoodRuleDependencies,
+  mergeBundledFoodRulesInSources,
+} from "./profile-rules.js?v=homealacarte-78";
 
-const DATA_SCHEMA_VERSION = 11;
+const DATA_SCHEMA_VERSION = 12;
 const ROW_SYNC_MIGRATION_VERSIONS = [10];
-const FOOD_RULE_MIGRATION_VERSIONS = [6, 7];
+const FOOD_RULE_MIGRATION_VERSIONS = [6, 7, 11];
 const INGREDIENT_MIGRATION_VERSIONS = [6, 7, 8];
 const NUTRITION_MIGRATION_VERSIONS = [6, 7, 8, 9];
 const APPLICATION_TABS = ["family", "menu", "grocery", "dishes", "items", "data"];
@@ -59,7 +61,8 @@ export async function bootstrapApplication({
     send,
     source: "saved",
   })) return;
-  if ([...NUTRITION_MIGRATION_VERSIONS, ...ROW_SYNC_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION]
+  if ([...NUTRITION_MIGRATION_VERSIONS, ...ROW_SYNC_MIGRATION_VERSIONS,
+    ...FOOD_RULE_MIGRATION_VERSIONS, DATA_SCHEMA_VERSION]
     .includes(saved?.version)) {
     state.language = saved.language || state.language;
     state.importedSources = saved.sources || null;
@@ -73,9 +76,19 @@ export async function bootstrapApplication({
       ? await loadBundledDefaults().catch(() => ({ people: [], dishes: [], items: [] }))
       : { people: [], dishes: [], items: [] };
     if (FOOD_RULE_MIGRATION_VERSIONS.includes(saved.version)) {
+      state.importedSources = mergeBundledFoodRuleDependencies(
+        state.importedSources || [],
+        bundled.people,
+        bundled.dishes,
+        bundled.items,
+      );
       if (state.restorePeople) {
         state.restorePeople = mergeBundledFoodRules(state.restorePeople, bundled.people);
       }
+      state.importedSources = mergeBundledFoodRulesInSources(
+        state.importedSources || [],
+        bundled.people,
+      );
       state.importedSources = mergeBundledDishClassifications(
         state.importedSources || [],
         bundled.dishes,

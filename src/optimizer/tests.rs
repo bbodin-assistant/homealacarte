@@ -80,6 +80,8 @@ fn generator_applies_daily_choices_and_never_rules() {
                         "thursday".to_string(),
                         "friday".to_string(),
                     ],
+                    period_start: String::new(),
+                    period_end: String::new(),
                     quantity: 100.0,
                     quantity_unit: "g".to_string(),
                 },
@@ -89,6 +91,8 @@ fn generator_applies_daily_choices_and_never_rules() {
                     item_keys: vec!["bought".to_string()],
                     allergens: vec![],
                     days: vec![],
+                    period_start: String::new(),
+                    period_end: String::new(),
                     quantity: 1.0,
                     quantity_unit: "portion".to_string(),
                 },
@@ -116,6 +120,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             availability: vec![crate::model::AutoMenuAvailability {
                 person_key: "person".to_string(),
                 day: "Monday".to_string(),
+                date: String::new(),
             }],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Monday".to_string(),
@@ -146,6 +151,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             availability: vec![crate::model::AutoMenuAvailability {
                 person_key: "person".to_string(),
                 day: "Monday".to_string(),
+                date: String::new(),
             }],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Monday".to_string(),
@@ -172,6 +178,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             availability: vec![crate::model::AutoMenuAvailability {
                 person_key: "person".to_string(),
                 day: "Saturday".to_string(),
+                date: String::new(),
             }],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Saturday".to_string(),
@@ -201,6 +208,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             availability: vec![crate::model::AutoMenuAvailability {
                 person_key: "person".to_string(),
                 day: "Saturday".to_string(),
+                date: String::new(),
             }],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Saturday".to_string(),
@@ -229,10 +237,12 @@ fn generator_applies_daily_choices_and_never_rules() {
                 crate::model::AutoMenuAvailability {
                     person_key: "person".to_string(),
                     day: "Monday".to_string(),
+                    date: String::new(),
                 },
                 crate::model::AutoMenuAvailability {
                     person_key: "person".to_string(),
                     day: "Tuesday".to_string(),
+                    date: String::new(),
                 },
             ],
             slots: vec![
@@ -268,10 +278,12 @@ fn generator_applies_daily_choices_and_never_rules() {
                 crate::model::AutoMenuAvailability {
                     person_key: "person".to_string(),
                     day: "Monday".to_string(),
+                    date: String::new(),
                 },
                 crate::model::AutoMenuAvailability {
                     person_key: "person".to_string(),
                     day: "Tuesday".to_string(),
+                    date: String::new(),
                 },
             ],
             slots: vec![
@@ -342,14 +354,17 @@ fn generator_can_force_one_shared_portion_for_everyone() {
             crate::model::AutoMenuAvailability {
                 person_key: "adult".to_string(),
                 day: "Monday".to_string(),
+                date: String::new(),
             },
             crate::model::AutoMenuAvailability {
                 person_key: "child".to_string(),
                 day: "Monday".to_string(),
+                date: String::new(),
             },
             crate::model::AutoMenuAvailability {
                 person_key: "visitor".to_string(),
                 day: "Monday".to_string(),
+                date: String::new(),
             },
         ],
         slots: vec![crate::model::AutoMenuSlot {

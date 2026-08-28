@@ -33,8 +33,8 @@ assert.match(app, /const locales = Object\.keys\(translations\)/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(index, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));
-assert.match(entry, /app\/feature-composition\.js\?v=homealacarte-99/);
-assert.match(entry, /worker\.js\?v=homealacarte-93/);
+assert.match(entry, /app\/feature-composition\.js\?v=homealacarte-101/);
+assert.match(entry, /worker\.js\?v=homealacarte-94/);
 assert.match(app, /features\/dish-editor\.js\?v=homealacarte-80/);
 
 console.log("Dish editor generates localized name fields from the shared locale list and keeps country metadata separate.");

@@ -212,6 +212,8 @@ Rules:
       "meal": "breakfast",
       "item_keys": ["porridge", "toast", "yoghurt"],
       "days": ["monday", "tuesday", "wednesday", "thursday", "friday"],
+      "period_start": "09-01",
+      "period_end": "10-31",
       "quantity": 1.0,
       "quantity_unit": "portion"
     },
@@ -239,6 +241,7 @@ Food rules:
 - Valid `kind` codes are `routine`, `never`, `allergy`, and `favorite`.
 - `routine`: on each selected and available day, schedule one of `item_keys` at `meal`; one key expresses a fixed habit.
 - `days` applies only to `routine`. An omitted or empty list means every available day. Otherwise use any of `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`. Days on non-routine rules are ignored.
+- `period_start` and `period_end` optionally limit a `routine` to an inclusive annual period. Both must be present together in `MM-DD` format. Omit both for a year-round rule. A period whose start follows its end (for example `11-01` to `02-28`) wraps across New Year. Periods on non-routine rules are ignored.
 - `never`: exclude a listed dish or item at the selected meal. Listing an ingredient also excludes dishes containing that ingredient. Use `meal: "any"` to apply the rule to every meal.
 - `allergy`: exclude a listed dish or item, and dishes containing a listed ingredient, at every meal. Use `meal: "any"`; allergy matching is global rather than meal-specific.
 - `favorite`: make matching candidate dishes, including dishes containing a listed ingredient, preferred during automatic menu generation without forcing their selection. Use `meal: "any"`; favorite matching is currently global rather than meal-specific.
@@ -284,7 +287,7 @@ Food rules:
 - Every menu entry must resolve to an item or dish.
 - Every menu person must resolve to a person.
 - Generated menu rows should include a calendar `date`; legacy date-less rows remain importable.
-- Food-rule `kind`, `meal`, `days`, quantity, unit, and references must use the codes and constraints documented above.
+- Food-rule `kind`, `meal`, `days`, annual period, quantity, unit, and references must use the codes and constraints documented above.
 - Existing records must not be duplicated in the export.
 - Localized text objects must use language-tag keys with string values.
 - Stable identifiers and references must remain strings and must not vary by language.

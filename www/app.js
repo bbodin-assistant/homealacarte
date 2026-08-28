@@ -15,7 +15,7 @@ import {
   submitPrivacyRequest,
   synchronizePrivateState,
 } from "./storage.js?v=homealacarte-99";
-import { translations } from "./translations.js?v=homealacarte-100";
+import { translations } from "./translations.js?v=homealacarte-101";
 import {
   defaultLocale,
   hasTranslation,
@@ -43,7 +43,7 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-100";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-101";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
 import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-1";
@@ -51,7 +51,7 @@ import { installUiConsistency } from "./features/ui-consistency.js?v=homealacart
 document.documentElement.dataset.appModuleLoaded = "true";
 
 const STORAGE_PREFIX = "homealacarte-";
-const DATA_SCHEMA_VERSION = 11;
+const DATA_SCHEMA_VERSION = 12;
 const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   items: [],
   dishes: [],
@@ -60,7 +60,7 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   stock: [],
   extra_needs: [],
 }, null, 2)}\n`;
-const worker = new Worker("./worker.js?v=homealacarte-93", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-94", { type: "module" });
 const state = createAppState(localStorage, getStorageStatus, defaultLocale(translations));
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;

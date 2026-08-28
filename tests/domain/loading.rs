@@ -48,6 +48,8 @@ fn person_food_rules_are_loaded_and_validated() {
               "meal": "breakfast",
               "item_keys": ["bread_test", "test_salad"],
               "days": ["monday", "wednesday", "friday"],
+              "period_start": "09-01",
+              "period_end": "10-31",
               "quantity": 1,
               "quantity_unit": "portion"
             }, {
@@ -74,11 +76,18 @@ fn person_food_rules_are_loaded_and_validated() {
         dataset.people[0].food_rules[0].days,
         vec!["monday", "wednesday", "friday"]
     );
+    assert_eq!(dataset.people[0].food_rules[0].period_start, "09-01");
+    assert_eq!(dataset.people[0].food_rules[0].period_end, "10-31");
 
     let mut invalid_day = source.clone();
     invalid_day.content = invalid_day.content.replace("wednesday", "funday");
     let error = homealacarte_web::load_dataset(vec![invalid_day], "en").unwrap_err();
     assert!(error.contains("invalid day: funday"));
+
+    let mut invalid_period = source.clone();
+    invalid_period.content = invalid_period.content.replace("10-31", "02-31");
+    let error = homealacarte_web::load_dataset(vec![invalid_period], "en").unwrap_err();
+    assert!(error.contains("invalid annual period"));
 
     source.content = source.content.replace("bread_test\", \"test_salad", "missing_food");
     let error = homealacarte_web::load_dataset(vec![source], "en").unwrap_err();

@@ -4,18 +4,111 @@ export function mergeBundledFoodRules(savedPeople = [], bundledPeople = []) {
     const bundledRules = bundledByKey.get(person.key)?.food_rules;
     if (!Array.isArray(bundledRules) || !bundledRules.length) return person;
     const existingRules = Array.isArray(person.food_rules) ? person.food_rules : [];
-    const identities = new Set(existingRules.map(foodRuleIdentity));
+    let updated = false;
+    const migratedRules = existingRules.map((existing) => {
+      if (existing.period_start || existing.period_end) return existing;
+      const seasonalDefault = bundledRules.find((rule) => (
+        rule.period_start
+        && rule.period_end
+        && foodRuleIdentity(rule) === foodRuleIdentity(existing)
+        && sameFoodRuleExceptPeriod(rule, existing)
+      ));
+      if (!seasonalDefault) return existing;
+      updated = true;
+      return {
+        ...existing,
+        period_start: seasonalDefault.period_start,
+        period_end: seasonalDefault.period_end,
+      };
+    });
+    const identities = new Set(migratedRules.map(foodRuleIdentity));
     const missingRules = bundledRules.filter((rule) => !identities.has(foodRuleIdentity(rule)));
-    if (!missingRules.length) return person;
+    if (!missingRules.length && !updated) return person;
     return {
       ...person,
-      food_rules: [...existingRules, ...missingRules.map((rule) => ({
+      food_rules: [...migratedRules, ...missingRules.map((rule) => ({
         ...rule,
         item_keys: [...(rule.item_keys || [])],
         days: [...(rule.days || [])],
       }))],
     };
   });
+}
+
+function sameFoodRuleExceptPeriod(left = {}, right = {}) {
+  const normalized = (rule) => JSON.stringify([
+    rule.kind || "",
+    rule.meal || "",
+    [...(rule.item_keys || [])],
+    [...(rule.allergens || [])],
+    [...(rule.days || [])],
+    rule.quantity ?? 1,
+    rule.quantity_unit || "portion",
+  ]);
+  return normalized(left) === normalized(right);
+}
+
+export function mergeBundledFoodRulesInSources(sources = [], bundledPeople = []) {
+  return sources.map((source) => {
+    let value;
+    try {
+      value = JSON.parse(source.content);
+    } catch {
+      return source;
+    }
+    if (!Array.isArray(value.people)) return source;
+    const people = mergeBundledFoodRules(value.people, bundledPeople);
+    if (people.every((person, index) => person === value.people[index])) return source;
+    return {
+      ...source,
+      content: `${JSON.stringify({ ...value, people }, null, 2)}\n`,
+    };
+  });
+}
+
+export function mergeBundledFoodRuleDependencies(
+  sources = [],
+  bundledPeople = [],
+  bundledDishes = [],
+  bundledItems = [],
+) {
+  const existingItems = new Set();
+  const existingDishes = new Set();
+  for (const source of sources) {
+    try {
+      const value = JSON.parse(source.content);
+      (value.items || []).forEach((item) => existingItems.add(item.key));
+      (value.dishes || []).forEach((dish) => existingDishes.add(dish.key));
+    } catch {
+      // Invalid sources are left to the regular loader error path.
+    }
+  }
+  const itemsByKey = new Map(bundledItems.map((item) => [item.key, item]));
+  const dishesByKey = new Map(bundledDishes.map((dish) => [dish.key, dish]));
+  const addedItems = new Map();
+  const addedDishes = new Map();
+  const addItem = (key) => {
+    if (!existingItems.has(key) && itemsByKey.has(key)) addedItems.set(key, itemsByKey.get(key));
+  };
+  for (const key of bundledPeople.flatMap((person) => (
+    (person.food_rules || []).flatMap((rule) => rule.item_keys || [])
+  ))) {
+    const dish = dishesByKey.get(key);
+    if (!dish) {
+      addItem(key);
+      continue;
+    }
+    if (!existingDishes.has(key)) addedDishes.set(key, dish);
+    (dish.components || []).forEach((component) => addItem(component.item_key));
+  }
+  if (!addedItems.size && !addedDishes.size) return sources;
+  return [...sources, {
+    path: "food-rule-defaults-v12.json",
+    content: `${JSON.stringify({
+      items: [...addedItems.values()],
+      dishes: [...addedDishes.values()],
+    }, null, 2)}\n`,
+  }];
 }
 
 function foodRuleIdentity(rule = {}) {

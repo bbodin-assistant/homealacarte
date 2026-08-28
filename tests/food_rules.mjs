@@ -20,6 +20,8 @@ assert.match(feature, /results\.hidden = !query/);
 assert.match(feature, /data-food-rule-selected-item/);
 assert.match(feature, /data-food-rule-days] input:checked/);
 assert.match(feature, /days: kind !== "routine"/);
+assert.match(feature, /data-food-rule-period-\$\{boundary\}-month/);
+assert.match(feature, /annualPeriodIsValid/);
 assert.match(feature, /value="allergy"/);
 assert.match(feature, /value="favorite"/);
 assert.equal(foodRuleAcceptsItem("allergy", "ingredient"), true);
@@ -32,9 +34,11 @@ for (const allergen of ["walnut", "cashew_nut", "pistachio", "milk", "egg", "glu
 }
 assert.match(translations, /food_rule_routine:/);
 assert.match(translations, /food_rule_days:/);
+assert.match(translations, /food_rule_period:/);
 assert.match(translations, /food_rule_never:/);
 assert.match(guide, /"kind": "routine"/);
 assert.match(guide, /"kind": "never"/);
 assert.match(guide, /"days": \["monday"/);
+assert.match(guide, /"period_start": "09-01"/);
 
 console.log("Family profiles expose routine, forbidden, allergy, and favorite rule types with appropriate item scopes.");

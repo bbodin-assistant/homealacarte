@@ -178,6 +178,48 @@ function foodRuleDayOptions(selectedDays = []) {
     </label>`).join("");
 }
 
+function annualPeriodParts(value = "") {
+  const match = /^(\d{2})-(\d{2})$/.exec(value);
+  return match ? { month: Number(match[1]), day: Number(match[2]) } : { month: "", day: "" };
+}
+
+function annualPeriodMonthOptions(selectedMonth) {
+  const formatter = new Intl.DateTimeFormat(state.language || undefined, { month: "long" });
+  const empty = `<option value="" ${selectedMonth === "" ? "selected" : ""}>—</option>`;
+  return empty + Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+    const label = formatter.format(new Date(2024, index, 1));
+    return `<option value="${month}" ${selectedMonth === month ? "selected" : ""}>${escapeHtml(label)}</option>`;
+  }).join("");
+}
+
+function annualPeriodBoundaryMarkup(boundary, value) {
+  const parts = annualPeriodParts(value);
+  return `<label class="food-rule-period-boundary">
+    <span>${escapeHtml(translate(`food_rule_period_${boundary}`))}</span>
+    <span class="food-rule-period-controls">
+      <select data-food-rule-period-${boundary}-month aria-label="${escapeHtml(translate("food_rule_period_month"))}">
+        ${annualPeriodMonthOptions(parts.month)}
+      </select>
+      <input data-food-rule-period-${boundary}-day type="number" min="1" max="31" step="1" value="${parts.day}" placeholder="${escapeHtml(translate("food_rule_period_day"))}" aria-label="${escapeHtml(translate("food_rule_period_day"))}">
+    </span>
+  </label>`;
+}
+
+function annualPeriodBoundaryValue(row, boundary) {
+  const month = Number(row.querySelector(`[data-food-rule-period-${boundary}-month]`).value);
+  const day = Number(row.querySelector(`[data-food-rule-period-${boundary}-day]`).value);
+  if (!month && !day) return "";
+  const monthLengths = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > monthLengths[month]) return "__invalid__";
+  return `${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function annualPeriodIsValid(start, end) {
+  return (!start && !end)
+    || (/^\d{2}-\d{2}$/.test(start) && /^\d{2}-\d{2}$/.test(end));
+}
+
 function foodRuleMarkup(rule = {}) {
   const kind = ["routine", "never", "allergy", "favorite"].includes(rule.kind)
     ? rule.kind
@@ -232,6 +274,14 @@ function foodRuleMarkup(rule = {}) {
       <span>${escapeHtml(translate("food_rule_days"))}</span>
       <small>${escapeHtml(translate("food_rule_days_hint"))}</small>
       <div data-food-rule-days role="group">${foodRuleDayOptions(rule.days)}</div>
+    </div>
+    <div class="food-rule-period-field" data-routine-field>
+      <span>${escapeHtml(translate("food_rule_period"))}</span>
+      <small>${escapeHtml(translate("food_rule_period_hint"))}</small>
+      <div class="food-rule-period-boundaries">
+        ${annualPeriodBoundaryMarkup("start", rule.period_start)}
+        ${annualPeriodBoundaryMarkup("end", rule.period_end)}
+      </div>
     </div>
   </div>`;
 }
@@ -301,6 +351,8 @@ function familyFoodRulesPayload() {
     const kind = row.querySelector("[data-food-rule-kind]").value;
     const selectedDays = [...row.querySelectorAll("[data-food-rule-days] input:checked")]
       .map((input) => input.value);
+    const periodStart = kind === "routine" ? annualPeriodBoundaryValue(row, "start") : "";
+    const periodEnd = kind === "routine" ? annualPeriodBoundaryValue(row, "end") : "";
     return {
       kind,
       meal: kind === "allergy" || kind === "favorite"
@@ -315,6 +367,8 @@ function familyFoodRulesPayload() {
       days: kind !== "routine" || selectedDays.length === FOOD_RULE_DAY_CODES.length
         ? []
         : (selectedDays.length ? selectedDays : ["__no_day_selected__"]),
+      period_start: periodStart,
+      period_end: periodEnd,
       quantity: kind === "routine"
         ? Number(row.querySelector("[data-food-rule-quantity]").value)
         : 1,
@@ -334,6 +388,7 @@ function familyFoodRulesAreValid(rules = familyFoodRulesPayload()) {
     && (rule.kind !== "routine" || (
       rule.meal !== "any"
       && rule.days.every((day) => FOOD_RULE_DAY_CODES.includes(day))
+      && annualPeriodIsValid(rule.period_start, rule.period_end)
       && Number.isFinite(rule.quantity)
       && rule.quantity > 0
     )));

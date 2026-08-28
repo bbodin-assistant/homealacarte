@@ -119,7 +119,7 @@ export function privateStateToRecords(value) {
     entityId: APP_ENTITY_ID,
     position: 0,
     payload: {
-      version: Number(value.version || 11),
+      version: Number(value.version || 12),
       language: String(value.language || ""),
     },
     version: 0,
@@ -170,7 +170,7 @@ export function recordsToPrivateState(sourceRecords) {
       .map((row) => clone(row.payload));
   }
   return {
-    version: Number(settings.version || 11),
+    version: Number(settings.version || 12),
     language: String(settings.language || ""),
     sources: [{
       path: "homealacarte_data.json",

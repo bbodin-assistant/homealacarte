@@ -1,5 +1,5 @@
 use crate::loader::{
-    FOOD_RULE_DAYS, food_rule_meal_name, localized_days, merge_menu_rows,
+    FOOD_RULE_DAYS, annual_date_ordinal, food_rule_meal_name, localized_days, merge_menu_rows,
 };
 use crate::locale::message_label;
 use crate::model::{AutoMenuAvailability, Dataset, Dish, Ingredient, MenuRow, Person};
@@ -65,6 +65,32 @@ fn allergen_matches_item(
                     })
             })
         })
+}
+
+fn rule_matches_date(rule: &crate::model::FoodRule, date: &str) -> bool {
+    if rule.period_start.is_empty() && rule.period_end.is_empty() {
+        return true;
+    }
+    let Some(month_day) = date.get(5..10).filter(|_| {
+        date.len() == 10
+            && date.as_bytes()[4] == b'-'
+            && date.as_bytes()[7] == b'-'
+            && date[..4].bytes().all(|byte| byte.is_ascii_digit())
+    }) else {
+        return false;
+    };
+    let (Some(current), Some(start), Some(end)) = (
+        annual_date_ordinal(month_day),
+        annual_date_ordinal(&rule.period_start),
+        annual_date_ordinal(&rule.period_end),
+    ) else {
+        return false;
+    };
+    if start <= end {
+        (start..=end).contains(&current)
+    } else {
+        current >= start || current <= end
+    }
 }
 
 pub(crate) fn person_forbids_item(
@@ -145,10 +171,14 @@ pub(crate) fn routine_rows(
             if !rule.days.is_empty() && !rule.days.iter().any(|day| day == day_code) {
                 continue;
             }
+            if !rule_matches_date(rule, &entry.date) {
+                continue;
+            }
             let meal = food_rule_meal_name(&rule.meal, language)
                 .ok_or_else(|| "auto_menu_invalid_food_rule".to_string())?;
             let already_satisfied = dataset.menu.iter().any(|row| {
-                row.day == entry.day
+                (entry.date.is_empty() || row.date == entry.date)
+                    && row.day == entry.day
                     && row.meal == meal
                     && row.people.iter().any(|key| key == &person.key)
                     && rule.item_keys.contains(&row.item_key)
@@ -169,7 +199,7 @@ pub(crate) fn routine_rows(
             let choice_index = day_index % allowed.len();
             rows.push(MenuRow {
                 id: String::new(),
-                date: String::new(),
+                date: entry.date.clone(),
                 day: entry.day.clone(),
                 meal,
                 item_key: allowed[choice_index].to_string(),
@@ -196,6 +226,8 @@ mod preference_tests {
             item_keys: vec![item_key.to_string()],
             allergens: vec![],
             days: vec![],
+            period_start: String::new(),
+            period_end: String::new(),
             quantity: 1.0,
             quantity_unit: "portion".to_string(),
         }
@@ -262,6 +294,23 @@ mod preference_tests {
             purchase_unit: "100 g".to_string(),
             purchase_quantity_grams: 100.0,
         }
+    }
+
+    #[test]
+    fn annual_periods_are_inclusive_and_may_wrap_new_year() {
+        let mut seasonal = rule("routine", "apple");
+        seasonal.period_start = "07-01".to_string();
+        seasonal.period_end = "08-31".to_string();
+        assert!(rule_matches_date(&seasonal, "2026-07-01"));
+        assert!(rule_matches_date(&seasonal, "2026-08-31"));
+        assert!(!rule_matches_date(&seasonal, "2026-09-01"));
+
+        seasonal.period_start = "11-01".to_string();
+        seasonal.period_end = "02-29".to_string();
+        assert!(rule_matches_date(&seasonal, "2026-12-15"));
+        assert!(rule_matches_date(&seasonal, "2027-02-28"));
+        assert!(!rule_matches_date(&seasonal, "2027-03-01"));
+        assert!(!rule_matches_date(&seasonal, "not-a-date"));
     }
 
     #[test]
