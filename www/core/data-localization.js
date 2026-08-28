@@ -1,3 +1,6 @@
+import { translations } from "../translations.js?v=homealacarte-102";
+import { translationTable } from "./ui-i18n.js?v=homealacarte-77";
+
 function parseDocument(serializedData) {
   if (!serializedData) return null;
   try {
@@ -92,6 +95,12 @@ export function localizedFormValues(container) {
   );
 }
 
+export function localizedNameCaption(locale, displayLocale = "") {
+  const languageLabel = localeLabel(locale, displayLocale || locale);
+  const nameLabel = translationTable(translations, displayLocale || locale)?.name || "Name";
+  return `${nameLabel} (${languageLabel})`;
+}
+
 export function renderLocalizedInputs(
   container,
   supportedLocales,
@@ -109,7 +118,7 @@ export function renderLocalizedInputs(
     const label = documentRef.createElement("label");
     label.className = "dialog-field localized-name-field";
     const caption = documentRef.createElement("span");
-    caption.textContent = localeLabel(locale, displayLocale || locale);
+    caption.textContent = localizedNameCaption(locale, displayLocale || locale);
     const input = documentRef.createElement("input");
     input.autocomplete = "off";
     input.dataset.locale = locale;
