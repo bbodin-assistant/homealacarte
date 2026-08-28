@@ -1,3 +1,4 @@
+# One-shot migration; this file deletes itself after success.
 name: Remove generic nut allergen
 
 on:
