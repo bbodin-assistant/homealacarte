@@ -4,7 +4,7 @@ import {
   readSyncMeta,
 } from "./storage/local-store.js?v=homealacarte-106";
 import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-105";
-import { createDocumentSync } from "./storage/document-sync.js?v=homealacarte-105";
+import { createDocumentSync } from "./storage/document-sync.js?v=homealacarte-106";
 
 let syncStatus = { state: "local", email: "", message: "" };
 
