@@ -237,14 +237,16 @@ pub(crate) fn normalize_menu(
                 ));
             }
         }
-        let day = input.day.trim().to_string();
-        if !FOOD_RULE_DAYS.contains(&day.as_str()) {
-            return Err(format!("menu item {} has an unknown day: {}", index + 1, input.day));
-        }
-        let meal = input.meal.trim().to_string();
-        if !MENU_MEALS.contains(&meal.as_str()) {
-            return Err(format!("menu item {} has an unknown meal: {}", index + 1, input.meal));
-        }
+        let day = crate::locale::day_key(input.day.trim())
+            .filter(|day| FOOD_RULE_DAYS.contains(&day.as_str()))
+            .ok_or_else(|| {
+                format!("menu item {} has an unknown day: {}", index + 1, input.day)
+            })?;
+        let meal = crate::locale::meal_key(input.meal.trim())
+            .filter(|meal| MENU_MEALS.contains(&meal.as_str()))
+            .ok_or_else(|| {
+                format!("menu item {} has an unknown meal: {}", index + 1, input.meal)
+            })?;
         let date = input.date.trim().to_string();
         if !valid_iso_date(&date) {
             return Err(format!("menu item {} has an invalid date: {}", index + 1, input.date));

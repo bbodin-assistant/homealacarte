@@ -61,7 +61,7 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   stock: [],
   extra_needs: [],
 }, null, 2)}\n`;
-const worker = new Worker("./worker.js?v=homealacarte-96", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-97", { type: "module" });
 const state = createAppState(localStorage, getStorageStatus, defaultLocale(translations));
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;
