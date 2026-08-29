@@ -1,5 +1,5 @@
 use crate::model::{FoodRule, PriceObservation};
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 use serde_json::Value;
 
 #[derive(Debug)]
@@ -9,6 +9,7 @@ pub(crate) struct Document {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct IngredientInput {
     pub(crate) key: String,
     pub(crate) name: String,
@@ -24,13 +25,13 @@ pub(crate) struct IngredientInput {
     pub(crate) carbs_g: f64,
     pub(crate) fat_g: f64,
     pub(crate) fiber_g: f64,
-    #[serde(default, deserialize_with = "missing_value")]
+    #[serde(default)]
     pub(crate) sugars_g: Option<f64>,
-    #[serde(default, deserialize_with = "missing_value")]
+    #[serde(default)]
     pub(crate) saturated_fat_g: Option<f64>,
-    #[serde(default, deserialize_with = "missing_value")]
+    #[serde(default)]
     pub(crate) salt_g: Option<f64>,
-    #[serde(default, deserialize_with = "missing_value")]
+    #[serde(default)]
     pub(crate) fruit_vegetable_legume_percent: Option<f64>,
     pub(crate) category: String,
     pub(crate) source: String,
@@ -50,23 +51,6 @@ pub(crate) struct IngredientInput {
     pub(crate) purchase_quantity_grams: Option<f64>,
 }
 
-fn missing_value<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    match Value::deserialize(deserializer)? {
-        Value::Null => Ok(None),
-        Value::Number(value) => value
-            .as_f64()
-            .map(Some)
-            .ok_or_else(|| serde::de::Error::custom("invalid numeric value")),
-        Value::String(value) if value == "MISSINGVALUE" => Ok(None),
-        _ => Err(serde::de::Error::custom(
-            "expected a number, null, or \"MISSINGVALUE\"",
-        )),
-    }
-}
-
 fn default_grams() -> String {
     "g".to_string()
 }
@@ -76,11 +60,12 @@ fn one() -> f64 {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct PersonInput {
     pub(crate) key: String,
     pub(crate) name: Option<String>,
     pub(crate) kcal_target: Option<f64>,
-    pub(crate) kind: Option<String>,
+    pub(crate) kind: String,
     pub(crate) description: Option<String>,
     #[serde(default)]
     pub(crate) food_rules: Vec<FoodRule>,
@@ -100,6 +85,7 @@ pub(crate) struct StockInput {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct HouseholdItemInput {
     pub(crate) key: String,
     pub(crate) name: String,
@@ -119,6 +105,7 @@ pub(crate) struct HouseholdItemInput {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct HouseholdQuantityInput {
     pub(crate) item_key: String,
     pub(crate) quantity: f64,
@@ -132,6 +119,7 @@ fn bool_true() -> bool {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct DishInput {
     pub(crate) key: String,
     pub(crate) name: String,
@@ -167,16 +155,14 @@ pub(crate) struct ComponentInput {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct MenuInput {
-    #[serde(default)]
     pub date: String,
     pub day: String,
     pub meal: String,
     pub item_key: String,
-    pub person: Option<String>,
-    pub people: Option<Vec<String>>,
-    pub quantity: Option<f64>,
-    pub portions: Option<f64>,
+    pub people: Vec<String>,
+    pub quantity: f64,
     pub quantity_unit: Option<String>,
     pub notes: Option<String>,
 }
