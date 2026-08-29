@@ -3,7 +3,6 @@ use homealacarte_web::{
 };
 use std::collections::HashSet;
 
-
 use crate::support::synthetic_dataset;
 
 #[test]
@@ -12,19 +11,21 @@ fn groceries_ignore_menu_requirements_before_the_current_date() {
     source.content = source
         .content
         .replacen(
-            r#""day": "Lundi",
-              "meal": "Dejeuner""#,
+            r#""date": "2026-08-31",
+              "day": "monday",
+              "meal": "lunch""#,
             r#""date": "2026-08-28",
-              "day": "Lundi",
-              "meal": "Dejeuner""#,
+              "day": "friday",
+              "meal": "lunch""#,
             1,
         )
         .replacen(
-            r#""day": "Lundi",
-              "meal": "Petit dejeuner""#,
+            r#""date": "2026-08-31",
+              "day": "monday",
+              "meal": "breakfast""#,
             r#""date": "2026-08-29",
-              "day": "Lundi",
-              "meal": "Petit dejeuner""#,
+              "day": "saturday",
+              "meal": "breakfast""#,
             1,
         )
         .replacen(
