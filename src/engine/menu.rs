@@ -14,14 +14,7 @@ impl Engine {
             .collect();
         let valid_people: HashSet<String> =
             dataset.people.iter().map(|person| person.key.clone()).collect();
-        let default_person = dataset.people.first().map(|person| person.key.as_str());
-        dataset.menu = normalize_menu(
-            inputs,
-            &self.language,
-            &valid_items,
-            &valid_people,
-            default_person,
-        )?;
+        dataset.menu = normalize_menu(inputs, &valid_items, &valid_people)?;
         self.snapshot()
     }
 
