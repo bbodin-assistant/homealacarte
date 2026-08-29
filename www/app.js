@@ -46,6 +46,7 @@ import {
 import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-104";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
+import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-104";
 import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-102";
 
 document.documentElement.dataset.appModuleLoaded = "true";
@@ -233,9 +234,19 @@ const aiListFeature = createAiListFeature({
   locationRef: location,
   send,
 });
+const detailRefinements = createDetailRefinements({
+  state,
+  documentRef: document,
+  translate: (key) => uiText(state.language, key),
+  escapeHtml,
+  formatMoney,
+  formatNumber,
+  dishNutriScoreDetail,
+});
 application.mount();
 aiDishFeature.mount();
 aiListFeature.mount();
+detailRefinements.mount();
 installUiConsistency({
   state,
   documentRef: document,
