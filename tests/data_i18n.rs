@@ -58,8 +58,8 @@ fn localized_source() -> SourceFile {
           }],
           "menu": [{
             "date": "2026-08-31",
-            "day": {"en": "Monday", "fr": "Lundi"},
-            "meal": {"en": "Dinner", "fr": "Diner"},
+            "day": "monday",
+            "meal": "dinner",
             "item_key": "tomato_plate",
             "people": ["alex"],
             "quantity": 1,
