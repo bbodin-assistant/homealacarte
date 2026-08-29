@@ -82,16 +82,18 @@ pub fn synthetic_dataset() -> SourceFile {
           }],
           "menu": [
             {
-              "day": "Lundi",
-              "meal": "Dejeuner",
+              "date": "2026-08-31",
+              "day": "monday",
+              "meal": "lunch",
               "item_key": "test_salad",
               "people": ["test_person"],
               "quantity": 1,
               "quantity_unit": "portion"
             },
             {
-              "day": "Lundi",
-              "meal": "Petit dejeuner",
+              "date": "2026-08-31",
+              "day": "monday",
+              "meal": "breakfast",
               "item_key": "bread_test",
               "people": ["test_person"],
               "quantity": 1,
