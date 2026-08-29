@@ -80,12 +80,13 @@ make personal-data
 This writes `private-import/homealacarte.json`, which is also ignored. Import
 that file once from the Data page, then use local IndexedDB storage or sign in
 to synchronize it through the private Supabase account. The converter accepts
-the legacy `ingredients`, `household_items`, `household_needs`, and
-`household_stock` sections and validates the consolidated result with the same
-Rust engine used by the website. Stock and extra-needs `notes` are retained in
-the current schema and survive later quantity edits.
+only the current `items`, `dishes`, `people`, `menu`, `stock`, and `extra_needs`
+sections and validates the consolidated result with the same Rust engine used
+by the website. Legacy section names and record-field aliases are rejected
+instead of being rewritten. Stock and extra-needs `notes` are retained in the
+current schema and survive later quantity edits.
 
-To merge a richer old database with the CIQUAL and receipt updates in
+To merge a richer database with the CIQUAL and receipt updates in
 `perso-data/` without modifying either source:
 
 ```bash
@@ -97,9 +98,9 @@ The merge uses `dataweb/` as its base and fills missing fields from
 both sources become a deduplicated history; menu rows become an exact union;
 and matching stock or extra-needs quantities are added together with their
 notes. Populated non-mergeable base values are preserved and recorded as
-conflicts. The command writes the ignored
-`private-import/homealacarte-merged.json` plus a complete ignored audit at
-`private-import/homealacarte-merge-audit.json`.
+conflicts. Both inputs must already use the current JSON format. The command
+writes the ignored `private-import/homealacarte-merged.json` plus a complete
+ignored audit at `private-import/homealacarte-merge-audit.json`.
 
 ## Data format
 
@@ -124,7 +125,11 @@ an optional `store` and `purchase_id`. These values are not encoded in the
 free-text description.
 
 Food items include nutrition and gram-conversion fields. General items may omit
-nutrition. Imports are strict and reject obsolete or unknown structures.
+nutrition. Imports are strict: unknown top-level sections, unknown record
+fields, obsolete aliases, and placeholder sentinels are rejected. Menu rows use
+a `YYYY-MM-DD` `date`, canonical lowercase `day` and `meal` codes, `people`, and
+`quantity`; older `person`, `portions`, translated day/meal labels, and undated
+rows are not accepted.
 
 Automatic Nutri-Score uses the updated 2023 general-food algorithm. A dish is
 calculated when every ingredient provides `sugars_g`, `saturated_fat_g`,
@@ -170,11 +175,11 @@ writes and applies compare-and-set revision checks, so identity and concurrency
 control stay on the server instead of leaking generated IDs into menu data.
 
 Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor
-before deploying a build that uses document synchronization. The schema
-idempotently folds an existing relational replica into `household_state`, and
-the browser likewise converts an existing IndexedDB row replica back into a
-document. Legacy menu `id` fields are accepted but removed during normalization
-and are never emitted by current exports.
+before deploying a build that uses document synchronization. `household_state`
+is the only supported online data store. Re-running the schema removes objects
+from the retired per-entity synchronization design without translating their
+contents. The browser likewise keeps only the current document store; its
+IndexedDB upgrade deletes obsolete row stores rather than importing them.
 
 Concurrent writes use the document revision and present the existing
 local/online choice when both devices changed. All save, poll, focus, reconnect,
