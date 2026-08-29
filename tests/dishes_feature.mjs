@@ -82,11 +82,18 @@ assert.ok(allDishAllergenBadges.every((badge) => badge.icon.startsWith("<svg")))
 assert.ok(allDishAllergenBadges.every((badge) => badge.householdWarning === false));
 
 const dialogSource = readFileSync(new URL("../www/views/dialogs.html", import.meta.url), "utf8");
+const dishesViewSource = readFileSync(new URL("../www/views/dishes.html", import.meta.url), "utf8");
+const dishesSource = readFileSync(new URL("../www/features/dishes.js", import.meta.url), "utf8");
 const refinementSource = readFileSync(new URL("../www/styles/ui-refinements.css", import.meta.url), "utf8");
+const detailRefinementSource = readFileSync(new URL("../www/styles/detail-refinements.css", import.meta.url), "utf8");
 assert.match(dialogSource, /dish-details-allergens-section/);
 assert.match(dialogSource, /dish-details-allergens/);
+assert.match(dishesViewSource, /id="dish-stock-only"/);
+assert.match(dishesSource, /dish-card-nutri-score/);
 assert.match(refinementSource, /\.dish-filter-panel\.panel[\s\S]*?overflow:\s*visible/);
 assert.match(refinementSource, /\.dish-preference-badge\.allergy[\s\S]*?border-radius:\s*50%/);
+assert.match(detailRefinementSource, /\.dish-card-nutri-score\s*\{[\s\S]*?position:\s*absolute[\s\S]*?top:\s*14px[\s\S]*?right:\s*14px/);
+assert.match(detailRefinementSource, /\.dish-details-health\s*\{[\s\S]*?display:\s*grid/);
 
 assert.deepEqual(
   filterDishes(dishes, {
@@ -135,4 +142,32 @@ assert.deepEqual(
   ["cheap_a", "unknown"],
 );
 
-console.log("Dishes feature owns multi-country/allergen filtering, exact specific-nut browsing semantics, and SVG allergy badges.");
+const stockFilteredDishes = [
+  {
+    key: "exactly_one_portion",
+    name: "Exactly one portion",
+    origin_country: "FR",
+    nutri_score: "A",
+    components: [{ key: "rice", name: "Rice", grams: 100 }],
+    per_serving: { cost: 1, kcal: 300 },
+  },
+  {
+    key: "less_than_one_portion",
+    name: "Less than one portion",
+    origin_country: "FR",
+    nutri_score: "A",
+    components: [{ key: "rice", name: "Rice", grams: 150 }],
+    per_serving: { cost: 1, kcal: 300 },
+  },
+];
+assert.deepEqual(
+  filterDishes(stockFilteredDishes, {
+    ...baseFilters,
+    allergens: new Set(),
+    stockOnly: true,
+    stockRows: [{ item_key: "rice", quantity: 100, quantity_unit: "g", grams_per_measure_unit: 1 }],
+  }).map((dish) => dish.key),
+  ["exactly_one_portion"],
+);
+
+console.log("Dishes feature owns multi-country/allergen filtering, stock-ready filtering, exact specific-nut browsing semantics, and SVG allergy badges.");

@@ -52,10 +52,10 @@
 }
 
 .dish-details-health {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: 12px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
   padding: 12px 0;
   border-bottom: 1px solid var(--line);
 }
@@ -65,7 +65,8 @@
 }
 
 .dish-details-health > .nutri-score-detail {
-  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
   margin: 0;
   padding: 0;
   background: transparent;
@@ -74,7 +75,7 @@
 
 .dish-details-health #dish-details-allergens-section {
   min-width: 0;
-  flex: 1 1 320px;
+  width: 100%;
   align-content: start;
 }
 
@@ -84,6 +85,10 @@
 
 .dish-details-health #dish-details-allergens-section h3 {
   margin-bottom: 6px;
+}
+
+.dish-nutri-disclosure {
+  min-width: 0;
 }
 
 .dish-nutri-disclosure summary {
@@ -135,9 +140,10 @@
 }
 
 .dish-nutri-disclosure p {
-  max-width: 420px;
+  max-width: 100%;
   margin: 8px 0 0;
   padding: 9px 10px;
+  box-sizing: border-box;
   color: var(--muted);
   background: var(--paper);
   border-radius: 8px;
@@ -192,6 +198,91 @@
   font-weight: 750;
 }
 
+.dish-stock-filter {
+  min-height: 39px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dish-stock-filter:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.dish-stock-filter input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.dish-stock-filter strong {
+  font-size: 10px;
+}
+
+.dish-stock-filter small {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.dish-card-open {
+  position: relative;
+}
+
+.dish-title {
+  padding-right: 58px;
+}
+
+.dish-card-nutri-score {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+}
+
+.dish-card-nutri-score strong {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: white;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.dish-card-nutri-score span {
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.dish-card-nutri-score.metric-a strong { background: #038141; }
+.dish-card-nutri-score.metric-b strong { background: #85bb2f; }
+.dish-card-nutri-score.metric-c strong { color: #352e14; background: #fecb02; }
+.dish-card-nutri-score.metric-d strong { background: #ee8100; }
+.dish-card-nutri-score.metric-e strong { background: #e63e11; }
+.dish-card-nutri-score.metric-unknown strong {
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+}
+
+.dish-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .grocery-details-information {
   gap: 18px;
 }
@@ -229,6 +320,12 @@
 .item-detail-fields dd {
   font-size: 12px;
   font-weight: 650;
+}
+
+@media (max-width: 700px) {
+  .dish-stock-filter {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 640px) {
