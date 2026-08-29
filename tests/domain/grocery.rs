@@ -7,6 +7,48 @@ use std::collections::HashSet;
 use crate::support::synthetic_dataset;
 
 #[test]
+fn groceries_ignore_menu_requirements_before_the_current_date() {
+    let mut source = synthetic_dataset();
+    source.content = source
+        .content
+        .replacen(
+            r#""day": "Lundi",
+              "meal": "Dejeuner""#,
+            r#""date": "2026-08-28",
+              "day": "Lundi",
+              "meal": "Dejeuner""#,
+            1,
+        )
+        .replacen(
+            r#""day": "Lundi",
+              "meal": "Petit dejeuner""#,
+            r#""date": "2026-08-29",
+              "day": "Lundi",
+              "meal": "Petit dejeuner""#,
+            1,
+        )
+        .replacen(
+            r#"{"item_key": "bread_test", "quantity": 50, "quantity_unit": "g"}"#,
+            r#"{"item_key": "bread_test", "quantity": 0, "quantity_unit": "g"}"#,
+            1,
+        );
+    let mut engine = Engine::default();
+    engine.set_current_date("2026-08-29".to_string()).unwrap();
+    let snapshot = engine
+        .load(
+            vec![source],
+            AppConfig {
+                language: "en".to_string(),
+            },
+        )
+        .unwrap();
+
+    assert!(snapshot.grocery.items.iter().any(|item| item.name == "Test bread"));
+    assert!(!snapshot.grocery.items.iter().any(|item| item.name == "Test tomato"));
+    assert_eq!(snapshot.planner.len(), 2);
+}
+
+#[test]
 fn purchased_dishes_keep_nutrition_but_skip_their_components_in_groceries() {
     let mut source = synthetic_dataset();
     source.content = source.content.replacen(

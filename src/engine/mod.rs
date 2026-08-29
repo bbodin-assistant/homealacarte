@@ -1,6 +1,6 @@
 use crate::loader::localized_menu_rows;
 use crate::model::*;
-use crate::snapshot::build_snapshot;
+use crate::snapshot::build_snapshot_for_date;
 
 mod catalogue;
 mod data_i18n;
@@ -13,6 +13,7 @@ pub struct Engine {
     pub dataset: Option<Dataset>,
     pub language: String,
     pub profile: Option<String>,
+    pub(crate) current_date: String,
     pub(crate) source_files: Vec<SourceFile>,
 }
 
@@ -22,6 +23,7 @@ impl Default for Engine {
             dataset: None,
             language: String::new(),
             profile: None,
+            current_date: String::new(),
             source_files: Vec::new(),
         }
     }
@@ -71,12 +73,37 @@ impl Engine {
 
     pub fn snapshot(&self) -> Result<AppSnapshot, String> {
         let dataset = self.dataset.as_ref().ok_or("no dataset loaded")?;
-        build_snapshot(dataset, &self.language, self.profile.as_deref())
+        build_snapshot_for_date(
+            dataset,
+            &self.language,
+            self.profile.as_deref(),
+            &self.current_date,
+        )
+    }
+
+    pub fn set_current_date(&mut self, current_date: String) -> Result<(), String> {
+        let value = current_date.trim();
+        let valid = value.is_empty()
+            || (value.len() == 10
+                && value.as_bytes()[4] == b'-'
+                && value.as_bytes()[7] == b'-'
+                && value
+                    .bytes()
+                    .enumerate()
+                    .all(|(index, byte)| matches!(index, 4 | 7) || byte.is_ascii_digit()));
+        if !valid {
+            return Err(format!("invalid current date: {current_date}"));
+        }
+        self.current_date = value.to_string();
+        Ok(())
     }
 
     pub(crate) fn dataset_with_localized_menu(&self) -> Result<Dataset, String> {
         let mut dataset = self.dataset.as_ref().ok_or("no dataset loaded")?.clone();
         dataset.menu = localized_menu_rows(&dataset.menu, &self.language)?;
+        dataset
+            .menu
+            .retain(|row| crate::grocery::menu_row_is_current(row, &self.current_date));
         Ok(dataset)
     }
 }

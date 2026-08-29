@@ -53,7 +53,14 @@ struct FoodAggregate {
     need_price: f64,
 }
 
-pub(crate) fn ingredient_requirements(dataset: &Dataset) -> HashMap<String, f64> {
+pub(crate) fn menu_row_is_current(row: &crate::model::MenuRow, current_date: &str) -> bool {
+    current_date.is_empty() || row.date.is_empty() || row.date.as_str() >= current_date
+}
+
+pub(crate) fn ingredient_requirements_from(
+    dataset: &Dataset,
+    current_date: &str,
+) -> HashMap<String, f64> {
     let ingredients = dataset
         .ingredients
         .iter()
@@ -65,7 +72,11 @@ pub(crate) fn ingredient_requirements(dataset: &Dataset) -> HashMap<String, f64>
         .map(|item| (item.key.clone(), item))
         .collect::<HashMap<_, _>>();
     let mut totals = HashMap::new();
-    for row in &dataset.menu {
+    for row in dataset
+        .menu
+        .iter()
+        .filter(|row| menu_row_is_current(row, current_date))
+    {
         let people_count = row.people.len() as f64;
         if let Some(ingredient) = ingredients.get(&row.item_key) {
             let multiplier = menu_multiplier(row, Some(ingredient), None) * people_count;
@@ -105,12 +116,19 @@ pub(crate) fn food_identity(ingredient: &Ingredient) -> String {
 }
 
 pub fn build_grocery(dataset: &Dataset) -> Result<GroceryResult, String> {
+    build_grocery_from(dataset, "")
+}
+
+pub(crate) fn build_grocery_from(
+    dataset: &Dataset,
+    current_date: &str,
+) -> Result<GroceryResult, String> {
     let ingredients: HashMap<String, &Ingredient> = dataset
         .ingredients
         .iter()
         .map(|item| (item.key.clone(), item))
         .collect();
-    let mut totals = ingredient_requirements(dataset);
+    let mut totals = ingredient_requirements_from(dataset, current_date);
     for (key, stocked) in &dataset.stock {
         if let Some(total) = totals.get_mut(key) {
             *total = (*total - stocked).max(0.0);
@@ -285,8 +303,11 @@ fn apply_purchase_result(item: &mut GroceryItem, purchases: &HashMap<String, Gro
     }
 }
 
-pub fn build_grocery_plan(dataset: &Dataset) -> Result<GroceryResult, String> {
-    let purchase = build_grocery(dataset)?;
+pub(crate) fn build_grocery_plan_from(
+    dataset: &Dataset,
+    current_date: &str,
+) -> Result<GroceryResult, String> {
+    let purchase = build_grocery_from(dataset, current_date)?;
     let purchases = purchase
         .items
         .iter()
@@ -295,7 +316,7 @@ pub fn build_grocery_plan(dataset: &Dataset) -> Result<GroceryResult, String> {
     let mut without_stock = dataset.clone();
     without_stock.stock.clear();
     without_stock.household_stock.clear();
-    let mut plan = build_grocery(&without_stock)?;
+    let mut plan = build_grocery_from(&without_stock, current_date)?;
     let estimated_full_purchase_total = plan.estimated_purchase_total;
     for item in &mut plan.items {
         apply_purchase_result(item, &purchases);

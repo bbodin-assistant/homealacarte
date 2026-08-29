@@ -1,5 +1,5 @@
 use crate::engine::Engine;
-use crate::grocery::{food_identity, ingredient_requirements};
+use crate::grocery::{food_identity, ingredient_requirements_from};
 use crate::model::*;
 use crate::price_history::preserve_price_history;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -146,8 +146,9 @@ impl Engine {
         item_ids: Vec<String>,
         stocked: bool,
     ) -> Result<AppSnapshot, String> {
+        let current_date = self.current_date.clone();
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
-        let requirements = ingredient_requirements(dataset);
+        let requirements = ingredient_requirements_from(dataset, &current_date);
         let ingredients = dataset
             .ingredients
             .iter()

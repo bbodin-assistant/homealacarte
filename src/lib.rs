@@ -70,6 +70,10 @@ impl HomeALaCarteEngine {
         to_js(&self.inner.load(sources, config).map_err(js_error)?)
     }
 
+    pub fn set_current_date(&mut self, current_date: String) -> Result<(), JsValue> {
+        self.inner.set_current_date(current_date).map_err(js_error)
+    }
+
     pub fn replace_menu(&mut self, rows: JsValue) -> Result<JsValue, JsValue> {
         let rows: Vec<MenuInput> = serde_wasm_bindgen::from_value(rows).map_err(js_error)?;
         to_js(&self.inner.replace_menu(rows).map_err(js_error)?)
@@ -224,7 +228,8 @@ impl HomeALaCarteEngine {
         excluded_ids: &std::collections::HashSet<String>,
     ) -> Result<Vec<u8>, JsValue> {
         let dataset = self.inner.dataset.as_ref().ok_or_else(|| js_error("no dataset loaded"))?;
-        let grocery = crate::grocery::build_grocery(dataset).map_err(js_error)?;
+        let grocery = crate::grocery::build_grocery_from(dataset, &self.inner.current_date)
+            .map_err(js_error)?;
         let grocery = crate::grocery::exclude_grocery_items(grocery, excluded_ids);
         Ok(generate_grocery_pdf(
             &grocery,

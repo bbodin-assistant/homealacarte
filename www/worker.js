@@ -1,4 +1,4 @@
-import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-94";
+import init, { HomeALaCarteEngine } from "./pkg/homealacarte_web.js?v=homealacarte-95";
 import { patchConsolidatedRecord } from "./core/data-localization.js?v=homealacarte-80";
 import { applyPurchaseToDocument } from "./core/purchases.js?v=homealacarte-2";
 
@@ -6,11 +6,20 @@ let engine;
 let readyPromise;
 let activeLanguage = "";
 
+function localIsoDate() {
+  const now = new Date();
+  const year = String(now.getFullYear()).padStart(4, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 async function ensureEngine() {
   if (!readyPromise) {
-    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-94", self.location.href);
+    const wasmUrl = new URL("./pkg/homealacarte_web_bg.wasm?v=homealacarte-95", self.location.href);
     readyPromise = init({ module_or_path: wasmUrl }).then(() => {
       engine = new HomeALaCarteEngine();
+      engine.set_current_date(localIsoDate());
     });
   }
   await readyPromise;
@@ -80,6 +89,7 @@ self.onmessage = async ({ data }) => {
   const { requestId, type } = data;
   try {
     await ensureEngine();
+    engine.set_current_date(localIsoDate());
     respond(requestId, "status", { code: "calculating" });
     let snapshot;
     if (type === "load-bundled") {

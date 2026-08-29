@@ -1,5 +1,5 @@
 use super::nutrition::{dish_nutri_score, dish_nutrients, ingredient_nutrients};
-use crate::grocery::{build_grocery, build_grocery_plan};
+use crate::grocery::{build_grocery_from, build_grocery_plan_from};
 use crate::loader::{
     dataset_with_localized_categories, localized_days, localized_meals, localized_menu_rows,
 };
@@ -51,6 +51,15 @@ pub fn build_snapshot(
     dataset: &Dataset,
     language: &str,
     profile: Option<&str>,
+) -> Result<AppSnapshot, String> {
+    build_snapshot_for_date(dataset, language, profile, "")
+}
+
+pub(crate) fn build_snapshot_for_date(
+    dataset: &Dataset,
+    language: &str,
+    profile: Option<&str>,
+    current_date: &str,
 ) -> Result<AppSnapshot, String> {
     let canonical_dataset = dataset;
     let localized_dataset = dataset_with_localized_categories(dataset, language);
@@ -358,8 +367,8 @@ pub fn build_snapshot(
             .then(a.key.cmp(&b.key))
     });
 
-    let mut grocery = build_grocery(canonical_dataset)?;
-    let mut grocery_plan = build_grocery_plan(canonical_dataset)?;
+    let mut grocery = build_grocery_from(canonical_dataset, current_date)?;
+    let mut grocery_plan = build_grocery_plan_from(canonical_dataset, current_date)?;
     localize_grocery_categories(&mut grocery, language);
     localize_grocery_categories(&mut grocery_plan, language);
 
