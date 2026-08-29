@@ -73,6 +73,76 @@ fn purchased_dishes_keep_nutrition_but_skip_their_components_in_groceries() {
 }
 
 #[test]
+fn cooked_recipe_items_use_their_raw_purchase_reference_and_conversion() {
+    let mut source = synthetic_dataset();
+    source.content = source
+        .content
+        .replacen(
+            r#""key": "tomato_test","#,
+            r#""key": "tomato_test",
+              "purchase_item_key": "raw_tomato_test",
+              "purchase_grams_per_gram": 0.3333333333333333,"#,
+            1,
+        )
+        .replacen(
+            r#"{
+              "key": "cleaner_test","#,
+            r#"{
+              "key": "raw_tomato_test",
+              "name": "Raw purchase test",
+              "grams": 100,
+              "kcal": 54,
+              "protein_g": 2.7,
+              "carbs_g": 11.7,
+              "fat_g": 0.6,
+              "fiber_g": 3.6,
+              "category": "Produce::Vegetables",
+              "source": "Synthetic test fixture",
+              "url": "",
+              "price_per_kg": 6,
+              "measure_unit": "g",
+              "grams_per_measure_unit": 1,
+              "purchase_unit": "100 g pack",
+              "purchase_quantity_grams": 100
+            },
+            {
+              "key": "cleaner_test","#,
+            1,
+        )
+        .replacen(
+            r#"{"item_key": "tomato_test", "quantity": 50, "quantity_unit": "g"},"#,
+            r#"{"item_key": "tomato_test", "quantity": 50, "quantity_unit": "g"},
+            {"item_key": "raw_tomato_test", "quantity": 20, "quantity_unit": "g"},"#,
+            1,
+        );
+    let mut engine = Engine::default();
+    let snapshot = engine
+        .load(
+            vec![source],
+            AppConfig {
+                language: "en".to_string(),
+            },
+        )
+        .unwrap();
+
+    assert!(!snapshot.grocery.items.iter().any(|item| item.name == "Test tomato"));
+    let purchase = snapshot
+        .grocery
+        .items
+        .iter()
+        .find(|item| item.name == "Raw purchase test")
+        .unwrap();
+    assert!((purchase.needed_quantity - 13.3333333333).abs() < 0.001);
+    let planned = snapshot
+        .grocery_plan
+        .items
+        .iter()
+        .find(|item| item.name == "Raw purchase test")
+        .unwrap();
+    assert!((planned.needed_quantity - 50.0).abs() < 0.001);
+}
+
+#[test]
 fn synthetic_data_supports_groceries_stock_export_and_pdf() {
     let mut engine = Engine::default();
     let snapshot = engine
@@ -258,6 +328,8 @@ fn synthetic_data_supports_groceries_stock_export_and_pdf() {
     let text = String::from_utf8_lossy(&pdf);
     assert!(text.contains("/MediaBox [0 0 595.28 841.89]"));
     assert!(text.contains("/Count 1"));
+    assert!(text.contains("Fruits et l"));
+    assert!(!text.contains("Produce"));
 
     let excluded_item = snapshot.grocery.items.first().unwrap();
     let excluded_price = excluded_item.estimated_purchase_price;

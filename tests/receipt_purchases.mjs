@@ -62,17 +62,17 @@ assert.equal(salmon.sourceLines.length, 6);
 
 const pepsi = rows.find((row) => row.label.startsWith("PEPSI"));
 assert.equal(pepsi.quantity, 9000);
-assert.equal(pepsi.unit, "ml");
-assert.equal(pepsi.weightNeeded, true);
+assert.equal(pepsi.unit, "g");
+assert.equal(pepsi.weightNeeded, false);
 
 const water = rows.find((row) => row.label.startsWith("EAU SRCE"));
 assert.equal(water.quantity, 27000);
-assert.equal(water.unit, "ml");
+assert.equal(water.unit, "g");
 
 const cleaner = rows.find((row) => row.label.startsWith("CREME CITRON"));
 assert.equal(cleaner.kind, "household");
-assert.equal(cleaner.quantity, 750);
-assert.equal(cleaner.unit, "ml");
+assert.equal(cleaner.quantity, 1);
+assert.equal(cleaner.unit, "unit");
 assert.equal(cleaner.weightNeeded, false);
 
 assert.deepEqual(

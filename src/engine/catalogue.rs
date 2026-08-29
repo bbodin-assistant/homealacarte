@@ -41,6 +41,7 @@ impl Engine {
                 &ingredient.price_source,
             );
             validate_ingredient(&ingredient)?;
+            validate_purchase_reference(&next, &ingredient)?;
             if next
                 .ingredients
                 .iter()
@@ -78,6 +79,8 @@ impl Engine {
         input.category = crate::locale::canonical_category(&input.category);
         validate_ingredient(&input)?;
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
+        validate_purchase_reference(dataset, &input)?;
+        validate_purchase_target(dataset, &input)?;
         let index = dataset
             .ingredients
             .iter()
@@ -119,6 +122,8 @@ impl Engine {
         );
         validate_ingredient(&input)?;
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
+        validate_purchase_reference(dataset, &input)?;
+        validate_purchase_target(dataset, &input)?;
         if dataset.ingredients.iter().any(|item| item.key == input.key)
             || dataset.household_items.iter().any(|item| item.key == input.key)
             || dataset.dishes.iter().any(|item| item.key == input.key)
@@ -221,6 +226,18 @@ impl Engine {
                 return Err(format!(
                     "item is still used by these dishes: {}",
                     used_by.join(", ")
+                ));
+            }
+            let used_as_purchase_item = dataset
+                .ingredients
+                .iter()
+                .filter(|ingredient| ingredient.purchase_item_key == key)
+                .map(|ingredient| ingredient.name.clone())
+                .collect::<Vec<_>>();
+            if !used_as_purchase_item.is_empty() {
+                return Err(format!(
+                    "item is still used as the purchase form for: {}",
+                    used_as_purchase_item.join(", ")
                 ));
             }
             dataset.ingredients.remove(ingredient_index);
@@ -372,6 +389,12 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
     if positive.into_iter().any(|value| !value.is_finite() || value <= 0.0) {
         return Err("the ingredient gram quantities must be positive".to_string());
     }
+    if !ingredient.purchase_grams_per_gram.is_finite()
+        || ingredient.purchase_grams_per_gram <= 0.0
+        || ingredient.purchase_item_key == ingredient.key
+    {
+        return Err("the ingredient purchase conversion must reference another item with a positive factor".to_string());
+    }
     let non_negative = [
         ingredient.kcal,
         ingredient.protein_g,
@@ -419,6 +442,44 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
         return Err("the ingredient price history contains an invalid price".to_string());
     }
     Ok(())
+}
+
+fn validate_purchase_reference(dataset: &Dataset, ingredient: &Ingredient) -> Result<(), String> {
+    if ingredient.purchase_item_key.is_empty() {
+        return Ok(());
+    }
+    let purchase_item = dataset
+        .ingredients
+        .iter()
+        .find(|item| item.key == ingredient.purchase_item_key)
+        .ok_or_else(|| {
+            format!(
+                "ingredient references unknown purchase item: {}",
+                ingredient.purchase_item_key
+            )
+        })?;
+    if !purchase_item.purchase_item_key.is_empty() {
+        return Err(format!(
+            "ingredient purchase item is itself converted: {}",
+            ingredient.purchase_item_key
+        ));
+    }
+    Ok(())
+}
+
+fn validate_purchase_target(dataset: &Dataset, ingredient: &Ingredient) -> Result<(), String> {
+    if ingredient.purchase_item_key.is_empty()
+        || !dataset
+            .ingredients
+            .iter()
+            .any(|item| item.key != ingredient.key && item.purchase_item_key == ingredient.key)
+    {
+        return Ok(());
+    }
+    Err(format!(
+        "ingredient is already used as a purchase item and cannot itself be converted: {}",
+        ingredient.key
+    ))
 }
 
 fn validate_household_item(item: &HouseholdItem) -> Result<(), String> {

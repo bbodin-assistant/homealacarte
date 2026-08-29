@@ -31,7 +31,7 @@ struct Placement {
     row: Row,
 }
 
-fn blocks(grocery: &GroceryResult) -> Vec<Block> {
+fn blocks(grocery: &GroceryResult, language: &str) -> Vec<Block> {
     grocery
         .categories
         .iter()
@@ -40,11 +40,21 @@ fn blocks(grocery: &GroceryResult) -> Vec<Block> {
                 .subcategories
                 .iter()
                 .enumerate()
-                .map(|(index, subcategory)| Block {
-                    category: category.name.clone(),
-                    show_category: index == 0,
-                    subcategory: subcategory.name.clone(),
-                    items: subcategory.items.clone(),
+                .map(|(index, subcategory)| {
+                    let code = if subcategory.name.is_empty() {
+                        category.name.clone()
+                    } else {
+                        format!("{}::{}", category.name, subcategory.name)
+                    };
+                    let label = locale::category_label(language, &code);
+                    let (category_label, subcategory_label) =
+                        label.split_once("::").unwrap_or((&label, ""));
+                    Block {
+                        category: category_label.to_string(),
+                        show_category: index == 0,
+                        subcategory: subcategory_label.to_string(),
+                        items: subcategory.items.clone(),
+                    }
                 })
                 .collect::<Vec<_>>()
         })
@@ -63,8 +73,8 @@ fn block_height(block: &Block) -> f64 {
     }) + block.items.len() as f64 * ITEM_HEIGHT
 }
 
-fn layout(grocery: &GroceryResult) -> (Vec<Placement>, usize) {
-    let blocks = blocks(grocery);
+fn layout(grocery: &GroceryResult, language: &str) -> (Vec<Placement>, usize) {
+    let blocks = blocks(grocery, language);
     let top = PAGE_HEIGHT - MARGIN - HEADER_HEIGHT;
     let bottom = MARGIN;
     let available_height = top - bottom;
@@ -269,7 +279,7 @@ fn push_line(stream: &mut Vec<u8>, x1: f64, y1: f64, x2: f64, y2: f64) {
 }
 
 fn page_streams(grocery: &GroceryResult, language: &str) -> Vec<Vec<u8>> {
-    let (placements, page_count) = layout(grocery);
+    let (placements, page_count) = layout(grocery, language);
     let column_width = (PAGE_WIDTH - MARGIN * 2.0 - GAP) / 2.0;
     let mut streams = vec![Vec::new(); page_count];
     let strings = locale::pdf_strings(language).expect("PDF locale registry cannot be empty");

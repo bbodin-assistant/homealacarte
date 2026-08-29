@@ -43,6 +43,8 @@ fn the_item_catalogue_edits_general_items_and_deletes_safely() {
             grams_per_measure_unit: 1.0,
             purchase_unit: "bag".to_string(),
             purchase_quantity_grams: 100.0,
+            purchase_item_key: String::new(),
+            purchase_grams_per_gram: 1.0,
         })
         .unwrap();
     assert!(with_food

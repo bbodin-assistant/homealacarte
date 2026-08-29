@@ -48,6 +48,10 @@ pub(crate) struct IngredientInput {
     pub(crate) grams_per_measure_unit: f64,
     pub(crate) purchase_unit: Option<String>,
     pub(crate) purchase_quantity_grams: Option<f64>,
+    #[serde(default)]
+    pub(crate) purchase_item_key: String,
+    #[serde(default = "one")]
+    pub(crate) purchase_grams_per_gram: f64,
 }
 
 fn missing_value<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>

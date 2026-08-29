@@ -112,6 +112,8 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
         grams_per_measure_unit: 1.0,
         purchase_unit: "leaves".to_string(),
         purchase_quantity_grams: 1.0,
+        purchase_item_key: String::new(),
+        purchase_grams_per_gram: 1.0,
     };
     let snapshot = engine
         .save_dish_with_custom_ingredients(
@@ -177,6 +179,8 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
             grams_per_measure_unit: 12.0,
             purchase_unit: "bag".to_string(),
             purchase_quantity_grams: 120.0,
+            purchase_item_key: String::new(),
+            purchase_grams_per_gram: 1.0,
         })
         .unwrap();
     let dish = completed

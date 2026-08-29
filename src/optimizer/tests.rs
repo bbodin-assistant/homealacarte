@@ -30,6 +30,8 @@ fn ingredient(key: &str, price: f64) -> Ingredient {
         grams_per_measure_unit: 1.0,
         purchase_unit: "100 g".to_string(),
         purchase_quantity_grams: 100.0,
+        purchase_item_key: String::new(),
+        purchase_grams_per_gram: 1.0,
     }
 }
 

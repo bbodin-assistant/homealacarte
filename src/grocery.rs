@@ -101,6 +101,47 @@ pub(crate) fn ingredient_requirements_from(
     totals
 }
 
+fn purchase_requirements_from(
+    dataset: &Dataset,
+    current_date: &str,
+) -> Result<HashMap<String, f64>, String> {
+    let ingredients = dataset
+        .ingredients
+        .iter()
+        .map(|item| (item.key.clone(), item))
+        .collect::<HashMap<_, _>>();
+    let mut purchase_totals = HashMap::new();
+    for (key, required_grams) in ingredient_requirements_from(dataset, current_date) {
+        let ingredient = ingredients
+            .get(&key)
+            .ok_or_else(|| format!("grocery references missing ingredient: {key}"))?;
+        let (purchase_key, factor) = if ingredient.purchase_item_key.is_empty() {
+            (ingredient.key.as_str(), 1.0)
+        } else {
+            (
+                ingredient.purchase_item_key.as_str(),
+                ingredient.purchase_grams_per_gram,
+            )
+        };
+        let source_stock = if purchase_key == ingredient.key {
+            0.0
+        } else {
+            dataset.stock.get(&ingredient.key).copied().unwrap_or(0.0) * factor
+        };
+        *purchase_totals.entry(purchase_key.to_string()).or_insert(0.0) +=
+            (required_grams * factor - source_stock).max(0.0);
+    }
+    for (key, stocked) in &dataset.stock {
+        if let Some(total) = purchase_totals.get_mut(key) {
+            *total = (*total - stocked).max(0.0);
+            if *total <= EPSILON {
+                *total = 0.0;
+            }
+        }
+    }
+    Ok(purchase_totals)
+}
+
 pub(crate) fn food_identity(ingredient: &Ingredient) -> String {
     let (category, subcategory) = split_category(&ingredient.category);
     format!(
@@ -128,15 +169,7 @@ pub(crate) fn build_grocery_from(
         .iter()
         .map(|item| (item.key.clone(), item))
         .collect();
-    let mut totals = ingredient_requirements_from(dataset, current_date);
-    for (key, stocked) in &dataset.stock {
-        if let Some(total) = totals.get_mut(key) {
-            *total = (*total - stocked).max(0.0);
-            if *total <= EPSILON {
-                *total = 0.0;
-            }
-        }
-    }
+    let totals = purchase_requirements_from(dataset, current_date)?;
 
     let mut food_groups: HashMap<String, FoodAggregate> = HashMap::new();
     for (key, grams) in totals {

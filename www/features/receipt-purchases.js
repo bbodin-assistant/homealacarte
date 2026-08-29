@@ -98,7 +98,17 @@ function candidateMatch(options, label) {
     const candidate = matchTokens(option.name);
     if (!candidate.length) return null;
     const candidateSet = new Set(candidate);
-    const common = [...targetSet].filter((token) => candidateSet.has(token)).length;
+    const unmatched = [...candidateSet];
+    const common = [...targetSet].reduce((count, token) => {
+      const index = unmatched.findIndex((candidateToken) => (
+        candidateToken === token
+        || (Math.min(candidateToken.length, token.length) >= 4
+          && (candidateToken.startsWith(token) || token.startsWith(candidateToken)))
+      ));
+      if (index < 0) return count;
+      unmatched.splice(index, 1);
+      return count + 1;
+    }, 0);
     const score = common / Math.min(targetSet.size, candidateSet.size);
     const exact = target.join(" ") === candidate.join(" ");
     return { option, common, score: exact ? 2 : score };
@@ -114,7 +124,7 @@ function candidateMatch(options, label) {
 
 function householdCategory(category) {
   const value = normalizeName(category);
-  return ["entretien", "menage", "maison", "nettoy", "lessive", "hygiene", "papier", "poubelle", "vaisselle", "desinfect"]
+  return ["entretien", "menage", "maison", "nettoy", "lessive", "hygiene", "papier", "poubelle", "vaisselle", "desinfect", "parfumerie", "protection auditive"]
     .some((needle) => value.includes(needle));
 }
 
@@ -124,7 +134,7 @@ function unitAmount(value, unit) {
   if (!Number.isFinite(amount) || amount <= 0) return 0;
   if (normalized === "kg") return amount * 1000;
   if (normalized === "g") return amount;
-  if (normalized === "l") return amount * 1000;
+  if (["l", "litre", "litres"].includes(normalized)) return amount * 1000;
   if (normalized === "cl") return amount * 10;
   if (normalized === "ml") return amount;
   return 0;
@@ -143,16 +153,16 @@ function packageAmount(label, packCount) {
     const [, amount, unit] = masses.at(-1);
     return { quantity: multiplier * unitAmount(amount, unit), unit: "g" };
   }
-  const volumeMultipacks = [...source.matchAll(/(\d+)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(l|cl|ml)\b/gi)];
+  const volumeMultipacks = [...source.matchAll(/(\d+)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(litres?|l|cl|ml)\b/gi)];
   if (volumeMultipacks.length) {
     const [, rawCount, amount, unit] = volumeMultipacks.at(-1);
     const free = /\+\s*1\s+offert/i.test(source) ? 1 : 0;
-    return { quantity: multiplier * (Number(rawCount) + free) * unitAmount(amount, unit), unit: "ml" };
+    return { quantity: multiplier * (Number(rawCount) + free) * unitAmount(amount, unit), unit: "g" };
   }
-  const volumes = [...source.matchAll(/(\d+(?:[.,]\d+)?)\s*(l|cl|ml)\b/gi)];
+  const volumes = [...source.matchAll(/(\d+(?:[.,]\d+)?)\s*(litres?|l|cl|ml)\b/gi)];
   if (volumes.length) {
     const [, amount, unit] = volumes.at(-1);
-    return { quantity: multiplier * unitAmount(amount, unit), unit: "ml" };
+    return { quantity: multiplier * unitAmount(amount, unit), unit: "g" };
   }
   const explicitCounts = [
     ...source.matchAll(/\b(?:bte|boite|tr|sach|sachet|barq|barquette)\.?\s*x\s*(\d+)\b/gi),
@@ -163,6 +173,16 @@ function packageAmount(label, packCount) {
     return { quantity: multiplier * Number(explicitCounts.at(-1)[1]), unit: "unit" };
   }
   return { quantity: multiplier, unit: "unit" };
+}
+
+function householdPackageCount(label, packCount) {
+  const volumeMultipacks = [...String(label || "").matchAll(
+    /(\d+)\s*[x×]\s*\d+(?:[.,]\d+)?\s*(?:litres?|l|cl|ml)\b/gi,
+  )];
+  const innerCount = volumeMultipacks.length
+    ? Number(volumeMultipacks.at(-1)[1])
+    : 1;
+  return Math.max(1, Number(packCount) || 1) * innerCount;
 }
 
 function productLine(line) {
@@ -208,11 +228,26 @@ export function parseSupermarketReceipt(receiptText, catalogueOptions = []) {
 
   function finalize() {
     if (!pending) return;
-    const amount = pending.weighedGrams > 0
-      ? { quantity: pending.weighedGrams, unit: "g" }
-      : packageAmount(pending.label, pending.packCount);
     const kind = householdCategory(pending.category) ? "household" : "food";
     const suggested = candidateMatch(catalogueOptions, pending.label);
+    let amount;
+    if (kind === "household") {
+      amount = {
+        quantity: householdPackageCount(pending.label, pending.packCount),
+        unit: "unit",
+      };
+    } else if (pending.weighedGrams > 0) {
+      amount = { quantity: pending.weighedGrams, unit: "g" };
+    } else {
+      amount = packageAmount(pending.label, pending.packCount);
+      const suggestedPackageGrams = Number(suggested?.purchaseQuantityGrams || 0);
+      if (amount.unit === "unit" && suggestedPackageGrams > 0) {
+        amount = {
+          quantity: pending.packCount * suggestedPackageGrams,
+          unit: "g",
+        };
+      }
+    }
     entries.push({
       label: pending.label,
       category: pending.category,
@@ -282,7 +317,12 @@ function catalogueFromDocument(documentRef) {
   if (!select) return [];
   return [...select.options]
     .filter((option) => option.value && !option.value.startsWith("__new_"))
-    .map((option) => ({ value: option.value, name: option.textContent.trim() }));
+    .map((option) => ({
+      value: option.value,
+      name: option.textContent.trim(),
+      household: option.dataset.household === "true",
+      purchaseQuantityGrams: Number(option.dataset.purchaseGrams || 0),
+    }));
 }
 
 function installStyles(documentRef) {

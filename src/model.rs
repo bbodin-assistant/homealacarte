@@ -108,6 +108,21 @@ pub struct Ingredient {
     pub grams_per_measure_unit: f64,
     pub purchase_unit: String,
     pub purchase_quantity_grams: f64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub purchase_item_key: String,
+    #[serde(
+        default = "default_purchase_grams_per_gram",
+        skip_serializing_if = "is_default_purchase_grams_per_gram"
+    )]
+    pub purchase_grams_per_gram: f64,
+}
+
+fn default_purchase_grams_per_gram() -> f64 {
+    1.0
+}
+
+fn is_default_purchase_grams_per_gram(value: &f64) -> bool {
+    *value == 1.0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

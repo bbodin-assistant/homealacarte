@@ -166,6 +166,8 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             purchase_quantity_grams: input
                 .purchase_quantity_grams
                 .unwrap_or(input.grams_per_measure_unit.max(input.grams)),
+            purchase_item_key: input.purchase_item_key.trim().to_string(),
+            purchase_grams_per_gram: input.purchase_grams_per_gram,
         });
     }
     let ingredient_by_key: HashMap<String, Ingredient> = ingredients
@@ -173,6 +175,36 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
         .cloned()
         .map(|item| (item.key.clone(), item))
         .collect();
+    for ingredient in &ingredients {
+        if ingredient.purchase_grams_per_gram <= 0.0
+            || !ingredient.purchase_grams_per_gram.is_finite()
+        {
+            return Err(format!(
+                "ingredient {} has invalid purchase_grams_per_gram",
+                ingredient.key
+            ));
+        }
+        if !ingredient.purchase_item_key.is_empty() {
+            if ingredient.purchase_item_key == ingredient.key {
+                return Err(format!(
+                    "ingredient {} cannot reference itself as its purchase item",
+                    ingredient.key
+                ));
+            }
+            let Some(purchase_item) = ingredient_by_key.get(&ingredient.purchase_item_key) else {
+                return Err(format!(
+                    "ingredient {} references missing purchase item: {}",
+                    ingredient.key, ingredient.purchase_item_key
+                ));
+            };
+            if !purchase_item.purchase_item_key.is_empty() {
+                return Err(format!(
+                    "ingredient {} references a purchase item that is itself converted: {}",
+                    ingredient.key, ingredient.purchase_item_key
+                ));
+            }
+        }
+    }
 
     let dish_values = section_values(&documents, "dishes")?;
     let mut dish_inputs = Vec::new();

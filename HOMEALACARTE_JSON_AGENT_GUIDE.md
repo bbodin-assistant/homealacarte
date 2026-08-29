@@ -115,6 +115,10 @@ Notes:
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
 - `grams`, `grams_per_measure_unit`, and `purchase_quantity_grams` must be positive.
+- When recipes deliberately use a non-purchasable form such as cooked rice, `purchase_item_key`
+  may reference the corresponding purchasable food and `purchase_grams_per_gram` gives the
+  purchasable grams required per recipe gram (for example `0.3333333333` for dry rice per gram
+  of cooked rice). The target must be another existing food item and the factor must be positive.
 - `allergens` contains the canonical allergen codes documented under food rules. Nut allergens
   must use explicit named nut codes; generic nut-group codes are not supported.
 - Keys use lowercase `snake_case` and must remain identical in every language.

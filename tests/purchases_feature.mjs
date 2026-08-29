@@ -13,6 +13,7 @@ import {
   purchaseReviewState,
   PURCHASE_LAYOUT_CSS,
 } from "../www/features/purchase-review-enhancements.js";
+import { parseSupermarketReceipt } from "../www/features/receipt-purchases.js";
 
 const snapshot = {
   ingredients: [{
@@ -180,6 +181,30 @@ assert.throws(
   /purchase_new_food_requires_grams/,
 );
 
+const parsedReceipt = parseSupermarketReceipt(`ENTRETIEN DE LA MAISON
+LING.DESINF.MULTI-US.SANYT.X72 4,41 € 13
+3 x 1,47 EUR
+ENTRETIEN DU LINGE
+LESS.LIQ.SKIP PX SENS.2X1,554L 21,99 € 13
+1 x 21,99 EUR
+EAUX
+EAU SRCE GAZ.CRISTALINE 6X1,5L 1,92 € 11
+1 x 1,92 EUR
+BOULANGERIE
+PAIN NORDIQUE 1,90 € 11
+1 x 1,90 EUR`, [
+  { value: "pain_nordique", name: "Pain nordique", purchaseQuantityGrams: 450 },
+]);
+assert.deepEqual(
+  parsedReceipt.map(({ quantity, unit, kind }) => ({ quantity, unit, kind })),
+  [
+    { quantity: 3, unit: "unit", kind: "household" },
+    { quantity: 2, unit: "unit", kind: "household" },
+    { quantity: 9000, unit: "g", kind: "food" },
+    { quantity: 450, unit: "g", kind: "food" },
+  ],
+);
+
 const batch = parsePurchaseBatch([
   "name;quantity;unit;total;kind",
   "Tomato;2;piece;3.00",
@@ -255,12 +280,12 @@ assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(shell, /\["list", "stock", "needs", "purchases"\]/);
 assert.match(worker, /type === "record-purchase"/);
 assert.match(worker, /core\/purchases\.js\?v=homealacarte-2/);
-assert.match(worker, /homealacarte_web\.js\?v=homealacarte-95/);
+assert.match(worker, /homealacarte_web\.js\?v=homealacarte-96/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-2/);
-assert.match(composition, /features\/grocery\.js\?v=homealacarte-80/);
+assert.match(composition, /features\/grocery\.js\?v=homealacarte-81/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-104/);
-assert.match(app, /worker\.js\?v=homealacarte-95/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-105/);
+assert.match(app, /worker\.js\?v=homealacarte-96/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(index, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));
