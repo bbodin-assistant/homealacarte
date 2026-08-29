@@ -65,7 +65,7 @@ pub(crate) struct PersonInput {
     pub(crate) key: String,
     pub(crate) name: Option<String>,
     pub(crate) kcal_target: Option<f64>,
-    pub(crate) kind: String,
+    pub(crate) kind: Option<String>,
     pub(crate) description: Option<String>,
     #[serde(default)]
     pub(crate) food_rules: Vec<FoodRule>,
@@ -147,7 +147,6 @@ pub(crate) struct DishInput {
 pub(crate) struct ComponentInput {
     pub(crate) item_key: String,
     pub(crate) grams: Option<f64>,
-    pub(crate) measure_quantity: Option<f64>,
     pub(crate) quantity: Option<f64>,
     pub(crate) quantity_unit: Option<String>,
     #[serde(default)]
