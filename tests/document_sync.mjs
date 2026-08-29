@@ -10,7 +10,16 @@ function state(note) {
       path: "homealacarte_data.json",
       content: JSON.stringify({
         items: [], dishes: [], people: [], stock: [], extra_needs: [],
-        menu: [{ id: "legacy", item_key: "rice", notes: note }],
+        menu: [{
+          date: "2026-08-31",
+          day: "monday",
+          meal: "dinner",
+          item_key: "rice",
+          people: ["alex"],
+          quantity: 1,
+          quantity_unit: "portion",
+          notes: note,
+        }],
       }),
     }],
   };
@@ -61,8 +70,7 @@ const sync = createDocumentSync({
 
 await sync.load();
 assert.equal(meta.remoteRevision, 7);
-assert.equal(meta.dirty, false, "ID-only differences reconcile without a conflict");
-assert.equal("id" in JSON.parse(local.sources[0].content).menu[0], false);
+assert.equal(meta.dirty, false, "identical current documents reconcile without a conflict");
 assert.equal(emitted.at(-1).state, "synced");
 
 local = state("local edit");
@@ -75,4 +83,4 @@ assert.equal(JSON.parse(local.sources[0].content).menu[0].notes, "remote edit");
 assert.equal(meta.remoteRevision, 8);
 assert.equal(meta.dirty, false);
 
-console.log("Server-versioned document sync reconciles legacy IDs and preserves real concurrent-edit conflicts.");
+console.log("Server-versioned document sync reconciles current documents and preserves real concurrent-edit conflicts.");
