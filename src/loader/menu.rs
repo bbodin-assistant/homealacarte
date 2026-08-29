@@ -1,10 +1,19 @@
-use crate::locale;
 use crate::model::{FoodRule, MenuRow};
 use super::inputs::MenuInput;
 use std::collections::HashSet;
 
 pub(crate) const FOOD_RULE_MEALS: [&str; 8] = [
     "any",
+    "breakfast",
+    "morning_snack",
+    "lunch",
+    "afternoon_snack_1",
+    "afternoon_snack_2",
+    "dinner",
+    "anytime",
+];
+
+const MENU_MEALS: [&str; 7] = [
     "breakfast",
     "morning_snack",
     "lunch",
@@ -43,6 +52,48 @@ pub(crate) fn annual_date_ordinal(value: &str) -> Option<u16> {
         return None;
     }
     Some(days_before_month[month as usize] + day)
+}
+
+fn valid_iso_date(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    if bytes.len() != 10
+        || bytes[4] != b'-'
+        || bytes[7] != b'-'
+        || !bytes[..4].iter().all(u8::is_ascii_digit)
+        || !bytes[5..7].iter().all(u8::is_ascii_digit)
+        || !bytes[8..].iter().all(u8::is_ascii_digit)
+    {
+        return false;
+    }
+    let Ok(year) = value[..4].parse::<u32>() else {
+        return false;
+    };
+    let Ok(month) = value[5..7].parse::<usize>() else {
+        return false;
+    };
+    let Ok(day) = value[8..].parse::<u32>() else {
+        return false;
+    };
+    if !(1..=12).contains(&month) || day == 0 {
+        return false;
+    }
+    let leap = year.is_multiple_of(4) && (!year.is_multiple_of(100) || year.is_multiple_of(400));
+    let month_lengths = [
+        0,
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
+    day <= month_lengths[month]
 }
 
 pub(crate) fn normalize_food_rules(
@@ -153,10 +204,8 @@ pub(crate) fn normalize_food_rules(
 
 pub(crate) fn normalize_menu(
     inputs: Vec<MenuInput>,
-    _language: &str,
     valid_items: &HashSet<String>,
     valid_people: &HashSet<String>,
-    default_person: Option<&str>,
 ) -> Result<Vec<MenuRow>, String> {
     let mut rows = Vec::new();
     for (index, input) in inputs.into_iter().enumerate() {
@@ -167,16 +216,7 @@ pub(crate) fn normalize_menu(
                 input.item_key
             ));
         }
-        if input.quantity.is_some() && input.portions.is_some() {
-            return Err(format!(
-                "menu item {} cannot define both quantity and portions",
-                index + 1
-            ));
-        }
-        let quantity = input.quantity.or(input.portions).ok_or_else(|| {
-            format!("menu item {} is missing quantity or portions", index + 1)
-        })?;
-        if !quantity.is_finite() || quantity <= 0.0 {
+        if !input.quantity.is_finite() || input.quantity <= 0.0 {
             return Err(format!("menu item {} quantity must be positive", index + 1));
         }
         let unit = input
@@ -187,45 +227,39 @@ pub(crate) fn normalize_menu(
         if !matches!(unit.as_str(), "portion" | "g" | "unit") {
             return Err(format!("menu item {} has invalid quantity unit: {unit}", index + 1));
         }
-        if input.person.is_some() && input.people.is_some() {
-            return Err(format!(
-                "menu item {} cannot define both person and people", index + 1
-            ));
+        if input.people.is_empty() {
+            return Err(format!("menu item {} people cannot be empty", index + 1));
         }
-        let people = if let Some(person) = input.person {
-            vec![person]
-        } else if let Some(people) = input.people {
-            if people.is_empty() {
-                return Err(format!("menu item {} people cannot be empty", index + 1));
-            }
-            people
-        } else {
-            vec![default_person
-                .ok_or_else(|| format!("menu item {} requires people", index + 1))?
-                .to_string()]
-        };
-        for person in &people {
+        for person in &input.people {
             if !valid_people.contains(person.trim()) {
                 return Err(format!(
                     "menu item {} references unknown person: {}", index + 1, person
                 ));
             }
         }
-        let day = locale::day_key(&input.day)
-            .ok_or_else(|| format!("menu item {} has an unknown day: {}", index + 1, input.day))?;
-        let meal = locale::meal_key(&input.meal)
-            .ok_or_else(|| format!("menu item {} has an unknown meal: {}", index + 1, input.meal))?;
+        let day = input.day.trim().to_string();
+        if !FOOD_RULE_DAYS.contains(&day.as_str()) {
+            return Err(format!("menu item {} has an unknown day: {}", index + 1, input.day));
+        }
+        let meal = input.meal.trim().to_string();
+        if !MENU_MEALS.contains(&meal.as_str()) {
+            return Err(format!("menu item {} has an unknown meal: {}", index + 1, input.meal));
+        }
         let date = input.date.trim().to_string();
+        if !valid_iso_date(&date) {
+            return Err(format!("menu item {} has an invalid date: {}", index + 1, input.date));
+        }
         rows.push(MenuRow {
             date,
             day,
             meal,
             item_key: input.item_key.trim().to_string(),
-            people: people
+            people: input
+                .people
                 .into_iter()
                 .map(|value| value.trim().to_string())
                 .collect(),
-            quantity,
+            quantity: input.quantity,
             quantity_unit: unit,
             notes: input.notes.unwrap_or_default().trim().to_string(),
         });
@@ -266,8 +300,8 @@ mod tests {
     fn row(date: &str, people: &[&str], quantity: f64, notes: &str) -> MenuRow {
         MenuRow {
             date: date.to_string(),
-            day: "Monday".to_string(),
-            meal: "Dinner".to_string(),
+            day: "monday".to_string(),
+            meal: "dinner".to_string(),
             item_key: "vegetable_curry".to_string(),
             people: people.iter().map(|person| person.to_string()).collect(),
             quantity,
