@@ -15,6 +15,8 @@ This guide describes the JSON format agents should generate or update for Home Ã
 }
 ```
 
+These are the only supported top-level collections. Do not emit obsolete section names or aliases.
+
 ## 2. Generated menu export
 
 A generated menu is an incremental patch:
@@ -35,7 +37,7 @@ Rules:
 - Never copy existing items or dishes into the export.
 - Do not include `people`, `stock`, or `extra_needs` in the export.
 - For newly created user-facing items and dishes, use localized names when reliable translations are available.
-- Generated menu rows should include their calendar `date` so identical weekdays in different weeks remain distinct.
+- Generated menu rows must include their calendar `date` so identical weekdays in different weeks remain distinct.
 
 ## 3. Localized text
 
@@ -119,6 +121,7 @@ Notes:
   must use explicit named nut codes; generic nut-group codes are not supported.
 - Keys use lowercase `snake_case` and must remain identical in every language.
 - Localize the display `name` rather than creating separate item records for different languages.
+- Unknown numeric values must be omitted or `null`; placeholder strings such as `MISSINGVALUE` are not valid.
 
 ## 5. Dish
 
@@ -152,6 +155,7 @@ Notes:
 Rules:
 
 - `components[*].item_key` must reference an item.
+- A component must use either `grams` or `quantity` with `quantity_unit`; obsolete quantity aliases are not supported.
 - `auto_menu_main` defaults to `true`. Set it to `false` for breakfasts, snacks, desserts, and drinks so automatic generation does not use them as lunch or dinner.
 - `grocery_exempt` defaults to `false`. Set it to `true` only for a ready-to-eat dish that is bought or ordered as a whole (for example a restaurant pizza). Its components still provide nutrition and allergens, but are not added to the grocery list.
 - `servings` and component quantities must be positive.
@@ -185,7 +189,7 @@ Rules:
 
 Rules:
 
-- `date` is optional for backward-compatible imports, but agents generating current menus should provide the calendar date in `YYYY-MM-DD` form and keep `day` consistent with it.
+- `date` is required and must use `YYYY-MM-DD`; keep `day` consistent with it.
 - Do not add synchronization IDs. Menu rows stay portable data; online synchronization versions the complete household document on the server.
 - `day` is a semantic code: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, or `sunday`.
 - `meal` is a semantic code: `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, or `anytime`.
@@ -193,8 +197,9 @@ Rules:
 - `item_key` may reference an item or dish.
 - Use `portion` for dishes.
 - Use `g` or `unit` for direct items.
-- `people` contains existing person keys.
-- Quantities must be positive.
+- `people` contains existing person keys and must not be empty.
+- `quantity` is required and must be positive.
+- Do not use obsolete singular `person` or `portions` fields.
 
 ## 7. Person
 
@@ -290,12 +295,14 @@ Food rules:
 ## 10. Required validation
 
 - JSON must parse.
+- Only `items`, `dishes`, `people`, `menu`, `stock`, and `extra_needs` are valid top-level collections.
+- Unknown record fields and obsolete aliases must be rejected rather than silently ignored or rewritten.
 - Every key must be unique.
 - New export keys must not exist in the base database.
 - Every dish component must resolve to an item.
 - Every menu entry must resolve to an item or dish.
 - Every menu person must resolve to a person.
-- Generated menu rows should include a calendar `date`; legacy date-less rows remain importable.
+- Every menu row must include a valid calendar `date` and canonical `day` and `meal` codes.
 - Food-rule `kind`, `meal`, `days`, annual period, quantity, unit, and references must use the codes and constraints documented above.
 - Existing records must not be duplicated in the export.
 - Localized text objects must use language-tag keys with string values.
