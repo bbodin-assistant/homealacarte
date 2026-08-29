@@ -1,11 +1,10 @@
 import {
   clearLocalState,
   readLocalState,
-  readPendingOperations,
   readSyncMeta,
-} from "./storage/local-store.js?v=homealacarte-99";
-import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-80";
-import { createRowSync } from "./storage/row-sync.js?v=homealacarte-99";
+} from "./storage/local-store.js?v=homealacarte-105";
+import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-105";
+import { createDocumentSync } from "./storage/document-sync.js?v=homealacarte-105";
 
 let syncStatus = { state: "local", email: "", message: "" };
 
@@ -27,13 +26,13 @@ function notifyRemoteChange(value) {
 }
 
 const remoteClient = createRemoteClient({ emitStatus });
-const rowSync = createRowSync({ remoteClient, emitStatus, notifyRemoteChange });
+const documentSync = createDocumentSync({ remoteClient, emitStatus, notifyRemoteChange });
 syncStatus.email = remoteClient.getSession()?.user?.email || "";
 
 const {
   authRequest,
   ensureSession,
-  fetchRemoteSnapshot,
+  fetchRemoteState,
   getSession,
   isNetworkError,
   loadConfig,
@@ -64,17 +63,17 @@ function jsonSize(value) {
 }
 
 export async function loadPrivateState() {
-  const value = await rowSync.load();
-  rowSync.startPolling();
+  const value = await documentSync.load();
+  documentSync.startPolling();
   return value;
 }
 
 export async function savePrivateState(value) {
-  return rowSync.save(value);
+  return documentSync.save(value);
 }
 
 export async function deletePrivateData() {
-  rowSync.stop();
+  documentSync.stop();
   const hadSession = Boolean(getSession());
   const activeSession = await ensureSession();
   if (hadSession && !activeSession) throw new Error("delete_data_online_required");
@@ -122,13 +121,12 @@ export async function submitPrivacyRequest(requestType, message) {
 export async function getStorageDiagnostics() {
   const local = await readLocalState();
   const meta = await readSyncMeta();
-  const pendingOperations = await readPendingOperations();
   const config = await loadConfig();
   let remote = null;
   let remoteError = "";
   if (config && getSession()) {
     try {
-      remote = await fetchRemoteSnapshot();
+      remote = await fetchRemoteState();
     } catch (error) {
       remoteError = error?.message || String(error);
     }
@@ -149,13 +147,13 @@ export async function getStorageDiagnostics() {
     retentionPolicy: config?.retentionPolicy || "",
     localBytes: jsonSize(local),
     localUpdatedAt: meta.locallyUpdatedAt || "",
-    localCursor: Number(meta.cursor || 0),
-    pendingOperationCount: pendingOperations.length,
-    ...rowSync.getDiagnostics(),
+    localRevision: meta.remoteRevision ?? null,
+    localDirty: Boolean(meta.dirty),
+    ...documentSync.getDiagnostics(),
     originBytes: Number(estimate.usage || 0),
     originQuotaBytes: Number(estimate.quota || 0),
-    remoteBytes: jsonSize(remote?.records),
-    remoteCursor: remote?.cursor ?? null,
+    remoteBytes: jsonSize(remote?.payload),
+    remoteRevision: remote?.revision ?? null,
     remoteUpdatedAt: remote?.updated_at || "",
     remoteError,
   };
@@ -198,7 +196,7 @@ export async function signUp(email, password) {
 }
 
 export async function signOut() {
-  rowSync.stop();
+  documentSync.stop();
   const activeSession = getSession();
   saveSession(null);
   emitStatus({ state: "signed-out", email: "", message: "" });
@@ -208,20 +206,20 @@ export async function signOut() {
 }
 
 export async function synchronizePrivateState() {
-  return rowSync.synchronize(true);
+  return documentSync.synchronize(true);
 }
 
 export async function resolveSyncConflict(choice) {
-  const value = await rowSync.resolve(choice);
+  const value = await documentSync.resolve(choice);
   if (value) notifyRemoteChange(value);
   return value;
 }
 
-globalThis.addEventListener?.("online", () => rowSync.queueSynchronization());
+globalThis.addEventListener?.("online", () => documentSync.queueSynchronization());
 globalThis.addEventListener?.("offline", () => emitStatus({ state: "offline", message: "" }));
 
 globalThis.addEventListener?.("focus", () => {
-  rowSync.queueSynchronization(true).catch((error) => {
+  documentSync.queueSynchronization(true).catch((error) => {
     if (!isNetworkError(error)) console.warn("Unable to refresh synchronized data", error);
   });
 });

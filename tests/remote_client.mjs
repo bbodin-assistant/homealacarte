@@ -38,34 +38,17 @@ const authenticated = createRemoteClient({
   historyRef: { replaceState: () => {} },
   fetchFn: async (url, options) => {
     requests.push({ url, options });
-    return { ok: true, text: async () => JSON.stringify({ records: [], applied: [], cursor: 0 }) };
+    return { ok: true, text: async () => JSON.stringify({ status: "applied", payload: {}, revision: 1 }) };
   },
 });
-await authenticated.fetchRemoteSnapshot();
-await authenticated.applyRemoteOperations([{
-  operationId: "operation-1",
-  operation: "upsert",
-  entityType: "items",
-  entityId: "rice",
-  position: 0,
-  payload: { key: "rice" },
-  expectedVersion: 0,
-}]);
-await authenticated.fetchRemoteChanges(4);
-await authenticated.deleteLegacyState();
-assert.match(requests[0].url, /rest\/v1\/rpc\/get_household_sync_snapshot$/);
-assert.match(requests[1].url, /rest\/v1\/rpc\/apply_household_sync_operations$/);
-assert.deepEqual(JSON.parse(requests[1].options.body).operations[0], {
-  operation_id: "operation-1",
-  operation: "upsert",
-  entity_type: "items",
-  entity_id: "rice",
-  position: 0,
-  payload: { key: "rice" },
-  expected_version: 0,
+await authenticated.fetchRemoteState();
+await authenticated.saveRemoteState({ version: 12 }, 4);
+assert.match(requests[0].url, /rest\/v1\/rpc\/get_household_state$/);
+assert.match(requests[1].url, /rest\/v1\/rpc\/save_household_state$/);
+assert.deepEqual(JSON.parse(requests[1].options.body), {
+  new_payload: { version: 12 },
+  expected_revision: 4,
 });
-assert.match(requests[2].url, /household_changes.*change_id=gt\.4/);
-assert.equal(requests[3].options.method, "DELETE");
 
 const timeoutValues = new Map([["homealacarte-supabase-session", JSON.stringify({
   access_token: "header.payload.signature",
@@ -92,11 +75,11 @@ const timeoutClient = createRemoteClient({
     }, { once: true });
   }),
 });
-await assert.rejects(timeoutClient.fetchRemoteSnapshot(), (error) => {
+await assert.rejects(timeoutClient.fetchRemoteState(), (error) => {
   assert.equal(error.name, "TimeoutError");
   assert.match(
     error.message,
-    /Request timed out after 1ms: POST \/rest\/v1\/rpc\/get_household_sync_snapshot/,
+    /Request timed out after 1ms: POST \/rest\/v1\/rpc\/get_household_state/,
   );
   assert.equal(timeoutClient.isNetworkError(error), true);
   return true;

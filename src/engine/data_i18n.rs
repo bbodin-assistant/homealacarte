@@ -2,7 +2,7 @@ use crate::loader::load_dataset;
 use crate::model::*;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashSet};
 
 pub(super) fn is_language_tag(value: &str) -> bool {
     let mut parts = value.split('-');
@@ -56,10 +56,7 @@ fn localize_sources(sources: &[SourceFile], language: &str) -> Result<Vec<Source
                     let Some(rows) = section_value.as_array_mut() else {
                         continue;
                     };
-                    for (index, row) in rows.iter_mut().enumerate() {
-                        if section == "menu" && contains_localized_value(row) {
-                            ensure_localized_menu_id(row, &source.path, index);
-                        }
+                    for row in rows.iter_mut() {
                         if section == "items" {
                             if let Some(category) = row
                                 .as_object_mut()
@@ -151,35 +148,6 @@ fn resolve_localized_value(value: &mut Value, language: &str) {
         }
         _ => {}
     }
-}
-
-fn ensure_localized_menu_id(row: &mut Value, path: &str, index: usize) {
-    let Some(object) = row.as_object_mut() else {
-        return;
-    };
-    if object
-        .get("id")
-        .and_then(Value::as_str)
-        .is_some_and(|id| !id.trim().is_empty())
-    {
-        return;
-    }
-    let raw = Value::Object(object.clone()).to_string();
-    let mut hasher = Sha256::new();
-    hasher.update(path.as_bytes());
-    hasher.update([0]);
-    hasher.update(index.to_le_bytes());
-    hasher.update([0]);
-    hasher.update(raw.as_bytes());
-    let digest = hasher.finalize();
-    let id = format!(
-        "menu_i18n_{}",
-        digest[..12]
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect::<String>()
-    );
-    object.insert("id".to_string(), Value::String(id));
 }
 
 fn choose_text(current: &str, source_current: &str, source_target: &str) -> String {
@@ -348,21 +316,24 @@ fn merge_menu(
     source_current: &[MenuRow],
     source_target: &[MenuRow],
 ) -> Result<Vec<MenuRow>, String> {
-    let source_current = source_current
-        .iter()
-        .map(|row| (row.id.as_str(), row))
-        .collect::<HashMap<_, _>>();
-    let source_target = source_target
-        .iter()
-        .map(|row| (row.id.as_str(), row))
-        .collect::<HashMap<_, _>>();
+    let mut used = vec![false; source_current.len()];
     current
         .iter()
         .map(|row| {
             let mut next = row.clone();
-            if let (Some(source_current), Some(source_target)) =
-                (source_current.get(row.id.as_str()), source_target.get(row.id.as_str()))
-            {
+            let matching_index = source_current.iter().enumerate().position(|(index, source)| {
+                !used[index]
+                    && row.date == source.date
+                    && row.day == source.day
+                    && row.meal == source.meal
+                    && row.item_key == source.item_key
+                    && row.people == source.people
+                    && row.quantity == source.quantity
+            });
+            if let Some(index) = matching_index {
+                used[index] = true;
+                let source_current = &source_current[index];
+                let source_target = &source_target[index];
                 next.notes = choose_text(
                     &row.notes,
                     &source_current.notes,
@@ -488,11 +459,42 @@ pub(super) fn merge_runtime_dataset(
 
 fn row_identity(section: &str, row: &Value) -> Option<String> {
     let field = match section {
-        "menu" => "id",
+        "menu" => return None,
         "stock" | "extra_needs" => "item_key",
         _ => "key",
     };
     row.get(field)?.as_str().map(str::to_string)
+}
+
+fn menu_row_identity(row: &Value) -> Option<String> {
+    let row = row.as_object()?;
+    let fallback = crate::locale::fallback_locale();
+    let day_value = row.get("day")?;
+    let day_text = localized_string(day_value, &fallback)
+        .or_else(|| day_value.as_str().map(str::to_string))?;
+    let day = crate::locale::day_key(&day_text).unwrap_or(day_text);
+    let meal_value = row.get("meal")?;
+    let meal_text = localized_string(meal_value, &fallback)
+        .or_else(|| meal_value.as_str().map(str::to_string))?;
+    let meal = crate::locale::meal_key(&meal_text).unwrap_or(meal_text);
+    let people = row.get("people").cloned().or_else(|| {
+        row.get("person")
+            .cloned()
+            .map(|person| Value::Array(vec![person]))
+    })?;
+    let quantity = row
+        .get("quantity")
+        .or_else(|| row.get("portions"))?
+        .as_f64()?;
+    Some(format!(
+        "{}\0{}\0{}\0{}\0{}\0{:016x}",
+        row.get("date").and_then(Value::as_str).unwrap_or_default(),
+        day,
+        meal,
+        row.get("item_key").and_then(Value::as_str)?,
+        people,
+        quantity.to_bits(),
+    ))
 }
 
 fn restore_localized_fields(template: &Value, current: &mut Value, language: &str) {
@@ -527,6 +529,7 @@ pub(super) fn rehydrate_localized_data(
     if sources.is_empty() {
         return Ok(());
     }
+    let mut matched_menu_rows = HashSet::new();
     for source in sources {
         let value: Value = serde_json::from_str(&source.content)
             .map_err(|error| format!("{}: invalid JSON: {error}", source.path))?;
@@ -540,13 +543,17 @@ pub(super) fn rehydrate_localized_data(
             let Some(exported_rows) = exported.get_mut(section).and_then(Value::as_array_mut) else {
                 continue;
             };
-            for (index, source_row) in source_rows.iter().enumerate() {
+            for source_row in source_rows {
                 if !contains_localized_value(source_row) {
                     continue;
                 }
                 let mut template = source_row.clone();
+                let menu_identity = if section == "menu" {
+                    menu_row_identity(&template)
+                } else {
+                    None
+                };
                 if section == "menu" {
-                    ensure_localized_menu_id(&mut template, &source.path, index);
                     if let Some(menu) = template.as_object_mut() {
                         menu.remove("day");
                         menu.remove("meal");
@@ -556,14 +563,32 @@ pub(super) fn rehydrate_localized_data(
                         item.remove("category");
                     }
                 }
-                let Some(identity) = row_identity(section, &template) else {
-                    continue;
-                };
-                let Some(current) = exported_rows
-                    .iter_mut()
-                    .find(|row| row_identity(section, row).as_deref() == Some(identity.as_str()))
-                else {
-                    continue;
+                let current = if section == "menu" {
+                    let Some(identity) = menu_identity else {
+                        continue;
+                    };
+                    let Some((current_index, current)) = exported_rows
+                        .iter_mut()
+                        .enumerate()
+                        .find(|(current_index, row)| {
+                            !matched_menu_rows.contains(current_index)
+                                && menu_row_identity(row).as_deref() == Some(identity.as_str())
+                        })
+                    else {
+                        continue;
+                    };
+                    matched_menu_rows.insert(current_index);
+                    current
+                } else {
+                    let Some(identity) = row_identity(section, &template) else {
+                        continue;
+                    };
+                    let Some(current) = exported_rows.iter_mut().find(|row| {
+                        row_identity(section, row).as_deref() == Some(identity.as_str())
+                    }) else {
+                        continue;
+                    };
+                    current
                 };
                 restore_localized_fields(&template, current, language);
             }

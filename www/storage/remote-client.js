@@ -191,56 +191,20 @@ export function createRemoteClient({
   }
 
   async function fetchRemoteState() {
-    const activeSession = await ensureSession();
-    if (!activeSession?.user?.id) return null;
-    const rows = await restRequest(
-      `household_state?user_id=eq.${encodeURIComponent(activeSession.user.id)}&select=payload,revision,updated_at`,
-    );
-    return rows?.[0] || null;
-  }
-
-  async function deleteLegacyState() {
-    const activeSession = await ensureSession();
-    if (!activeSession?.user?.id) return;
-    await restRequest(
-      `household_state?user_id=eq.${encodeURIComponent(activeSession.user.id)}`,
-      { method: "DELETE", headers: { Prefer: "return=minimal" } },
-    );
-  }
-
-  async function fetchRemoteSnapshot() {
-    return restRequest("rpc/get_household_sync_snapshot", {
+    return restRequest("rpc/get_household_state", {
       method: "POST",
       body: "{}",
       timeoutMs: syncRequestTimeoutMs,
     });
   }
 
-  async function fetchRemoteChanges(cursor) {
-    const activeSession = await ensureSession();
-    if (!activeSession?.user?.id) return [];
-    return restRequest(
-      "household_changes"
-        + `?user_id=eq.${encodeURIComponent(activeSession.user.id)}`
-        + `&change_id=gt.${encodeURIComponent(Number(cursor || 0))}`
-        + "&select=change_id,entity_type,entity_id,operation,position,payload,record_version"
-        + "&order=change_id.asc&limit=1000",
-    );
-  }
-
-  async function applyRemoteOperations(operations) {
-    const rows = operations.map((operation) => ({
-      operation_id: operation.operationId,
-      operation: operation.operation,
-      entity_type: operation.entityType,
-      entity_id: operation.entityId,
-      position: operation.position || 0,
-      payload: operation.operation === "upsert" ? operation.payload : null,
-      expected_version: Number(operation.expectedVersion || 0),
-    }));
-    return restRequest("rpc/apply_household_sync_operations", {
+  async function saveRemoteState(payload, expectedRevision) {
+    return restRequest("rpc/save_household_state", {
       method: "POST",
-      body: JSON.stringify({ operations: rows }),
+      body: JSON.stringify({
+        new_payload: payload,
+        expected_revision: expectedRevision,
+      }),
       timeoutMs: syncRequestTimeoutMs,
     });
   }
@@ -267,19 +231,16 @@ export function createRemoteClient({
   }
 
   return {
-    applyRemoteOperations,
     authRequest,
-    deleteLegacyState,
     ensureSession,
     fetchRemoteState,
-    fetchRemoteChanges,
-    fetchRemoteSnapshot,
     getSession,
     isNetworkError,
     loadConfig,
     normalizeSession,
     restRequest,
     saveSession,
+    saveRemoteState,
     touchAccountActivity,
   };
 }

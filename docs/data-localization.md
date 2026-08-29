@@ -33,4 +33,4 @@ Localized name edits are merged into the existing locale map. Untouched locale k
 
 Exports preserve untouched localized objects and the merged locale maps produced by localized edits, so saving or synchronizing data does not silently discard translations that were not edited.
 
-Localized menu rows without an explicit `id` receive a stable generated ID before localization so switching languages does not change their synchronization identity. Supplying explicit stable menu IDs is still recommended for long-lived synchronized data.
+Localized menu rows are matched by their stable scheduling fields while changing language. Synchronization identity is not stored in portable menu data; the server versions the complete household document.

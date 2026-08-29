@@ -114,7 +114,6 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
         french.custom_grocery[0].notes.as_deref(),
         Some("Acheter cette semaine")
     );
-    let menu_id = french.planner[0].id.clone();
     let source_hash = french.source_hash.clone();
 
     let mut edited = item(&french, "tomato").clone();
@@ -133,7 +132,6 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
     assert_eq!(english.household_items[0].name, "Hand soap");
     assert_eq!(english.people[0].name, "Alex");
     assert_eq!(english.people[0].description, "Synthetic profile");
-    assert_eq!(english.planner[0].id, menu_id);
     assert_eq!(english.planner[0].day, "Monday");
     assert_eq!(english.planner[0].meal, "Dinner");
     assert_eq!(english.planner[0].notes, "Serve cold");
@@ -158,7 +156,7 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
     assert_eq!(exported["menu"][0]["notes"]["en"], "Serve cold");
     assert_eq!(exported["menu"][0]["notes"]["fr"], "Servir froid");
     assert_eq!(exported["menu"][0]["notes"]["es"], "Servir frío");
-    assert_eq!(exported["menu"][0]["id"], menu_id);
+    assert!(exported["menu"][0].get("id").is_none());
     assert_eq!(exported["menu"][0]["day"], "monday");
     assert_eq!(exported["menu"][0]["meal"], "dinner");
 }

@@ -158,35 +158,31 @@ HTML + CSS + JavaScript
           |
  validation · planning · PDF
 
-IndexedDB rows/outbox <-> optional Supabase/Postgres row sync
+IndexedDB document <-> optional versioned Supabase/Postgres document
 ```
 
-### Relational synchronization
+### Server-coordinated synchronization
 
-JSON is the portable import/export format, but it is not sent as one mutable
-server document. Private data is decomposed into versioned domain rows for
-items, dishes, people, menu entries, stock, and extra needs. IndexedDB keeps a
-matching row cache, a durable operation outbox, and the last applied server
-cursor. Supabase applies idempotent operation batches and exposes an ordered
-change log, so devices transfer only records that changed.
+JSON is both the portable import/export format and the synchronization boundary.
+IndexedDB keeps an offline household document while Supabase stores one
+server-versioned document per account. An atomic database function serializes
+writes and applies compare-and-set revision checks, so identity and concurrency
+control stay on the server instead of leaking generated IDs into menu data.
 
 Run [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor
-before deploying a build that uses row synchronization. On the first signed-in
-startup, the browser converts an existing local IndexedDB document or legacy
-`household_state` payload into rows, uploads them, and removes the legacy online
-document after the row migration succeeds. Existing JSON files remain valid;
-menu entries without an `id` receive one during loading and later exports
-preserve it.
+before deploying a build that uses document synchronization. The schema
+idempotently folds an existing relational replica into `household_state`, and
+the browser likewise converts an existing IndexedDB row replica back into a
+document. Legacy menu `id` fields are accepted but removed during normalization
+and are never emitted by current exports.
 
-Concurrent edits to different records merge automatically. Concurrent edits to
-the same record use its individual version and present the existing local/online
-choice without discarding unrelated changes. All save, poll, focus, reconnect,
-and manual requests pass through one coalescing synchronization queue. A cursor
-poll runs about every 30 seconds while the page is visible; focus and reconnect
-also request a sync. Actual remote mutations are rehydrated into the existing
-worker without reloading the page or writing the same snapshot back to the
-outbox. JSON objects are compared semantically, and ordering is synchronized
-only for entities where it is meaningful (`people` and `menu`).
+Concurrent writes use the document revision and present the existing
+local/online choice when both devices changed. All save, poll, focus, reconnect,
+and manual requests pass through one coalescing synchronization queue. The
+server document is checked about every 30 seconds while the page is visible;
+focus and reconnect also request a sync. Remote updates are rehydrated into the
+existing worker without reloading the page, and JSON objects are compared
+semantically so property ordering cannot create false conflicts.
 
 The IndexedDB replica records its owning account. If a different account signs
 in on the same browser profile, synchronization and local writes stop with an

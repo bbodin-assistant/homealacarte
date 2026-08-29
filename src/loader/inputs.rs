@@ -169,8 +169,6 @@ pub(crate) struct ComponentInput {
 #[derive(Debug, Clone, Deserialize)]
 pub struct MenuInput {
     #[serde(default)]
-    pub id: Option<String>,
-    #[serde(default)]
     pub date: String,
     pub day: String,
     pub meal: String,

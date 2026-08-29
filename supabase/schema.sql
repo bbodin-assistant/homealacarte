@@ -11,8 +11,8 @@ create table if not exists public.household_state (
     updated_at timestamptz not null default now()
 );
 
--- Incremental household synchronization. JSON remains the import/export
--- envelope, while each editable domain record has its own versioned row.
+-- Legacy incremental synchronization tables. The migration near the document
+-- RPCs below folds these rows into household_state and revokes browser access.
 create table if not exists public.household_records (
     user_id uuid not null references auth.users(id) on delete cascade,
     entity_type text not null check (
@@ -193,7 +193,7 @@ revoke all on table public.account_lifecycle from anon;
 revoke all on table public.privacy_requests from anon;
 revoke all on table public.account_lifecycle from authenticated;
 revoke all on table public.privacy_requests from authenticated;
-grant select, insert, update, delete on table public.household_state to authenticated;
+revoke all on table public.household_state from authenticated;
 revoke all on table public.household_records from authenticated;
 revoke all on table public.household_changes from authenticated;
 revoke all on table public.household_sync_operations from authenticated;
@@ -718,6 +718,223 @@ $$;
 
 revoke all on function public.apply_household_sync_operations(jsonb) from public;
 grant execute on function public.apply_household_sync_operations(jsonb) to authenticated;
+
+-- Document synchronization supersedes the per-entity row protocol. Identity
+-- and revision control live in Postgres; portable JSON no longer carries menu
+-- synchronization IDs. The legacy row tables remain only long enough for this
+-- idempotent migration when upgrading an existing installation.
+create or replace function public.household_document_from_rows(target_user_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+    with grouped as (
+        select
+            coalesce(
+                jsonb_agg(records.payload order by records.position, records.entity_id)
+                    filter (where records.entity_type = 'items'),
+                '[]'::jsonb
+            ) as items,
+            coalesce(
+                jsonb_agg(records.payload order by records.position, records.entity_id)
+                    filter (where records.entity_type = 'dishes'),
+                '[]'::jsonb
+            ) as dishes,
+            coalesce(
+                jsonb_agg(records.payload order by records.position, records.entity_id)
+                    filter (where records.entity_type = 'people'),
+                '[]'::jsonb
+            ) as people,
+            coalesce(
+                jsonb_agg(records.payload - 'id' order by records.position, records.entity_id)
+                    filter (where records.entity_type = 'menu'),
+                '[]'::jsonb
+            ) as menu,
+            coalesce(
+                jsonb_agg(records.payload order by records.position, records.entity_id)
+                    filter (where records.entity_type = 'stock'),
+                '[]'::jsonb
+            ) as stock,
+            coalesce(
+                jsonb_agg(records.payload order by records.position, records.entity_id)
+                    filter (where records.entity_type = 'extra_needs'),
+                '[]'::jsonb
+            ) as extra_needs,
+            coalesce(
+                (jsonb_agg(records.payload order by records.entity_id)
+                    filter (where records.entity_type = 'app')) -> 0,
+                '{}'::jsonb
+            ) as settings
+        from public.household_records records
+        where records.user_id = target_user_id
+    ), document as (
+        select jsonb_build_object(
+            'items', items,
+            'dishes', dishes,
+            'people', people,
+            'menu', menu,
+            'stock', stock,
+            'extra_needs', extra_needs
+        ) as value, settings
+        from grouped
+    )
+    select jsonb_build_object(
+        'version', coalesce((settings ->> 'version')::integer, 12),
+        'language', coalesce(settings ->> 'language', ''),
+        'sources', jsonb_build_array(jsonb_build_object(
+            'path', 'homealacarte_data.json',
+            'content', jsonb_pretty(value) || E'\n'
+        )),
+        'people', null,
+        'menu', null,
+        'stock', null,
+        'customGrocery', null
+    )
+    from document;
+$$;
+
+revoke all on function public.household_document_from_rows(uuid) from public;
+
+-- Prefer the relational replica during the one-time upgrade because it was
+-- the active protocol in the immediately preceding release.
+insert into public.household_state (user_id, payload, revision, updated_at)
+select
+    owners.user_id,
+    public.household_document_from_rows(owners.user_id),
+    1,
+    now()
+from (
+    select distinct records.user_id
+    from public.household_records records
+) owners
+on conflict (user_id) do update
+set payload = excluded.payload,
+    revision = public.household_state.revision + 1,
+    updated_at = now();
+
+-- Remove migrated row replicas so there is exactly one online authority.
+delete from public.household_records records
+where exists (
+    select 1 from public.household_state state
+    where state.user_id = records.user_id
+);
+delete from public.household_changes changes
+where exists (
+    select 1 from public.household_state state
+    where state.user_id = changes.user_id
+);
+delete from public.household_sync_operations operations
+where exists (
+    select 1 from public.household_state state
+    where state.user_id = operations.user_id
+);
+
+revoke all on function public.get_household_sync_snapshot() from authenticated;
+revoke all on function public.apply_household_sync_operations(jsonb) from authenticated;
+revoke all on table public.household_records from authenticated;
+revoke all on table public.household_changes from authenticated;
+
+create or replace function public.get_household_state()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    current_user_id uuid := auth.uid();
+    current_state public.household_state%rowtype;
+begin
+    if current_user_id is null then
+        raise exception 'authentication required';
+    end if;
+
+    select * into current_state
+    from public.household_state state
+    where state.user_id = current_user_id;
+
+    if not found then
+        return null;
+    end if;
+    return jsonb_build_object(
+        'payload', current_state.payload,
+        'revision', current_state.revision,
+        'updated_at', current_state.updated_at
+    );
+end;
+$$;
+
+revoke all on function public.get_household_state() from public;
+grant execute on function public.get_household_state() to authenticated;
+
+create or replace function public.save_household_state(
+    new_payload jsonb,
+    expected_revision bigint default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    current_user_id uuid := auth.uid();
+    current_state public.household_state%rowtype;
+begin
+    if current_user_id is null then
+        raise exception 'authentication required';
+    end if;
+    if new_payload is null or jsonb_typeof(new_payload) <> 'object' then
+        raise exception 'household payload must be an object';
+    end if;
+
+    perform pg_advisory_xact_lock(hashtextextended(current_user_id::text, 0));
+    select * into current_state
+    from public.household_state state
+    where state.user_id = current_user_id
+    for update;
+
+    if found and expected_revision is distinct from current_state.revision then
+        return jsonb_build_object(
+            'status', 'conflict',
+            'payload', current_state.payload,
+            'revision', current_state.revision,
+            'updated_at', current_state.updated_at
+        );
+    elsif not found and coalesce(expected_revision, 0) <> 0 then
+        return jsonb_build_object(
+            'status', 'conflict',
+            'payload', null,
+            'revision', 0,
+            'updated_at', null
+        );
+    elsif found then
+        update public.household_state state
+        set payload = new_payload,
+            revision = state.revision + 1,
+            updated_at = now()
+        where state.user_id = current_user_id
+        returning * into current_state;
+    else
+        insert into public.household_state (user_id, payload, revision)
+        values (current_user_id, new_payload, 1)
+        returning * into current_state;
+    end if;
+
+    update public.account_lifecycle
+    set last_active_at = now()
+    where user_id = current_user_id;
+    return jsonb_build_object(
+        'status', 'applied',
+        'payload', current_state.payload,
+        'revision', current_state.revision,
+        'updated_at', current_state.updated_at
+    );
+end;
+$$;
+
+revoke all on function public.save_household_state(jsonb, bigint) from public;
+grant execute on function public.save_household_state(jsonb, bigint) to authenticated;
 
 drop policy if exists "privacy_requests_select_own" on public.privacy_requests;
 create policy "privacy_requests_select_own"

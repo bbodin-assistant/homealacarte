@@ -1,7 +1,6 @@
 use crate::locale;
 use crate::model::{FoodRule, MenuRow};
 use super::inputs::MenuInput;
-use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
 pub(crate) const FOOD_RULE_MEALS: [&str; 8] = [
@@ -160,7 +159,6 @@ pub(crate) fn normalize_menu(
     default_person: Option<&str>,
 ) -> Result<Vec<MenuRow>, String> {
     let mut rows = Vec::new();
-    let mut row_ids = HashSet::new();
     for (index, input) in inputs.into_iter().enumerate() {
         if !valid_items.contains(input.item_key.trim()) {
             return Err(format!(
@@ -218,35 +216,7 @@ pub(crate) fn normalize_menu(
         let meal = locale::meal_key(&input.meal)
             .ok_or_else(|| format!("menu item {} has an unknown meal: {}", index + 1, input.meal))?;
         let date = input.date.trim().to_string();
-        let supplied_id = input.id.unwrap_or_default().trim().to_string();
-        let id = if supplied_id.is_empty() {
-            let identity = serde_json::json!({
-                "date": date,
-                "day": day,
-                "meal": meal,
-                "item_key": input.item_key,
-                "people": people,
-                "quantity": quantity,
-                "quantity_unit": unit,
-                "notes": input.notes,
-                "occurrence": index,
-            });
-            let digest = Sha256::digest(identity.to_string().as_bytes());
-            format!(
-                "menu_{}",
-                digest[..12]
-                    .iter()
-                    .map(|byte| format!("{byte:02x}"))
-                    .collect::<String>()
-            )
-        } else {
-            supplied_id
-        };
-        if !row_ids.insert(id.clone()) {
-            return Err(format!("menu item {} has a duplicate id: {id}", index + 1));
-        }
         rows.push(MenuRow {
-            id,
             date,
             day,
             meal,
@@ -295,7 +265,6 @@ mod tests {
 
     fn row(date: &str, people: &[&str], quantity: f64, notes: &str) -> MenuRow {
         MenuRow {
-            id: String::new(),
             date: date.to_string(),
             day: "Monday".to_string(),
             meal: "Dinner".to_string(),

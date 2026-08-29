@@ -172,7 +172,6 @@ Rules:
 
 ```json
 {
-  "id": "menu_entry_stable_id",
   "date": "2026-08-17",
   "day": "monday",
   "meal": "dinner",
@@ -186,9 +185,8 @@ Rules:
 
 Rules:
 
-- `id` is optional on import. Home à la Carte assigns one when absent and preserves it on export for incremental synchronization.
 - `date` is optional for backward-compatible imports, but agents generating current menus should provide the calendar date in `YYYY-MM-DD` form and keep `day` consistent with it.
-- `date` is part of menu-row identity: otherwise-compatible rows on different dates remain separate.
+- Do not add synchronization IDs. Menu rows stay portable data; online synchronization versions the complete household document on the server.
 - `day` is a semantic code: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, or `sunday`.
 - `meal` is a semantic code: `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, or `anytime`.
 - Do not translate `day` or `meal` in menu data. Home à la Carte translates these shared concepts for display.

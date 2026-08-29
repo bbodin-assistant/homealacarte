@@ -1,41 +1,32 @@
-import {
-  normalizeRemoteRecord,
-  privateStateToRecords,
-  recordsToPrivateState,
-  sameJsonValue,
-  sameRecordContent,
-} from "./row-codec.js?v=homealacarte-99";
+import { normalizePrivateState, sameJsonValue } from "./document-codec.js?v=homealacarte-105";
+import { legacyRowsToPrivateState } from "./row-migration.js?v=homealacarte-105";
 
 const DB_NAME = "homealacarte-private";
 const DB_VERSION = 2;
-const LEGACY_STORE = "state";
-const LEGACY_ACTIVE_KEY = "active";
-const LEGACY_META_KEY = "sync-meta";
+const DOCUMENT_STORE = "state";
+const ACTIVE_KEY = "active";
+const DOCUMENT_META_KEY = "sync-meta";
 const RECORDS_STORE = "records";
 const OUTBOX_STORE = "outbox";
-const META_STORE = "metadata";
-const SYNC_META_KEY = "sync";
+const ROW_META_STORE = "metadata";
+const ROW_META_KEY = "sync";
 
 let writeChain = Promise.resolve();
-
-function operationId() {
-  return globalThis.crypto?.randomUUID?.()
-    || `op_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
-}
+let migrationPromise = null;
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const database = request.result;
-      if (!database.objectStoreNames.contains(LEGACY_STORE)) database.createObjectStore(LEGACY_STORE);
+      if (!database.objectStoreNames.contains(DOCUMENT_STORE)) database.createObjectStore(DOCUMENT_STORE);
       if (!database.objectStoreNames.contains(RECORDS_STORE)) {
         database.createObjectStore(RECORDS_STORE, { keyPath: "recordKey" });
       }
       if (!database.objectStoreNames.contains(OUTBOX_STORE)) {
         database.createObjectStore(OUTBOX_STORE, { keyPath: "recordKey" });
       }
-      if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE);
+      if (!database.objectStoreNames.contains(ROW_META_STORE)) database.createObjectStore(ROW_META_STORE);
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -57,31 +48,21 @@ function transactionDone(transaction) {
   });
 }
 
-async function readStores(storeNames) {
-  const database = await openDatabase();
-  try {
-    const transaction = database.transaction(storeNames, "readonly");
-    const completed = transactionDone(transaction);
-    const values = await Promise.all(storeNames.map((name) => {
-      const store = transaction.objectStore(name);
-      return requestValue(name === META_STORE ? store.get(SYNC_META_KEY) : store.getAll());
-    }));
-    await completed;
-    return Object.fromEntries(storeNames.map((name, index) => [name, values[index]]));
-  } finally {
-    database.close();
-  }
+function enqueueWrite(operation) {
+  const next = writeChain.then(operation, operation);
+  writeChain = next.catch(() => {});
+  return next;
 }
 
-async function readLegacy() {
+async function readDocumentEntries() {
   const database = await openDatabase();
   try {
-    const transaction = database.transaction(LEGACY_STORE, "readonly");
+    const transaction = database.transaction(DOCUMENT_STORE, "readonly");
     const completed = transactionDone(transaction);
-    const store = transaction.objectStore(LEGACY_STORE);
+    const store = transaction.objectStore(DOCUMENT_STORE);
     const [value, meta] = await Promise.all([
-      requestValue(store.get(LEGACY_ACTIVE_KEY)),
-      requestValue(store.get(LEGACY_META_KEY)),
+      requestValue(store.get(ACTIVE_KEY)),
+      requestValue(store.get(DOCUMENT_META_KEY)),
     ]);
     await completed;
     return { value, meta: meta || {} };
@@ -90,314 +71,128 @@ async function readLegacy() {
   }
 }
 
-function enqueueWrite(operation) {
-  const next = writeChain.then(operation, operation);
-  writeChain = next.catch(() => {});
-  return next;
-}
-
-async function writeStateNow(value, metaPatch = {}) {
-  const desired = privateStateToRecords(value);
-  const currentState = await readStores([RECORDS_STORE, OUTBOX_STORE, META_STORE]);
-  const current = new Map(currentState[RECORDS_STORE].map((row) => [row.recordKey, row]));
-  const outbox = new Map(currentState[OUTBOX_STORE].map((row) => [row.recordKey, row]));
-  const desiredKeys = new Set(desired.map((row) => row.recordKey));
-  const puts = [];
-  const deletes = [];
-
-  for (const row of desired) {
-    const existing = current.get(row.recordKey);
-    if (existing && sameRecordContent(existing, row)) continue;
-    const pending = outbox.get(row.recordKey);
-    const nextRow = { ...row, version: Number(existing?.version || 0) };
-    puts.push({ row: nextRow, operation: {
-      recordKey: row.recordKey,
-      operationId: pending?.operationId || operationId(),
-      operation: "upsert",
-      entityType: row.entityType,
-      entityId: row.entityId,
-      position: row.position,
-      payload: row.payload,
-      expectedVersion: Number(pending?.expectedVersion ?? existing?.version ?? 0),
-      createdAt: pending?.createdAt || new Date().toISOString(),
-    } });
-  }
-
-  for (const existing of current.values()) {
-    if (desiredKeys.has(existing.recordKey)) continue;
-    const pending = outbox.get(existing.recordKey);
-    if (pending?.operation === "upsert" && Number(pending.expectedVersion) === 0) {
-      deletes.push({ recordKey: existing.recordKey, cancelPending: true });
-    } else {
-      deletes.push({ recordKey: existing.recordKey, operation: {
-        recordKey: existing.recordKey,
-        operationId: pending?.operationId || operationId(),
-        operation: "delete",
-        entityType: existing.entityType,
-        entityId: existing.entityId,
-        expectedVersion: Number(pending?.expectedVersion ?? existing.version ?? 0),
-        createdAt: pending?.createdAt || new Date().toISOString(),
-      } });
-    }
-  }
-
-  if (!puts.length && !deletes.length) return { changed: false, pending: outbox.size };
+async function migrateRelationalReplica() {
+  const existing = await readDocumentEntries();
+  if (existing.value !== undefined) return;
   const database = await openDatabase();
+  let records;
+  let outbox;
+  let rowMeta;
   try {
     const transaction = database.transaction(
-      [RECORDS_STORE, OUTBOX_STORE, META_STORE, LEGACY_STORE],
-      "readwrite",
+      [RECORDS_STORE, OUTBOX_STORE, ROW_META_STORE],
+      "readonly",
     );
     const completed = transactionDone(transaction);
-    const recordsStore = transaction.objectStore(RECORDS_STORE);
-    const outboxStore = transaction.objectStore(OUTBOX_STORE);
-    puts.forEach(({ row, operation }) => {
-      recordsStore.put(row);
-      outboxStore.put(operation);
-    });
-    deletes.forEach(({ recordKey, operation, cancelPending }) => {
-      recordsStore.delete(recordKey);
-      if (cancelPending) outboxStore.delete(recordKey);
-      else outboxStore.put(operation);
-    });
-    const pendingCount = outbox.size
-      + puts.filter(({ row }) => !outbox.has(row.recordKey)).length
-      + deletes.filter(({ recordKey, operation }) => operation && !outbox.has(recordKey)).length
-      - deletes.filter(({ cancelPending }) => cancelPending).length;
-    transaction.objectStore(META_STORE).put({
-      ...(currentState[META_STORE] || {}),
-      ...metaPatch,
-      dirty: pendingCount > 0,
-      locallyUpdatedAt: new Date().toISOString(),
-    }, SYNC_META_KEY);
-    transaction.objectStore(LEGACY_STORE).delete(LEGACY_ACTIVE_KEY);
-    transaction.objectStore(LEGACY_STORE).delete(LEGACY_META_KEY);
+    [records, outbox, rowMeta] = await Promise.all([
+      requestValue(transaction.objectStore(RECORDS_STORE).getAll()),
+      requestValue(transaction.objectStore(OUTBOX_STORE).getAll()),
+      requestValue(transaction.objectStore(ROW_META_STORE).get(ROW_META_KEY)),
+    ]);
     await completed;
-    return { changed: true, pending: Math.max(0, pendingCount) };
   } finally {
     database.close();
   }
-}
+  if (!records.length) return;
 
-async function ensureLegacyMigrated() {
-  const { [RECORDS_STORE]: records } = await readStores([RECORDS_STORE]);
-  if (records.length) return;
-  const legacy = await readLegacy();
-  if (legacy.value !== undefined) {
-    await enqueueWrite(() => writeStateNow(legacy.value, {
-      userId: legacy.meta.userId || null,
-      legacyRemoteRevision: legacy.meta.remoteRevision ?? null,
-      legacyDirty: Boolean(legacy.meta.dirty),
-    }));
+  const value = normalizePrivateState(legacyRowsToPrivateState(records));
+  const target = await openDatabase();
+  try {
+    const transaction = target.transaction(
+      [DOCUMENT_STORE, RECORDS_STORE, OUTBOX_STORE, ROW_META_STORE],
+      "readwrite",
+    );
+    const completed = transactionDone(transaction);
+    const store = transaction.objectStore(DOCUMENT_STORE);
+    store.put(value, ACTIVE_KEY);
+    store.put({
+      userId: rowMeta?.userId || null,
+      remoteRevision: null,
+      dirty: outbox.length > 0,
+      locallyUpdatedAt: rowMeta?.locallyUpdatedAt || new Date().toISOString(),
+      migratedFromRows: true,
+    }, DOCUMENT_META_KEY);
+    transaction.objectStore(RECORDS_STORE).clear();
+    transaction.objectStore(OUTBOX_STORE).clear();
+    transaction.objectStore(ROW_META_STORE).clear();
+    await completed;
+  } finally {
+    target.close();
   }
 }
 
-export async function readLocalState() {
-  await ensureLegacyMigrated();
-  const { [RECORDS_STORE]: records } = await readStores([RECORDS_STORE]);
-  return records.length ? recordsToPrivateState(records) : undefined;
+async function ensureMigrated() {
+  if (!migrationPromise) migrationPromise = migrateRelationalReplica();
+  await migrationPromise;
 }
 
-export async function readLocalRecords() {
-  await ensureLegacyMigrated();
-  return (await readStores([RECORDS_STORE]))[RECORDS_STORE];
+async function writeStateNow(value, metaPatch = {}) {
+  await ensureMigrated();
+  const desired = normalizePrivateState(value);
+  const current = await readDocumentEntries();
+  const changed = !sameJsonValue(current.value, desired);
+  const nextMeta = {
+    ...current.meta,
+    ...metaPatch,
+    dirty: metaPatch.dirty ?? (changed || Boolean(current.meta.dirty)),
+    ...(changed ? { locallyUpdatedAt: new Date().toISOString() } : {}),
+  };
+  if (!changed && sameJsonValue(current.meta, nextMeta)) return { changed: false };
+
+  const database = await openDatabase();
+  try {
+    const transaction = database.transaction(DOCUMENT_STORE, "readwrite");
+    const completed = transactionDone(transaction);
+    const store = transaction.objectStore(DOCUMENT_STORE);
+    store.put(desired, ACTIVE_KEY);
+    store.put(nextMeta, DOCUMENT_META_KEY);
+    await completed;
+  } finally {
+    database.close();
+  }
+  return { changed };
+}
+
+export async function readLocalState() {
+  await ensureMigrated();
+  const { value } = await readDocumentEntries();
+  return value === undefined ? undefined : normalizePrivateState(value);
 }
 
 export async function readSyncMeta() {
-  await ensureLegacyMigrated();
-  return (await readStores([META_STORE]))[META_STORE] || {};
+  await ensureMigrated();
+  return (await readDocumentEntries()).meta;
 }
 
 export function writeLocalState(value, meta = {}) {
   return enqueueWrite(() => writeStateNow(value, meta));
 }
 
-export async function readPendingOperations() {
-  await ensureLegacyMigrated();
-  return (await readStores([OUTBOX_STORE]))[OUTBOX_STORE]
-    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
-}
-
-function operationMatches(left, right) {
-  return Boolean(left && right)
-    && left.operationId === right.operationId
-    && left.operation === right.operation
-    && left.position === right.position
-    && sameJsonValue(left.payload, right.payload);
-}
-
-export function classifyPendingRemote(pending, change) {
-  const remote = normalizeRemoteRecord(change);
-  const remoteOperation = change.operation || "upsert";
-  if (!pending) return "apply";
-  if (pending.operation === "delete" && remoteOperation === "delete") return "reconcile";
-  if (pending.operation === "upsert"
-    && remoteOperation === "upsert"
-    && normalizeRemoteRecord(pending).position === remote.position
-    && sameJsonValue(pending.payload, remote.payload)) {
-    return "reconcile";
-  }
-  if (remoteOperation === "upsert"
-    && remote.version === Number(pending.expectedVersion || 0)) {
-    return "keep-local";
-  }
-  return "conflict";
-}
-
-export function acknowledgeOperations(sentOperations, appliedChanges, cursor, userId) {
+export function reconcileSyncedLocalState(value, revision, userId, force = false) {
   return enqueueWrite(async () => {
-    const currentState = await readStores([RECORDS_STORE, OUTBOX_STORE, META_STORE]);
-    const pending = new Map(currentState[OUTBOX_STORE].map((row) => [row.recordKey, row]));
-    const sent = new Map(sentOperations.map((row) => [row.recordKey, row]));
+    await ensureMigrated();
+    const remote = normalizePrivateState(value);
+    const current = await readDocumentEntries();
+    const matches = current.value === undefined || sameJsonValue(current.value, remote);
+    const nextValue = force || matches ? remote : current.value;
     const database = await openDatabase();
     try {
-      const transaction = database.transaction([RECORDS_STORE, OUTBOX_STORE, META_STORE], "readwrite");
+      const transaction = database.transaction(DOCUMENT_STORE, "readwrite");
       const completed = transactionDone(transaction);
-      const recordsStore = transaction.objectStore(RECORDS_STORE);
-      const outboxStore = transaction.objectStore(OUTBOX_STORE);
-      for (const change of appliedChanges) {
-        const remote = normalizeRemoteRecord(change);
-        const currentPending = pending.get(remote.recordKey);
-        const sentOperation = sent.get(remote.recordKey);
-        if (change.operation === "delete") recordsStore.delete(remote.recordKey);
-        else if (!currentPending || operationMatches(currentPending, sentOperation)) recordsStore.put(remote);
-        else {
-          const local = currentState[RECORDS_STORE].find((row) => row.recordKey === remote.recordKey);
-          if (local) recordsStore.put({ ...local, version: remote.version });
-        }
-        if (currentPending && operationMatches(currentPending, sentOperation)) {
-          outboxStore.delete(remote.recordKey);
-          pending.delete(remote.recordKey);
-        } else if (currentPending) {
-          outboxStore.put({
-            ...currentPending,
-            operationId: operationId(),
-            expectedVersion: remote.version,
-          });
-        }
-      }
-      transaction.objectStore(META_STORE).put({
-        ...(currentState[META_STORE] || {}),
-        cursor: Number(cursor || 0),
+      const store = transaction.objectStore(DOCUMENT_STORE);
+      store.put(nextValue, ACTIVE_KEY);
+      store.put({
+        ...current.meta,
+        dirty: force ? false : !matches,
+        remoteRevision: Number(revision),
         userId,
-        dirty: pending.size > 0,
         lastSyncedAt: new Date().toISOString(),
-      }, SYNC_META_KEY);
+      }, DOCUMENT_META_KEY);
       await completed;
     } finally {
       database.close();
     }
-  });
-}
-
-export function applyRemoteChanges(changes, cursor, userId, replace = false) {
-  return enqueueWrite(async () => {
-    const currentState = await readStores([RECORDS_STORE, OUTBOX_STORE, META_STORE]);
-    const pending = new Map(currentState[OUTBOX_STORE].map((row) => [row.recordKey, row]));
-    const remoteKeys = new Set();
-    const conflicts = [];
-    const changedRecordKeys = new Set();
-    const current = new Map(currentState[RECORDS_STORE].map((row) => [row.recordKey, row]));
-    const database = await openDatabase();
-    try {
-      const transaction = database.transaction(
-        [RECORDS_STORE, OUTBOX_STORE, META_STORE],
-        "readwrite",
-      );
-      const completed = transactionDone(transaction);
-      const recordsStore = transaction.objectStore(RECORDS_STORE);
-      const outboxStore = transaction.objectStore(OUTBOX_STORE);
-      for (const change of changes) {
-        const remote = normalizeRemoteRecord(change);
-        remoteKeys.add(remote.recordKey);
-        const pendingOperation = pending.get(remote.recordKey);
-        const action = classifyPendingRemote(pendingOperation, change);
-        if (action === "reconcile") {
-          if (change.operation === "delete") {
-            if (current.has(remote.recordKey)) changedRecordKeys.add(remote.recordKey);
-            recordsStore.delete(remote.recordKey);
-          } else {
-            if (!current.has(remote.recordKey)
-              || !sameRecordContent(current.get(remote.recordKey), remote)) {
-              changedRecordKeys.add(remote.recordKey);
-            }
-            recordsStore.put(remote);
-          }
-          outboxStore.delete(remote.recordKey);
-          pending.delete(remote.recordKey);
-        } else if (action === "keep-local") {
-          continue;
-        } else if (action === "conflict") {
-          conflicts.push({ remote, operation: change.operation || "upsert" });
-        } else if (change.operation === "delete") {
-          if (current.has(remote.recordKey)) changedRecordKeys.add(remote.recordKey);
-          recordsStore.delete(remote.recordKey);
-        } else {
-          if (!current.has(remote.recordKey)
-            || !sameRecordContent(current.get(remote.recordKey), remote)) {
-            changedRecordKeys.add(remote.recordKey);
-          }
-          recordsStore.put(remote);
-        }
-      }
-      if (replace) {
-        for (const local of currentState[RECORDS_STORE]) {
-          if (!remoteKeys.has(local.recordKey) && !pending.has(local.recordKey)) {
-            changedRecordKeys.add(local.recordKey);
-            recordsStore.delete(local.recordKey);
-          }
-        }
-      }
-      transaction.objectStore(META_STORE).put({
-        ...(currentState[META_STORE] || {}),
-        cursor: Number(cursor || 0),
-        userId,
-        dirty: pending.size > 0,
-        lastSyncedAt: new Date().toISOString(),
-      }, SYNC_META_KEY);
-      await completed;
-    } finally {
-      database.close();
-    }
-    return { conflicts, changedRecordKeys: [...changedRecordKeys] };
-  });
-}
-
-export function resolveLocalConflicts(conflicts, choice) {
-  return enqueueWrite(async () => {
-    const currentState = await readStores([RECORDS_STORE, OUTBOX_STORE, META_STORE]);
-    const database = await openDatabase();
-    try {
-      const transaction = database.transaction([RECORDS_STORE, OUTBOX_STORE, META_STORE], "readwrite");
-      const completed = transactionDone(transaction);
-      const recordsStore = transaction.objectStore(RECORDS_STORE);
-      const outboxStore = transaction.objectStore(OUTBOX_STORE);
-      for (const conflict of conflicts) {
-        const remote = normalizeRemoteRecord(conflict.remote);
-        if (choice === "remote") {
-          outboxStore.delete(remote.recordKey);
-          if (conflict.operation === "delete") recordsStore.delete(remote.recordKey);
-          else recordsStore.put(remote);
-        } else {
-          const pending = currentState[OUTBOX_STORE].find((row) => row.recordKey === remote.recordKey);
-          if (pending) outboxStore.put({
-            ...pending,
-            operationId: operationId(),
-            expectedVersion: conflict.operation === "delete" ? 0 : remote.version,
-          });
-        }
-      }
-      const remaining = choice === "remote"
-        ? Math.max(0, currentState[OUTBOX_STORE].length - conflicts.length)
-        : currentState[OUTBOX_STORE].length;
-      transaction.objectStore(META_STORE).put({
-        ...(currentState[META_STORE] || {}),
-        dirty: remaining > 0,
-      }, SYNC_META_KEY);
-      await completed;
-    } finally {
-      database.close();
-    }
+    return { changed: !sameJsonValue(current.value, nextValue), dirty: force ? false : !matches };
   });
 }
 
@@ -406,17 +201,18 @@ export async function clearLocalState() {
     const database = await openDatabase();
     try {
       const transaction = database.transaction(
-        [RECORDS_STORE, OUTBOX_STORE, META_STORE, LEGACY_STORE],
+        [DOCUMENT_STORE, RECORDS_STORE, OUTBOX_STORE, ROW_META_STORE],
         "readwrite",
       );
       const completed = transactionDone(transaction);
+      transaction.objectStore(DOCUMENT_STORE).clear();
       transaction.objectStore(RECORDS_STORE).clear();
       transaction.objectStore(OUTBOX_STORE).clear();
-      transaction.objectStore(META_STORE).clear();
-      transaction.objectStore(LEGACY_STORE).clear();
+      transaction.objectStore(ROW_META_STORE).clear();
       await completed;
     } finally {
       database.close();
     }
+    migrationPromise = null;
   });
 }
