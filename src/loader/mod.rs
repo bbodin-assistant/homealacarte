@@ -219,7 +219,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             key: key.clone(),
             name: input.name.unwrap_or(key),
             kcal_target: input.kcal_target,
-            kind: normalize_person_kind(&input.kind)?,
+            kind: normalize_person_kind(input.kind.as_deref())?,
             description: input.description.unwrap_or_default().trim().to_string(),
             food_rules,
         });
@@ -340,8 +340,8 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
     })
 }
 
-fn normalize_person_kind(kind: &str) -> Result<String, String> {
-    match kind.trim() {
+fn normalize_person_kind(kind: Option<&str>) -> Result<String, String> {
+    match kind.map(str::trim).unwrap_or("adult") {
         "adult" => Ok("adult".to_string()),
         "child" => Ok("child".to_string()),
         kind => Err(format!("unsupported family member kind: {kind}")),
