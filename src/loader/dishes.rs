@@ -44,30 +44,20 @@ pub(crate) fn flatten_dishes(
                 ));
             }
             let representation_count = usize::from(component.grams.is_some())
-                + usize::from(component.measure_quantity.is_some())
                 + usize::from(explicit_quantity);
             if representation_count != 1 {
                 return Err(format!(
-                    "dish {key} component {} must define exactly one of grams, measure_quantity, or quantity with quantity_unit",
+                    "dish {key} component {} must define exactly one of grams or quantity with quantity_unit",
                     index + 1
                 ));
             }
-            let quantity = component
-                .grams
-                .or(component.measure_quantity)
-                .or(component.quantity)
-                .unwrap_or(0.0);
+            let quantity = component.grams.or(component.quantity).unwrap_or(0.0);
             if quantity <= 0.0 {
                 return Err(format!("dish {key} component {} quantity must be positive", index + 1));
             }
             if let Some(ingredient) = ingredients.get(&component.item_key) {
                 let (grams, quantity_unit) = if component.grams.is_some() {
                     (quantity, "g".to_string())
-                } else if component.measure_quantity.is_some() {
-                    (
-                        quantity * ingredient.grams_per_measure_unit,
-                        ingredient.measure_unit.clone(),
-                    )
                 } else {
                     let requested_unit = component
                         .quantity_unit
@@ -107,16 +97,10 @@ pub(crate) fn flatten_dishes(
             }
             let nested = resolve(&component.item_key, by_key, ingredients, cache, stack)?;
             let nested_total: f64 = nested.components.iter().map(|item| item.grams).sum();
-            let uses_portions = component.measure_quantity.is_some()
-                || component
-                    .quantity_unit
-                    .as_deref()
-                    .is_some_and(|unit| {
-                        matches!(
-                            unit.trim().to_lowercase().as_str(),
-                            "portion" | "portions"
-                        )
-                    });
+            let uses_portions = component
+                .quantity_unit
+                .as_deref()
+                .is_some_and(|unit| unit.trim().eq_ignore_ascii_case("portion"));
             if explicit_quantity
                 && !uses_portions
                 && !component
@@ -126,7 +110,7 @@ pub(crate) fn flatten_dishes(
                     .eq_ignore_ascii_case("g")
             {
                 return Err(format!(
-                    "dish {key} component {} references a dish and must use g, portion, or portions",
+                    "dish {key} component {} references a dish and must use g or portion",
                     index + 1
                 ));
             }
