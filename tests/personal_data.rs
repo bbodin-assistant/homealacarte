@@ -5,12 +5,12 @@ use homealacarte_web::{
 use serde_json::Value;
 
 #[test]
-fn legacy_personal_files_become_one_valid_current_document() {
+fn current_personal_files_become_one_valid_document() {
     let sources = vec![
         SourceFile {
-            path: "ingredients.json".to_string(),
+            path: "items.json".to_string(),
             content: r#"{
-              "ingredients": [{
+              "items": [{
                 "key": "apple_test",
                 "name": "Test apple",
                 "grams": 100,
@@ -31,6 +31,14 @@ fn legacy_personal_files_become_one_valid_current_document() {
                 "grams_per_measure_unit": 150,
                 "purchase_unit": "bag",
                 "purchase_quantity_grams": 1000
+              }, {
+                "key": "soap_test",
+                "name": "Test soap",
+                "category": "Household::Hygiene",
+                "estimated_price": 2,
+                "purchase_unit": "bottle",
+                "purchase_quantity": 1,
+                "measure_unit": "bottles"
               }]
             }"#.to_string(),
         },
@@ -42,7 +50,7 @@ fn legacy_personal_files_become_one_valid_current_document() {
                 "name": "Test apple plate",
                 "servings": 1,
                 "components": [{
-                  "ingredient_key": "apple_test",
+                  "item_key": "apple_test",
                   "grams": 150,
                   "source_quantity": "one apple"
                 }]
@@ -50,32 +58,25 @@ fn legacy_personal_files_become_one_valid_current_document() {
               "people": [{
                 "key": "person_test",
                 "name": "Test person",
-                "kcal_target": 2000,
-                "default": true
+                "kind": "adult",
+                "kcal_target": 2000
               }],
               "menu": [{
-                "day": "Lundi",
-                "meal": "Déjeuner",
+                "date": "2026-08-31",
+                "day": "monday",
+                "meal": "lunch",
                 "item_key": "apple_plate_test",
                 "people": ["person_test"],
-                "portions": 1
+                "quantity": 1,
+                "quantity_unit": "portion"
               }],
               "stock": [{
-                "ingredient_key": "apple_test",
+                "item_key": "apple_test",
                 "quantity": 1,
                 "quantity_unit": "unit",
-                "notes": "legacy note"
+                "notes": "current note"
               }],
-              "household_items": [{
-                "key": "soap_test",
-                "name": "Test soap",
-                "category": "Household::Hygiene",
-                "estimated_price": 2,
-                "purchase_unit": "bottle",
-                "purchase_quantity": 1,
-                "measure_unit": "bottles"
-              }],
-              "household_needs": [{
+              "extra_needs": [{
                 "item_key": "soap_test",
                 "quantity": 2,
                 "quantity_unit": "unit",
@@ -102,16 +103,14 @@ fn legacy_personal_files_become_one_valid_current_document() {
         "apple_test"
     );
     assert_eq!(document["stock"][0]["item_key"], "apple_test");
-    assert_eq!(document["stock"][0]["notes"], "legacy note");
+    assert_eq!(document["stock"][0]["notes"], "current note");
     assert_eq!(document["extra_needs"][0]["item_key"], "soap_test");
     assert_eq!(
         document["extra_needs"][0]["notes"],
         "buy the fragrance-free version"
     );
-    assert!(content.contains("\"meal\": \"lunch\""));
-    assert!(!content.contains("ingredient_key"));
-    assert!(!content.contains("household_items"));
-    assert!(!content.contains("\"default\""));
+    assert_eq!(document["menu"][0]["date"], "2026-08-31");
+    assert_eq!(document["menu"][0]["meal"], "lunch");
 
     let mut engine = Engine::default();
     let snapshot = engine
@@ -139,11 +138,55 @@ fn legacy_personal_files_become_one_valid_current_document() {
     needs[0].quantity = 3.0;
     engine.replace_custom_grocery(needs).unwrap();
     let edited: Value = serde_json::from_str(&engine.export_data("consolidated").unwrap()).unwrap();
-    assert_eq!(edited["stock"][0]["notes"], "legacy note");
+    assert_eq!(edited["stock"][0]["notes"], "current note");
     assert_eq!(
         edited["extra_needs"][0]["notes"],
         "buy the fragrance-free version"
     );
+}
+
+#[test]
+fn legacy_sections_and_field_aliases_are_rejected() {
+    let section_error = consolidate_personal_sources(
+        vec![SourceFile {
+            path: "legacy-section.json".to_string(),
+            content: r#"{"ingredients":[]}"#.to_string(),
+        }],
+        "fr",
+    )
+    .unwrap_err();
+    assert!(section_error.contains("unsupported sections: ingredients"));
+
+    let field_error = consolidate_personal_sources(
+        vec![SourceFile {
+            path: "legacy-field.json".to_string(),
+            content: r#"{
+              "items": [{
+                "key": "apple_test",
+                "name": "Test apple",
+                "grams": 100,
+                "kcal": 52,
+                "protein_g": 0.3,
+                "carbs_g": 13.8,
+                "fat_g": 0.2,
+                "fiber_g": 2.4,
+                "category": "Produce::Fruit",
+                "source": "Synthetic test fixture",
+                "url": "",
+                "price_per_kg": 2
+              }],
+              "dishes": [{
+                "key": "apple_plate_test",
+                "name": "Test apple plate",
+                "servings": 1,
+                "components": [{"ingredient_key": "apple_test", "grams": 100}]
+              }]
+            }"#.to_string(),
+        }],
+        "fr",
+    )
+    .unwrap_err();
+    assert!(field_error.contains("ingredient_key"));
 }
 
 #[test]
@@ -209,8 +252,9 @@ fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
         "description": "Rich base description"
       }],
       "menu": [{
-        "day": "Lundi",
-        "meal": "Dejeuner",
+        "date": "2026-08-31",
+        "day": "monday",
+        "meal": "lunch",
         "item_key": "apple_plate_test",
         "people": ["person_test"],
         "quantity": 1,
@@ -296,12 +340,14 @@ fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
       "people": [{
         "key": "person_test",
         "name": "Test person",
+        "kind": "adult",
         "kcal_target": 2000
       }],
       "menu": [
         {
-          "day": "Lundi",
-          "meal": "Dejeuner",
+          "date": "2026-08-31",
+          "day": "monday",
+          "meal": "lunch",
           "item_key": "apple_plate_test",
           "people": ["person_test"],
           "quantity": 1,
@@ -309,16 +355,18 @@ fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
           "notes": "base menu note"
         },
         {
-          "day": "Lundi",
-          "meal": "Dejeuner",
+          "date": "2026-08-31",
+          "day": "monday",
+          "meal": "lunch",
           "item_key": "apple_plate_test",
           "people": ["person_test"],
           "quantity": 2,
           "quantity_unit": "portion"
         },
         {
-          "day": "Mardi",
-          "meal": "Dejeuner",
+          "date": "2026-09-01",
+          "day": "tuesday",
+          "meal": "lunch",
           "item_key": "banana_plate_test",
           "people": ["person_test"],
           "quantity": 1,

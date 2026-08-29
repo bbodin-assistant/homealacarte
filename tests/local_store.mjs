@@ -13,7 +13,9 @@ assert.match(localStore, /indexedDB\.open/);
 assert.match(localStore, /export async function readLocalState/);
 assert.match(localStore, /export function writeLocalState/);
 assert.match(localStore, /export function reconcileSyncedLocalState/);
-assert.match(localStore, /migrateRelationalReplica/);
+assert.match(localStore, /deleteObjectStore/);
+assert.doesNotMatch(localStore, /row-migration/);
+assert.doesNotMatch(localStore, /migrateRelationalReplica/);
 assert.match(localStore, /export async function clearLocalState/);
 
-console.log("IndexedDB owns one offline document and migrates the former relational replica.");
+console.log("IndexedDB owns one household document and drops obsolete row stores without migrating them.");

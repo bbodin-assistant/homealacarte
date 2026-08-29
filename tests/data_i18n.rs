@@ -57,8 +57,9 @@ fn localized_source() -> SourceFile {
             "description": {"en": "Synthetic profile", "fr": "Profil synthétique", "es": "Perfil sintético"}
           }],
           "menu": [{
-            "day": {"en": "Monday", "fr": "Lundi"},
-            "meal": {"en": "Dinner", "fr": "Diner"},
+            "date": "2026-08-31",
+            "day": "monday",
+            "meal": "dinner",
             "item_key": "tomato_plate",
             "people": ["alex"],
             "quantity": 1,
@@ -157,6 +158,7 @@ fn localized_data_switches_language_without_discarding_runtime_edits() {
     assert_eq!(exported["menu"][0]["notes"]["fr"], "Servir froid");
     assert_eq!(exported["menu"][0]["notes"]["es"], "Servir frío");
     assert!(exported["menu"][0].get("id").is_none());
+    assert_eq!(exported["menu"][0]["date"], "2026-08-31");
     assert_eq!(exported["menu"][0]["day"], "monday");
     assert_eq!(exported["menu"][0]["meal"], "dinner");
 }

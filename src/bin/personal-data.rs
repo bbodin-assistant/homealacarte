@@ -216,7 +216,7 @@ fn run() -> Result<(), String> {
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("Personal data migration failed: {error}");
+        eprintln!("Personal data conversion failed: {error}");
         std::process::exit(1);
     }
 }

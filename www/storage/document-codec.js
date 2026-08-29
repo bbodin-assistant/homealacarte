@@ -2,30 +2,6 @@ function clone(value) {
   return value == null ? value : structuredClone(value);
 }
 
-function stripMenuRowIds(rows) {
-  let changed = false;
-  const normalized = (rows || []).map((source) => {
-    if (!source || typeof source !== "object" || Array.isArray(source) || !("id" in source)) {
-      return source;
-    }
-    const row = { ...source };
-    delete row.id;
-    changed = true;
-    return row;
-  });
-  return { changed, rows: normalized };
-}
-
-function stripDocumentMenuIds(document) {
-  if (!document || typeof document !== "object" || !Array.isArray(document.menu)) {
-    return { changed: false, document };
-  }
-  const menu = stripMenuRowIds(document.menu);
-  return menu.changed
-    ? { changed: true, document: { ...document, menu: menu.rows } }
-    : { changed: false, document };
-}
-
 function canonicalJsonValue(value) {
   if (Array.isArray(value)) return value.map(canonicalJsonValue);
   if (!value || typeof value !== "object") return value;
@@ -37,19 +13,12 @@ function canonicalJsonValue(value) {
 export function normalizePrivateState(value) {
   if (!value || typeof value !== "object") return value;
   const normalized = clone(value);
-  if (Array.isArray(normalized.menu)) {
-    normalized.menu = stripMenuRowIds(normalized.menu).rows;
-  }
-  if (normalized.document) {
-    normalized.document = stripDocumentMenuIds(normalized.document).document;
-  }
   if (Array.isArray(normalized.sources)) {
     normalized.sources = normalized.sources.map((source) => {
       try {
         const parsed = JSON.parse(String(source?.content || ""));
-        const result = stripDocumentMenuIds(parsed);
-        const content = `${JSON.stringify(canonicalJsonValue(result.document), null, 2)}\n`;
-        if (!result.changed && content === source.content) return source;
+        const content = `${JSON.stringify(canonicalJsonValue(parsed), null, 2)}\n`;
+        if (content === source.content) return source;
         return {
           ...source,
           content,

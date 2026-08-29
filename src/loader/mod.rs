@@ -72,6 +72,18 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
                     source.path
                 )
             })?;
+        let unknown = object
+            .keys()
+            .filter(|key| !SECTIONS.contains(&key.as_str()))
+            .cloned()
+            .collect::<Vec<_>>();
+        if !unknown.is_empty() {
+            return Err(format!(
+                "{}: unsupported sections: {}",
+                source.path,
+                unknown.join(", ")
+            ));
+        }
         if !SECTIONS.iter().any(|name| object.contains_key(*name)) {
             return Err(format!(
                 "{}: no supported data section (expected one of {})",
@@ -93,7 +105,6 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             value.get("grams").is_some()
                 || value.get("kcal").is_some()
                 || value.get("price_per_kg").is_some()
-                || value.get("kind").and_then(Value::as_str) == Some("food")
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -245,20 +256,13 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             food_rules,
         });
     }
-    let default_person = people.first().map(|person| person.key.as_str());
 
     let menu_values = section_values(&documents, "menu")?;
     let menu_inputs = menu_values
         .into_iter()
         .map(|(path, value)| deserialize::<MenuInput>(&path, "menu", value))
         .collect::<Result<Vec<_>, _>>()?;
-    let menu = normalize_menu(
-        menu_inputs,
-        language,
-        &valid_items,
-        &people_keys,
-        default_person,
-    )?;
+    let menu = normalize_menu(menu_inputs, &valid_items, &people_keys)?;
 
     let mut household_items = Vec::new();
     let mut household_keys = HashSet::new();
@@ -268,7 +272,6 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
             value.get("grams").is_none()
                 && value.get("kcal").is_none()
                 && value.get("price_per_kg").is_none()
-                && value.get("kind").and_then(Value::as_str) != Some("food")
         });
     for (path, value) in household_values {
         let input: HouseholdItemInput = deserialize(&path, "items", value)?;
@@ -370,9 +373,9 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, language: &str) -> Result<Data
 }
 
 fn normalize_person_kind(kind: Option<&str>) -> Result<String, String> {
-    match kind.unwrap_or("adult").trim().to_lowercase().as_str() {
-        "" | "adult" => Ok("adult".to_string()),
-        "child" | "kid" | "enfant" => Ok("child".to_string()),
+    match kind.map(str::trim).unwrap_or("adult") {
+        "adult" => Ok("adult".to_string()),
+        "child" => Ok("child".to_string()),
         kind => Err(format!("unsupported family member kind: {kind}")),
     }
 }

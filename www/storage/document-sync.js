@@ -1,5 +1,5 @@
-import * as defaultLocalStore from "./local-store.js?v=homealacarte-105";
-import { normalizePrivateState, sameJsonValue } from "./document-codec.js?v=homealacarte-105";
+import * as defaultLocalStore from "./local-store.js?v=homealacarte-106";
+import { normalizePrivateState, sameJsonValue } from "./document-codec.js?v=homealacarte-106";
 
 const POLL_INTERVAL_MS = 30_000;
 

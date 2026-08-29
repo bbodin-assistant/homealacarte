@@ -2,7 +2,7 @@ use crate::support::synthetic_dataset;
 use homealacarte_web::{AppConfig, Engine, MenuInput};
 
 #[test]
-fn menu_replacement_normalizes_localized_rows() {
+fn menu_replacement_uses_canonical_rows() {
     let mut engine = Engine::default();
     engine
         .load(
@@ -16,13 +16,11 @@ fn menu_replacement_normalizes_localized_rows() {
     let snapshot = engine
         .replace_menu(vec![MenuInput {
             date: "2026-08-18".to_string(),
-            day: "Mardi".to_string(),
-            meal: "Diner".to_string(),
+            day: "tuesday".to_string(),
+            meal: "dinner".to_string(),
             item_key: "bread_test".to_string(),
-            person: Some("test_person".to_string()),
-            people: None,
-            quantity: Some(2.0),
-            portions: None,
+            people: vec!["test_person".to_string()],
+            quantity: 2.0,
             quantity_unit: Some("unit".to_string()),
             notes: Some("Toast before serving".to_string()),
         }])

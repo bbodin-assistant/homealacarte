@@ -9,7 +9,14 @@ fn unsupported_data_shapes_are_rejected() {
         content: r#"{"catalogue":[]}"#.to_string(),
     };
     let error = homealacarte_web::load_dataset(vec![unsupported_section], "fr").unwrap_err();
-    assert!(error.contains("no supported data section"));
+    assert!(error.contains("unsupported sections: catalogue"));
+
+    let legacy_section = SourceFile {
+        path: "legacy.json".to_string(),
+        content: r#"{"ingredients":[]}"#.to_string(),
+    };
+    let error = homealacarte_web::load_dataset(vec![legacy_section], "fr").unwrap_err();
+    assert!(error.contains("unsupported sections: ingredients"));
 
     let bare_array = SourceFile {
         path: "bare-array.json".to_string(),
@@ -30,11 +37,29 @@ fn unsupported_data_shapes_are_rejected() {
     let mut unknown_component_field = synthetic_dataset();
     unknown_component_field.content = unknown_component_field.content.replacen(
         "\"item_key\": \"tomato_test\",\n              \"grams\"",
-        "\"obsolete_key\": \"tomato_test\",\n              \"grams\"",
+        "\"ingredient_key\": \"tomato_test\",\n              \"grams\"",
         1,
     );
     let error = homealacarte_web::load_dataset(vec![unknown_component_field], "fr").unwrap_err();
-    assert!(error.contains("unknown field `obsolete_key`"));
+    assert!(error.contains("unknown field `ingredient_key`"));
+
+    let mut legacy_menu_field = synthetic_dataset();
+    legacy_menu_field.content = legacy_menu_field.content.replacen(
+        "\"people\": [\"test_person\"],\n              \"quantity\": 1",
+        "\"person\": \"test_person\",\n              \"portions\": 1",
+        1,
+    );
+    let error = homealacarte_web::load_dataset(vec![legacy_menu_field], "fr").unwrap_err();
+    assert!(error.contains("unknown field `person`") || error.contains("unknown field `portions`"));
+
+    let mut missing_value_sentinel = synthetic_dataset();
+    missing_value_sentinel.content = missing_value_sentinel.content.replacen(
+        "\"fiber_g\": 1.2,",
+        "\"fiber_g\": 1.2,\n              \"sugars_g\": \"MISSINGVALUE\",",
+        1,
+    );
+    let error = homealacarte_web::load_dataset(vec![missing_value_sentinel], "fr").unwrap_err();
+    assert!(error.contains("invalid type") || error.contains("expected"));
 }
 
 #[test]
