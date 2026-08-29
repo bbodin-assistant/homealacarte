@@ -2,8 +2,8 @@ use homealacarte_web::{
     AppConfig, DishCreateComponentInput, DishCreateInput, Engine, Ingredient, SourceFile,
 };
 
-
 use crate::support::synthetic_dataset;
+
 #[test]
 fn a_new_dish_is_calculated_and_exported() {
     let mut engine = Engine::default();
@@ -264,8 +264,9 @@ fn dish_components_accept_and_preserve_supported_ingredient_units() {
             "kcal_target": 2000
           }],
           "menu": [{
-            "day": "Lundi",
-            "meal": "Dejeuner",
+            "date": "2026-08-31",
+            "day": "monday",
+            "meal": "lunch",
             "item_key": "plat_test_unites",
             "people": ["personne_test"],
             "quantity": 1,
