@@ -194,13 +194,14 @@ BOULANGERIE
 PAIN NORDIQUE 1,90 € 11
 1 x 1,90 EUR`, [
   { value: "pain_nordique", name: "Pain nordique", purchaseQuantityGrams: 450 },
+  { value: "eau_petillante", name: "EAU SRCE GAZ.CRISTALINE", measureUnit: "L" },
 ]);
 assert.deepEqual(
   parsedReceipt.map(({ quantity, unit, kind }) => ({ quantity, unit, kind })),
   [
     { quantity: 3, unit: "unit", kind: "household" },
     { quantity: 2, unit: "unit", kind: "household" },
-    { quantity: 9000, unit: "g", kind: "food" },
+    { quantity: 9, unit: "L", kind: "food" },
     { quantity: 450, unit: "g", kind: "food" },
   ],
 );
@@ -218,6 +219,21 @@ assert.equal(batch[1].item_key, "soap");
 assert.equal(batch[2].quantity, 1500);
 assert.equal(batch[2].new_item.kind, "food");
 assert.equal(batch[3].new_item.kind, "household");
+
+const liquidBatch = parsePurchaseBatch("Olive oil;1;L;8.99", {
+  ingredients: [{ key: "olive_oil", name: "Olive oil" }],
+  household_items: [],
+  stock_options: [{
+    item_key: "olive_oil",
+    name: "Olive oil",
+    measure_unit: "ml",
+    grams_per_measure_unit: 0.92,
+    household: false,
+  }],
+});
+assert.equal(liquidBatch[0].quantity, 1000);
+assert.equal(liquidBatch[0].quantity_unit, "unit");
+assert.equal(liquidBatch[0].display_unit, "ml");
 
 const apricotMatch = matchReceiptLabelFromHistory("ABRICOT PRIX MINI BARQ.500G", [
   {
@@ -279,13 +295,13 @@ assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(shell, /\["list", "stock", "needs", "purchases"\]/);
 assert.match(worker, /type === "record-purchase"/);
-assert.match(worker, /core\/purchases\.js\?v=homealacarte-2/);
+assert.match(worker, /core\/purchases\.js\?v=homealacarte-3/);
 assert.match(worker, /homealacarte_web\.js\?v=homealacarte-97/);
-assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-2/);
-assert.match(composition, /features\/grocery\.js\?v=homealacarte-81/);
+assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-3/);
+assert.match(composition, /features\/grocery\.js\?v=homealacarte-82/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-105/);
-assert.match(app, /worker\.js\?v=homealacarte-97/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-106/);
+assert.match(app, /worker\.js\?v=homealacarte-98/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(index, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));

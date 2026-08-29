@@ -1,7 +1,7 @@
 import {
   collectPurchaseHistory,
   parsePurchaseBatch,
-} from "../core/purchases.js?v=homealacarte-2";
+} from "../core/purchases.js?v=homealacarte-3";
 
 const PURCHASE_STRINGS = {
   en: {
@@ -260,7 +260,7 @@ export function createGroceryFeature({
       ...options.map((option) => {
         const ingredient = ingredients.get(option.item_key);
         const purchaseGrams = Number(ingredient?.purchase_quantity_grams || 0);
-        return `<option value="${escapeHtml(option.item_key)}" data-household="${option.household ? "true" : "false"}" data-purchase-grams="${Number.isFinite(purchaseGrams) ? purchaseGrams : 0}">${escapeHtml(option.name)}</option>`;
+        return `<option value="${escapeHtml(option.item_key)}" data-household="${option.household ? "true" : "false"}" data-purchase-grams="${Number.isFinite(purchaseGrams) ? purchaseGrams : 0}" data-measure-unit="${escapeHtml(option.measure_unit || "")}">${escapeHtml(option.name)}</option>`;
       }),
       `<option value="__new_food__">+ ${escapeHtml(strings.newFood)}</option>`,
       `<option value="__new_household__">+ ${escapeHtml(strings.newHousehold)}</option>`,

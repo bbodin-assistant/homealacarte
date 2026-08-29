@@ -388,6 +388,14 @@ function resolveExistingQuantity(option, rawQuantity, rawUnit, lineNumber) {
   }
   if (unit === "g") return { quantity, quantity_unit: "g", display_unit: "g" };
   const measureUnit = normalizeUnit(option.measure_unit);
+  const volumeFactors = { ml: 1, cl: 10, l: 1000 };
+  if (volumeFactors[unit] && volumeFactors[measureUnit]) {
+    return {
+      quantity: quantity * volumeFactors[unit] / volumeFactors[measureUnit],
+      quantity_unit: "unit",
+      display_unit: String(option.measure_unit),
+    };
+  }
   if (unit === "unit" || unit === measureUnit) {
     return {
       quantity,
