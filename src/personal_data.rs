@@ -3,17 +3,13 @@ use serde::Serialize;
 use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-const CURRENT_AND_LEGACY_SECTIONS: &[&str] = &[
+const CURRENT_SECTIONS: &[&str] = &[
     "items",
-    "ingredients",
-    "household_items",
     "dishes",
     "people",
     "menu",
     "stock",
-    "household_stock",
     "extra_needs",
-    "household_needs",
 ];
 
 const NUTRI_SCORE_FIELDS: &[&str] = &[
@@ -91,88 +87,11 @@ fn section(
     }
 }
 
-fn rename_field(
-    value: &mut Value,
-    old_name: &str,
-    new_name: &str,
-    context: &str,
-) -> Result<(), String> {
-    let object = value
-        .as_object_mut()
-        .ok_or_else(|| format!("{context}: expected an object"))?;
-    let Some(old_value) = object.remove(old_name) else {
-        return Ok(());
-    };
-    if let Some(new_value) = object.get(new_name) {
-        if new_value != &old_value {
-            return Err(format!(
-                "{context}: conflicting {old_name} and {new_name} values"
-            ));
-        }
-    } else {
-        object.insert(new_name.to_string(), old_value);
-    }
-    Ok(())
-}
-
-fn normalize_dish(mut dish: Value, context: &str) -> Result<Value, String> {
-    let object = dish
-        .as_object_mut()
-        .ok_or_else(|| format!("{context}: expected a dish object"))?;
-    let components = object
-        .get_mut("components")
-        .and_then(Value::as_array_mut)
-        .ok_or_else(|| format!("{context}: dish components must be an array"))?;
-    for (index, component) in components.iter_mut().enumerate() {
-        rename_field(
-            component,
-            "ingredient_key",
-            "item_key",
-            &format!("{context}.components[{}]", index + 1),
-        )?;
-    }
-    Ok(dish)
-}
-
-fn normalize_item_reference(mut row: Value, context: &str) -> Result<Value, String> {
-    rename_field(&mut row, "ingredient_key", "item_key", context)?;
-    rename_field(&mut row, "household_item_key", "item_key", context)?;
-    Ok(row)
-}
-
-fn normalize_people(people: &mut Vec<Value>) -> Result<(), String> {
-    let default_indexes = people
-        .iter()
-        .enumerate()
-        .filter_map(|(index, person)| {
-            (person.get("default").and_then(Value::as_bool) == Some(true)).then_some(index)
-        })
-        .collect::<Vec<_>>();
-    if default_indexes.len() > 1 {
-        return Err("personal data declares more than one default person".to_string());
-    }
-    if let Some(index) = default_indexes.first().copied() {
-        let default_person = people.remove(index);
-        people.insert(0, default_person);
-    }
-    for (index, person) in people.iter_mut().enumerate() {
-        person
-            .as_object_mut()
-            .ok_or_else(|| format!("people[{}]: expected an object", index + 1))?
-            .remove("default");
-    }
-    Ok(())
-}
-
 pub fn consolidate_personal_sources(
     mut sources: Vec<SourceFile>,
     language: &str,
 ) -> Result<(String, PersonalDataReport), String> {
     sources.sort_by(|left, right| left.path.cmp(&right.path));
-    let supported = CURRENT_AND_LEGACY_SECTIONS
-        .iter()
-        .copied()
-        .collect::<HashSet<_>>();
     let mut items = Vec::new();
     let mut dishes = Vec::new();
     let mut people = Vec::new();
@@ -188,7 +107,7 @@ pub fn consolidate_personal_sources(
             .ok_or_else(|| format!("{}: top level must be an object", source.path))?;
         let unknown = object
             .keys()
-            .filter(|key| !supported.contains(key.as_str()))
+            .filter(|key| !CURRENT_SECTIONS.contains(&key.as_str()))
             .cloned()
             .collect::<Vec<_>>();
         if !unknown.is_empty() {
@@ -198,46 +117,22 @@ pub fn consolidate_personal_sources(
                 unknown.join(", ")
             ));
         }
+        if !CURRENT_SECTIONS.iter().any(|name| object.contains_key(*name)) {
+            return Err(format!(
+                "{}: no current data section (expected one of {})",
+                source.path,
+                CURRENT_SECTIONS.join(", ")
+            ));
+        }
 
-        for name in ["items", "ingredients", "household_items"] {
-            items.extend(section(object, name, &source.path)?);
-        }
-        for (index, dish) in section(object, "dishes", &source.path)?
-            .into_iter()
-            .enumerate()
-        {
-            dishes.push(normalize_dish(
-                dish,
-                &format!("{}.dishes[{}]", source.path, index + 1),
-            )?);
-        }
+        items.extend(section(object, "items", &source.path)?);
+        dishes.extend(section(object, "dishes", &source.path)?);
         people.extend(section(object, "people", &source.path)?);
         menu.extend(section(object, "menu", &source.path)?);
-        for name in ["stock", "household_stock"] {
-            for (index, row) in section(object, name, &source.path)?
-                .into_iter()
-                .enumerate()
-            {
-                stock.push(normalize_item_reference(
-                    row,
-                    &format!("{}.{name}[{}]", source.path, index + 1),
-                )?);
-            }
-        }
-        for name in ["extra_needs", "household_needs"] {
-            for (index, row) in section(object, name, &source.path)?
-                .into_iter()
-                .enumerate()
-            {
-                extra_needs.push(normalize_item_reference(
-                    row,
-                    &format!("{}.{name}[{}]", source.path, index + 1),
-                )?);
-            }
-        }
+        stock.extend(section(object, "stock", &source.path)?);
+        extra_needs.extend(section(object, "extra_needs", &source.path)?);
     }
 
-    normalize_people(&mut people)?;
     let extra_needs_count = extra_needs.len();
     let consolidated = json!({
         "items": items,
@@ -250,7 +145,7 @@ pub fn consolidate_personal_sources(
     let mut engine = Engine::default();
     let snapshot = engine.load(
         vec![SourceFile {
-            path: "personal-data-migration.json".to_string(),
+            path: "personal-data-conversion.json".to_string(),
             content: serde_json::to_string(&consolidated).map_err(|error| error.to_string())?,
         }],
         AppConfig {
@@ -288,7 +183,7 @@ pub fn consolidate_personal_sources(
 fn missing(value: Option<&Value>) -> bool {
     match value {
         None | Some(Value::Null) => true,
-        Some(Value::String(value)) => value.trim().is_empty() || value == "MISSINGVALUE",
+        Some(Value::String(value)) => value.trim().is_empty(),
         _ => false,
     }
 }
