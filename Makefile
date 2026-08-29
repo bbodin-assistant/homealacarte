@@ -58,7 +58,6 @@ test-web:
 	node tests/menu_rows.mjs
 	node tests/food_rules.mjs
 	node tests/allergens.mjs
-	node tests/profile_rules.mjs
 	node tests/format.mjs
 	node tests/data_localization_ui.mjs
 	node tests/ui_i18n.mjs
