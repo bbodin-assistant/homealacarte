@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   addStockQuantity,
+  groupStockRowsByCategory,
   nextStockSort,
   sortStockRows,
   stockPayload,
@@ -77,8 +78,16 @@ assert.deepEqual(nextStockSort(null, "asc", "name"), { key: "name", direction: "
 assert.deepEqual(nextStockSort("name", "asc", "name"), { key: "name", direction: "desc" });
 assert.deepEqual(nextStockSort("name", "desc", "name"), { key: null, direction: "asc" });
 assert.deepEqual(sortStockRows(sortable, { key: null }).map((row) => row.name), ["Soap", "Rice", "Old"]);
+assert.deepEqual(
+  groupStockRowsByCategory(sortable, { locale: "en" })
+    .map((group) => [group.label, group.rows.map((row) => row.name)]),
+  [
+    ["Food", ["Rice", "Old"]],
+    ["Home", ["Soap"]],
+  ],
+);
 assert.deepEqual(sortStockRows(sortable, { key: "name", direction: "asc", locale: "en" }).map((row) => row.name), ["Old", "Rice", "Soap"]);
 assert.deepEqual(sortStockRows(sortable, { key: "quantity", direction: "desc", locale: "en" }).map((row) => row.name), ["Old", "Soap", "Rice"]);
 assert.deepEqual(sortStockRows(sortable, { key: "added_at", direction: "desc", locale: "en" }).map((row) => row.name), ["Rice", "Soap", "Old"]);
 
-console.log("Stock feature preserves payloads and unit conversions while table sorting cycles ascending, descending, then default order.");
+console.log("Stock feature preserves payloads and unit conversions while default grouping is by category and sorting cycles ascending, descending, then grouped default.");
