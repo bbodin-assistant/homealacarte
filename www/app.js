@@ -14,8 +14,8 @@ import {
   signUp,
   submitPrivacyRequest,
   synchronizePrivateState,
-} from "./storage.js?v=homealacarte-105";
-import { translations } from "./translations.js?v=homealacarte-101";
+} from "./storage.js?v=homealacarte-110";
+import { translations } from "./translations.js?v=homealacarte-114";
 import {
   defaultLocale,
   hasTranslation,
@@ -31,7 +31,7 @@ import {
 } from "./core/format.js?v=homealacarte-77";
 import { buildZip, downloadBytes, downloadText } from "./core/downloads.js?v=homealacarte-77";
 import { createThemeController } from "./core/theme.js?v=homealacarte-77";
-import { createAppState } from "./core/app-state.js?v=homealacarte-99";
+import { createAppState } from "./core/app-state.js?v=homealacarte-114";
 import { createWorkerClient } from "./core/worker-client.js?v=homealacarte-99";
 import { createWorkerResponseHandler } from "./core/worker-responses.js?v=homealacarte-99";
 import {
@@ -43,11 +43,11 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-105";
-import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
-import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
-import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-104";
-import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-102";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-114";
+import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-110";
+import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-110";
+import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-112";
+import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-112";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
@@ -61,7 +61,7 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
   stock: [],
   extra_needs: [],
 }, null, 2)}\n`;
-const worker = new Worker("./worker.js?v=homealacarte-97", { type: "module" });
+const worker = new Worker("./worker.js?v=homealacarte-110", { type: "module" });
 const state = createAppState(localStorage, getStorageStatus, defaultLocale(translations));
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;

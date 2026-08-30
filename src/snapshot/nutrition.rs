@@ -10,7 +10,7 @@ pub(super) fn ingredient_nutrients(ingredient: &Ingredient, grams: f64) -> Nutri
         carbs_g: ingredient.carbs_g * factor,
         fat_g: ingredient.fat_g * factor,
         fiber_g: ingredient.fiber_g * factor,
-        cost: grams * ingredient.price_per_kg / 1000.0,
+        cost: ingredient.price_for_grams(grams),
     }
 }
 

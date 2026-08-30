@@ -1,4 +1,4 @@
-import { normalizePrivateState, sameJsonValue } from "./document-codec.js?v=homealacarte-106";
+import { normalizePrivateState, sameJsonValue } from "./document-codec.js?v=homealacarte-110";
 
 const DB_NAME = "homealacarte-private";
 const DB_VERSION = 3;

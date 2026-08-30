@@ -17,8 +17,8 @@ assert.deepEqual([...stockGramsByKey(stock)], [["rice", 1100], ["sauce", 300]]);
 assert.equal(estimatedStockValue(
   stock,
   [
-    { key: "rice", price_per_kg: 4 },
-    { key: "sauce", price_per_kg: 3 },
+    { key: "rice", price: 4, price_basis: "kg", purchase_quantity: 1000, purchase_quantity_unit: "g", grams_per_measure_unit: 1 },
+    { key: "sauce", price: 3, price_basis: "kg", purchase_quantity: 1000, purchase_quantity_unit: "g", grams_per_measure_unit: 1 },
   ],
   [{ key: "soap", purchase_quantity: 2, estimated_price: 5 }],
 ), 15.3);

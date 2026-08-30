@@ -6,14 +6,13 @@ export function scaledDishComponentQuantity(component, portions) {
 }
 
 export function preferredDishDetailPortions(state, dish) {
-  const dishKey = typeof dish === "string" ? dish : dish?.key;
   const index = state?.dishDetailsMenuIndex;
   const row = Number.isInteger(index) ? state?.draft?.[index] : null;
-  if (row?.item_key === dishKey && row.quantity_unit === "portion") {
+  if (row?.item_key === dish?.key && row.quantity_unit === "portion") {
     const quantity = Number(row.quantity);
     if (Number.isFinite(quantity) && quantity > 0) return quantity;
   }
-  const servings = Number(typeof dish === "object" ? dish?.servings : Number.NaN);
+  const servings = Number(dish?.servings);
   return Number.isFinite(servings) && servings > 0 ? servings : 1;
 }
 
@@ -32,9 +31,30 @@ export function createDetailRefinements({
     if (documentRef.querySelector("link[data-detail-refinements]")) return;
     const link = documentRef.createElement("link");
     link.rel = "stylesheet";
-    link.href = "./styles/detail-refinements.css?v=homealacarte-107";
+    link.href = "./styles/detail-refinements.css?v=homealacarte-112";
     link.dataset.detailRefinements = "";
     documentRef.head.append(link);
+  }
+
+  function renderRecipeLink() {
+    const recipeLink = select("#dish-details-recipe-link");
+    const recipeUrlLabel = select("#dish-details-url");
+    if (recipeUrlLabel) recipeUrlLabel.hidden = true;
+    if (!recipeLink || recipeLink.hidden) return;
+    const recipeUrl = recipeLink.getAttribute("href");
+    if (!recipeUrl) return;
+
+    const url = documentRef.createElement("span");
+    url.className = "dish-details-recipe-url";
+    url.textContent = recipeUrl;
+    const arrow = documentRef.createElement("span");
+    arrow.className = "dish-details-recipe-arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "↗";
+    recipeLink.replaceChildren(url, arrow);
+    recipeLink.title = recipeUrl;
+    recipeLink.setAttribute("aria-label", `${translate("open_recipe")}: ${recipeUrl}`);
+    recipeLink.removeAttribute("data-i18n");
   }
 
   function ensureHealthLayout() {
@@ -62,27 +82,6 @@ export function createDetailRefinements({
     }
     health.append(allergens, status);
     return { health, status, allergens };
-  }
-
-  function renderRecipeLink() {
-    const recipeLink = select("#dish-details-recipe-link");
-    const recipeUrlLabel = select("#dish-details-url");
-    if (recipeUrlLabel) recipeUrlLabel.hidden = true;
-    if (!recipeLink || recipeLink.hidden) return;
-    const recipeUrl = recipeLink.getAttribute("href");
-    if (!recipeUrl) return;
-
-    const url = documentRef.createElement("span");
-    url.className = "dish-details-recipe-url";
-    url.textContent = recipeUrl;
-    const arrow = documentRef.createElement("span");
-    arrow.className = "dish-details-recipe-arrow";
-    arrow.setAttribute("aria-hidden", "true");
-    arrow.textContent = "↗";
-    recipeLink.replaceChildren(url, arrow);
-    recipeLink.title = recipeUrl;
-    recipeLink.setAttribute("aria-label", `${translate("open_recipe")}: ${recipeUrl}`);
-    recipeLink.removeAttribute("data-i18n");
   }
 
   function renderMetrics(dish) {
@@ -147,21 +146,23 @@ export function createDetailRefinements({
   function configurePortions(dish) {
     const section = select("#dish-details-ingredients-section");
     if (!section || !dish) return;
-    const heading = section.querySelector("h3");
-    let headingRow = section.querySelector(".dish-ingredients-heading");
-    if (!headingRow && heading) {
-      headingRow = documentRef.createElement("div");
-      headingRow.className = "dish-ingredients-heading";
-      heading.before(headingRow);
-      headingRow.append(heading);
+    const title = section.querySelector("h3");
+    if (!title) return;
+
+    let heading = section.querySelector(".dish-ingredients-heading");
+    if (!heading) {
+      heading = documentRef.createElement("div");
+      heading.className = "dish-ingredients-heading";
+      title.parentNode.insertBefore(heading, title);
+      heading.append(title);
     }
 
-    let toolbar = section.querySelector(".dish-portion-toolbar");
+    let toolbar = heading.querySelector(".dish-portion-toolbar");
     if (!toolbar) {
       toolbar = documentRef.createElement("div");
       toolbar.className = "dish-portion-toolbar";
+      heading.append(toolbar);
     }
-    if (headingRow && toolbar.parentElement !== headingRow) headingRow.append(toolbar);
     toolbar.innerHTML = `
       <label class="dish-portion-control">
         <span>${escapeHtml(translate("portions"))}</span>
@@ -180,9 +181,9 @@ export function createDetailRefinements({
   }
 
   function apply() {
+    renderRecipeLink();
     const dishKey = state?.dishDetailsDishKey;
     const dish = (state?.snapshot?.dishes || []).find((candidate) => candidate.key === dishKey);
-    renderRecipeLink();
     renderHealth(dish || null);
     if (!dish) return;
     renderMetrics(dish);

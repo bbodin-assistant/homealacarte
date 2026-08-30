@@ -2,13 +2,15 @@ import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
 import { dishAllergenBadges } from "./dishes/allergen-display.js?v=homealacarte-104";
 import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-81";
 import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-81";
+import { createMenuDragNavigation } from "./menu/navigation.js?v=homealacarte-114";
 import {
+  menuDateWindow,
   menuDateForDay,
   menuNutritionByDate,
   menuRowsForWeek,
   menuWeek,
   migrateUndatedMenuRows,
-} from "./menu/week.js?v=homealacarte-81";
+} from "./menu/week.js?v=homealacarte-114";
 
 export function createMenuFeature({
   state,
@@ -32,7 +34,25 @@ export function createMenuFeature({
   setMenuMode,
 }) {
   function visibleWeek() {
-    return menuWeek(state.snapshot.days, state.menuWeekOffset);
+    return menuDateWindow(state.snapshot.days, state.menuDayOffset);
+  }
+
+  function navigateMenuByDays(days) {
+    state.menuDayOffset += Number(days);
+    renderMenu();
+  }
+
+  const dragNavigation = createMenuDragNavigation({
+    isDragging: () => state.draggedMenuIndex != null,
+    onNavigate: navigateMenuByDays,
+  });
+
+  function finishMenuDrag() {
+    dragNavigation.stop();
+    selectAll("#weekly-menu .menu-entry.dragging").forEach((entry) => entry.classList.remove("dragging"));
+    selectAll("#weekly-menu td.menu-drop-target").forEach((cell) => cell.classList.remove("menu-drop-target"));
+    select("#menu-table-frame")?.classList.remove("meal-drag-active");
+    state.draggedMenuIndex = null;
   }
 
   function dayOptions(selected = "") {
@@ -129,6 +149,7 @@ export function createMenuFeature({
     select("#menu-week-range").textContent = week.length
       ? `${week[0].date} — ${week[week.length - 1].date}`
       : "";
+    select("#menu-today").disabled = state.menuDayOffset === 0;
     const cells = new Map();
     state.draft.forEach((row, index) => {
       if (!weekDates.has(row.date)) return;
@@ -448,14 +469,15 @@ export function createMenuFeature({
   selectAll('[data-menu-mode]').forEach((button) => button.addEventListener("click", () => {
     setMenuMode(button.dataset.menuMode);
   }));
-  select("#menu-previous-week").addEventListener("click", () => {
-    state.menuWeekOffset -= 1;
+  selectAll("[data-menu-navigation-days]").forEach((button) => {
+    button.addEventListener("click", () => navigateMenuByDays(button.dataset.menuNavigationDays));
+  });
+  select("#menu-today").addEventListener("click", () => {
+    state.menuDayOffset = 0;
     renderMenu();
   });
-  select("#menu-next-week").addEventListener("click", () => {
-    state.menuWeekOffset += 1;
-    renderMenu();
-  });
+  const menuTableFrame = select("#menu-table-frame");
+  dragNavigation.mount(menuTableFrame, finishMenuDrag);
   select("#profile-select").addEventListener("change", (event) => send("set-profile", { profile: event.target.value }));
   select("#show-selected-only").addEventListener("change", (event) => {
     state.menuSelectedOnly = event.target.checked;
@@ -500,18 +522,16 @@ export function createMenuFeature({
     if (!entry) return;
     state.draggedMenuIndex = Number(entry.dataset.menuDragIndex);
     entry.classList.add("dragging");
+    menuTableFrame.classList.add("meal-drag-active");
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", entry.dataset.menuDragIndex);
   });
-  select("#weekly-menu").addEventListener("dragend", (event) => {
-    event.target.closest("[data-menu-drag-index]")?.classList.remove("dragging");
-    selectAll("#weekly-menu td.menu-drop-target").forEach((cell) => cell.classList.remove("menu-drop-target"));
-    state.draggedMenuIndex = null;
-  });
+  select("#weekly-menu").addEventListener("dragend", finishMenuDrag);
   select("#weekly-menu").addEventListener("dragover", (event) => {
     const cell = event.target.closest("[data-menu-drop-day]");
     if (!cell || state.draggedMenuIndex == null) return;
     event.preventDefault();
+    dragNavigation.stop();
     event.dataTransfer.dropEffect = "move";
     selectAll("#weekly-menu td.menu-drop-target").forEach((candidate) => {
       candidate.classList.remove("menu-drop-target");
@@ -527,7 +547,7 @@ export function createMenuFeature({
     row.date = cell.dataset.menuDropDate;
     row.day = cell.dataset.menuDropDay;
     row.meal = cell.dataset.menuDropMeal;
-    state.draggedMenuIndex = null;
+    finishMenuDrag();
     renderMenu();
     scheduleMenuUpdate();
   });

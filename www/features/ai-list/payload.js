@@ -203,14 +203,16 @@ function customIngredient(key, item) {
     category: "",
     source: "AI stock import; nutritional values require review",
     url: "",
-    price_per_kg: 0,
+    price: 0,
+    price_basis: "kg",
     price_source: "",
     price_checked_at: "",
     price_history: [],
     measure_unit: "g",
     grams_per_measure_unit: 1,
     purchase_unit: "100 g",
-    purchase_quantity_grams: 100,
+    purchase_quantity: 100,
+    purchase_quantity_unit: "g",
   };
 }
 
@@ -378,4 +380,3 @@ export function buildAiExtraNeedsRows(generatedItems, snapshot, customDraft = []
   }
   return rows;
 }
-

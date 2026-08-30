@@ -1,10 +1,13 @@
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
+  ingredientPurchaseGrams,
+  ingredientPurchasePrice,
   menuUsageContext,
   priceChartGeometry,
-} from "../core/item-details.js?v=homealacarte-78";
+} from "../core/item-details.js?v=homealacarte-110";
 import { ingredientAllergenBadges } from "./catalogue/allergens.js?v=homealacarte-104";
+import { dishesUsingIngredient } from "./catalogue/usage.js?v=homealacarte-112";
 
 const EDITABLE_DETAIL_FIELDS = {
   sugars_g: { label: "sugars_grams", kind: "number", reference: "nutrition" },
@@ -52,18 +55,25 @@ export function createItemDetailsFeature({
   openItemEditor,
 }) {
 function groceryItemUsage(item) {
+  const itemKey = item?.key || "";
   const dishKeys = new Set(
-    state.snapshot.dishes
-      .filter((dish) => dish.components.some((component) => component.name === item.name))
+    (state.snapshot.dishes || [])
+      .filter((dish) => (dish.components || []).some((component) => {
+        const componentKey = component.key || component.item_key;
+        return itemKey ? componentKey === itemKey : component.name === item.name;
+      }))
       .map((dish) => dish.key),
   );
   const directIngredientKeys = new Set(
-    state.snapshot.item_options
-      .filter((option) => option.kind === "ingredient" && option.name === item.name)
-      .map((option) => option.key),
+    itemKey
+      ? [itemKey]
+      : (state.snapshot.item_options || [])
+        .filter((option) => option.kind === "ingredient" && option.name === item.name)
+        .map((option) => option.key),
   );
-  const itemNames = new Map(state.snapshot.item_options.map((option) => [option.key, option.name]));
-  return state.draft
+  const itemNames = new Map((state.snapshot.item_options || [])
+    .map((option) => [option.key, option.name]));
+  return (state.draft || [])
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => dishKeys.has(row.item_key) || directIngredientKeys.has(row.item_key))
     .map(({ row, index }) => ({
@@ -72,6 +82,37 @@ function groceryItemUsage(item) {
       context: menuUsageContext(row, state.snapshot.people),
       direct: directIngredientKeys.has(row.item_key),
     }));
+}
+
+function ensureCatalogueDishUsageSection() {
+  let section = select("#grocery-details-library-usages");
+  if (section) return section;
+  select("#grocery-details-usages").insertAdjacentHTML("afterend", `
+    <section id="grocery-details-library-usages" hidden>
+      <h3 id="grocery-details-library-title"></h3>
+      <div id="grocery-details-library-list" class="grocery-details-list"></div>
+    </section>`);
+  return select("#grocery-details-library-usages");
+}
+
+function renderCatalogueDishUsage(item) {
+  const section = ensureCatalogueDishUsageSection();
+  const dishes = item?.key
+    ? dishesUsingIngredient(item.key, state.snapshot.dishes || [])
+    : [];
+  select("#grocery-details-library-title").textContent =
+    `${translate("recipes_eyebrow")} · ${translate("nav_dishes")}: ${formatNumber(dishes.length, 0)}`;
+  select("#grocery-details-library-list").innerHTML = dishes.map((dish) => {
+    const context = [
+      dish.source || "",
+      dish.servings ? `${formatNumber(dish.servings, 0)} ${translate("servings")}` : "",
+    ].filter(Boolean).join(" · ");
+    return `<article class="grocery-usage">
+      <strong>${escapeHtml(dish.name)}</strong>
+      ${context ? `<small>${escapeHtml(context)}</small>` : ""}
+    </article>`;
+  }).join("");
+  section.hidden = dishes.length === 0;
 }
 
 function detailValue(value, suffix = "") {
@@ -170,6 +211,7 @@ function priceHistoryMarkup(items) {
   }
   const dateLabel = (value) => value || translate("unknown");
   return `
+    <p class="price-history-basis-note">${escapeHtml(translate("price_history_purchase_unit_note"))}</p>
     <div class="price-history-chart">
       <svg viewBox="0 0 640 220" role="img" aria-label="${escapeHtml(translate("price_history_chart"))}">
         <line x1="42" y1="18" x2="42" y2="186"></line>
@@ -241,9 +283,13 @@ function itemInformationMarkup(items, groceryItem) {
   const purchase = food ? detailFields([
     [translate("grams_per_unit"), detailValue(item.grams_per_measure_unit, " g")],
     [translate("purchase_unit"), item.purchase_unit],
-    [translate("purchase_quantity_grams"), detailValue(item.purchase_quantity_grams, " g")],
-    [translate("price_per_kg"), formatMoney(item.price_per_kg)],
-    [translate("estimated_purchase_price"), formatMoney(item.price_per_kg * item.purchase_quantity_grams / 1000)],
+    [translate("purchase_quantity"), detailValue(item.purchase_quantity, ` ${item.purchase_quantity_unit}`)],
+    [translate("price_basis"), translate(item.price_basis === "kg" ? "price_basis_kg" : "price_basis_purchase_unit")],
+    [translate("price"), formatMoney(item.price)],
+    [translate("price_per_kg"), formatMoney(item.price_basis === "kg"
+      ? item.price
+      : item.price * 1000 / ingredientPurchaseGrams(item))],
+    [translate("estimated_purchase_price"), formatMoney(ingredientPurchasePrice(item))],
     [translate("price_checked_at"), item.price_checked_at, false, "price_checked_at"],
     [translate("price_source"), item.price_source, false, "price_source"],
   ], item.key) : detailFields([
@@ -291,6 +337,7 @@ function openItemDetails(items, groceryItem = null) {
       </article>
     `).join("") || `<p class="grocery-usage-empty">${escapeHtml(translate("no_linked_dishes"))}</p>`;
   select("#grocery-details-usages").hidden = !usages.length;
+  renderCatalogueDishUsage(item && Object.hasOwn(item, "kcal") ? item : null);
   const dialog = select("#grocery-details-dialog");
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");
@@ -402,9 +449,11 @@ select("#grocery-details-information").addEventListener("click", (event) => {
     if (!ingredient) return;
     const purchase = stockAction.hasAttribute("data-detail-stock-purchase");
     const quantity = purchase
-      ? Number(ingredient.purchase_quantity_grams)
+      ? Number(ingredient.purchase_quantity)
       : Number(section.querySelector("[data-detail-stock-quantity]").value);
-    const unit = purchase ? "g" : section.querySelector("[data-detail-stock-unit]").value;
+    const unit = purchase
+      ? (ingredient.purchase_quantity_unit === "g" ? "g" : "unit")
+      : section.querySelector("[data-detail-stock-unit]").value;
     if (!addStockQuantity(ingredient.key, quantity, unit)) return;
     renderStock();
     refreshIngredientDetailStock(

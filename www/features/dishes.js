@@ -7,7 +7,7 @@ import {
 } from "../core/allergens.js?v=homealacarte-104";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishAllergenBadges, dishAllergenCodes } from "./dishes/allergen-display.js?v=homealacarte-104";
-import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
+import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-110";
 
 export { allergenCodesOverlap, countryFlag };
 
@@ -77,6 +77,7 @@ export function filterDishes(dishes, filters) {
       && (!countries.size || countries.has(String(dish.origin_country || "").toUpperCase()))
       && !dishHasFilteredAllergen(dish, allergens)
       && matchesSelectedNutriScores(dish, filters.nutriScores)
+      && (!filters.stockOnly || dishStockAvailability(dish, filters.stockRows).portions >= 1)
       && dish.per_serving.cost >= filters.minimumCost
       && dish.per_serving.cost <= filters.maximumCost
       && dish.per_serving.kcal >= filters.minimumKcal
@@ -172,6 +173,8 @@ export function createDishesFeature({
       nutriScores: new Set(
         selectAll("[data-dish-nutri-score]:checked").map((input) => input.value),
       ),
+      stockOnly: select("#dish-stock-only").checked,
+      stockRows: state.stockDraft,
     };
     updateFilterCount("#dish-country-count", filters.countries.size);
     updateFilterCount("#dish-allergen-count", filters.allergens.size);
@@ -191,15 +194,20 @@ export function createDishesFeature({
       const preferenceBadges = dishPreferenceBadges(dish, state.snapshot.people || [], state.language);
       const badgeMarkup = preferenceBadges.map((badge) =>
         `<span class="dish-preference-badge ${escapeHtml(badge.kind)}${badge.householdWarning ? " household-warning" : ""}" title="${escapeHtml(badge.title)}" aria-label="${escapeHtml(badge.title)}">${badge.icon}</span>`).join("");
+      const nutriScore = String(dish.nutri_score || "").toUpperCase();
+      const nutriScoreClass = /^[A-E]$/.test(nutriScore)
+        ? `metric-${nutriScore.toLowerCase()}`
+        : "metric-unknown";
       return `
         <article class="dish-card${preferenceBadges.some((badge) => badge.kind === "forbidden" || badge.householdWarning) ? " preference-warning" : ""}">
           <button class="dish-card-open" type="button" data-dish-key="${escapeHtml(encodeURIComponent(dish.key))}">
+            <div class="dish-card-nutri-score ${nutriScoreClass}" title="${escapeHtml(dishNutriScoreDetail(dish))}">
+              <strong>${escapeHtml(nutriScore || "—")}</strong>
+              <span>Nutri-Score</span>
+            </div>
             <div class="dish-title"><h2>${originFlag ? `<span class="dish-origin-flag" title="${escapeHtml(dish.origin_country)}" aria-hidden="true">${originFlag}</span> ` : ""}${escapeHtml(dish.name)}</h2>${badgeMarkup ? `<span class="dish-preference-badges">${badgeMarkup}</span>` : ""}</div>
             <div class="dish-metrics">
               <div><strong>${formatNumber(dish.per_serving.kcal, 0)}</strong><span>kcal · ${escapeHtml(translate("per_serving"))}</span></div>
-              ${dish.nutri_score
-                ? `<div class="nutri-score metric-${escapeHtml(dish.nutri_score.toLowerCase())}" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>${escapeHtml(dish.nutri_score)}</strong><span>Nutri-Score${dish.nutri_score_computed ? " · auto" : ""}</span></div>`
-                : `<div class="nutri-score-missing" title="${escapeHtml(dishNutriScoreDetail(dish))}"><strong>—</strong><span>${escapeHtml(translatedTemplate("nutri_score_values_missing", { count: dish.nutri_score_missing_values }))}</span></div>`}
               <div><strong>${formatMoney(dish.per_serving.cost)}</strong><span>${escapeHtml(translate("cost"))} · ${escapeHtml(translate("per_serving"))}</span></div>
             </div>
             <div class="dish-stock-availability ${portions > 0 ? "available" : "unavailable"}">
@@ -253,6 +261,7 @@ export function createDishesFeature({
     selectAll("#dish-country-options input, #dish-allergen-options input").forEach((input) => {
       input.checked = false;
     });
+    select("#dish-stock-only").checked = false;
     select("#dish-cost-min").value = "0";
     select("#dish-cost-max").value = select("#dish-cost-max").max;
     select("#dish-kcal-min").value = "0";

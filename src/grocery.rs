@@ -48,7 +48,9 @@ struct FoodAggregate {
     measure_unit: String,
     grams_per_measure_unit: f64,
     purchase_unit: String,
-    purchase_quantity_grams: f64,
+    purchase_quantity: f64,
+    purchase_quantity_unit: String,
+    package_grams: f64,
     grams: f64,
     need_price: f64,
 }
@@ -145,14 +147,15 @@ fn purchase_requirements_from(
 pub(crate) fn food_identity(ingredient: &Ingredient) -> String {
     let (category, subcategory) = split_category(&ingredient.category);
     format!(
-        "{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{:x}\u{1f}{}\u{1f}{:x}",
+        "{}\u{1f}{}\u{1f}{}\u{1f}{}\u{1f}{:x}\u{1f}{}\u{1f}{:x}\u{1f}{}",
         category,
         subcategory,
         ingredient.name,
         ingredient.measure_unit,
         ingredient.grams_per_measure_unit.to_bits(),
         ingredient.purchase_unit,
-        ingredient.purchase_quantity_grams.to_bits(),
+        ingredient.purchase_quantity.to_bits(),
+        ingredient.purchase_quantity_unit,
     )
 }
 
@@ -188,19 +191,21 @@ pub(crate) fn build_grocery_from(
             measure_unit: ingredient.measure_unit.clone(),
             grams_per_measure_unit: ingredient.grams_per_measure_unit,
             purchase_unit: ingredient.purchase_unit.clone(),
-            purchase_quantity_grams: ingredient.purchase_quantity_grams,
+            purchase_quantity: ingredient.purchase_quantity,
+            purchase_quantity_unit: ingredient.purchase_quantity_unit.clone(),
+            package_grams: ingredient.purchase_quantity_grams(),
             ..Default::default()
         });
         group.grams += grams;
-        group.need_price += grams * ingredient.price_per_kg / 1000.0;
+        group.need_price += ingredient.price_for_grams(grams);
     }
 
     let mut items = Vec::new();
     for (identity, group) in food_groups {
-        let units = purchase_units(group.grams, group.purchase_quantity_grams);
-        let purchase_grams = units as f64 * group.purchase_quantity_grams;
+        let units = purchase_units(group.grams, group.package_grams);
+        let purchase_quantity = units as f64 * group.purchase_quantity;
         let purchase_price = units as f64
-            * group.purchase_quantity_grams
+            * group.package_grams
             * (group.need_price / group.grams);
         items.push(GroceryItem {
             id: format!("food-{identity}"),
@@ -216,7 +221,8 @@ pub(crate) fn build_grocery_from(
             measure_unit: group.measure_unit,
             purchase_unit: group.purchase_unit.clone(),
             purchase_units: units,
-            purchase_quantity: purchase_grams,
+            purchase_quantity,
+            purchase_quantity_unit: group.purchase_quantity_unit,
             purchase_quantity_text: format!("{units} x {}", group.purchase_unit),
             estimated_need_price: group.need_price,
             estimated_purchase_price: purchase_price,
@@ -257,6 +263,7 @@ pub(crate) fn build_grocery_from(
             purchase_unit: item.purchase_unit.clone(),
             purchase_units: units,
             purchase_quantity: units as f64 * item.purchase_quantity,
+            purchase_quantity_unit: item.measure_unit.clone(),
             purchase_quantity_text: format!("{units} x {}", item.purchase_unit),
             estimated_need_price: remaining / item.purchase_quantity * item.estimated_price,
             estimated_purchase_price: units as f64 * item.estimated_price,
@@ -322,6 +329,7 @@ fn apply_purchase_result(item: &mut GroceryItem, purchases: &HashMap<String, Gro
         item.purchase_unit = purchase.purchase_unit.clone();
         item.purchase_units = purchase.purchase_units;
         item.purchase_quantity = purchase.purchase_quantity;
+        item.purchase_quantity_unit = purchase.purchase_quantity_unit.clone();
         item.purchase_quantity_text = purchase.purchase_quantity_text.clone();
         item.estimated_purchase_price = purchase.estimated_purchase_price;
         item.stock_sufficient = false;

@@ -311,8 +311,8 @@ pub(crate) fn build_snapshot_for_date(
                 quantity: *quantity,
                 measure_unit: item.measure_unit.clone(),
                 purchase_unit: item.purchase_unit.clone(),
-                purchase_quantity: item.purchase_quantity_grams / item.grams_per_measure_unit,
-                estimated_price: item.purchase_quantity_grams * item.price_per_kg / 1000.0,
+                purchase_quantity: item.purchase_quantity_in_measure_units(),
+                estimated_price: item.purchase_price(),
                 notes: dataset.household_need_notes.get(key).cloned(),
                 custom: false,
             })
@@ -346,8 +346,8 @@ pub(crate) fn build_snapshot_for_date(
             quantity: dataset.household_needs.get(&item.key).copied().unwrap_or(1.0),
             measure_unit: item.measure_unit.clone(),
             purchase_unit: item.purchase_unit.clone(),
-            purchase_quantity: item.purchase_quantity_grams / item.grams_per_measure_unit,
-            estimated_price: item.purchase_quantity_grams * item.price_per_kg / 1000.0,
+            purchase_quantity: item.purchase_quantity_in_measure_units(),
+            estimated_price: item.purchase_price(),
             notes: dataset.household_need_notes.get(&item.key).cloned(),
             custom: false,
         }))

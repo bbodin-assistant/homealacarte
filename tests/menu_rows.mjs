@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mergeCompatibleMenuRows } from "../www/features/menu/rows.js";
 import {
   dateMenuRowsForWeek,
+  menuDateWindow,
   menuNutritionByDate,
   menuRowsForWeek,
   menuWeek,
@@ -49,6 +50,8 @@ assert.deepEqual(currentWeek, [
 ]);
 assert.equal(menuWeek(days, -1, today)[0].date, "2026-08-09");
 assert.equal(menuWeek(days, 1, today)[0].date, "2026-08-23");
+assert.equal(menuDateWindow(days, -1, today)[0].date, "2026-08-15");
+assert.equal(menuDateWindow(days, 1, today)[0].date, "2026-08-17");
 
 const migration = migrateUndatedMenuRows([
   { day: "Sunday", meal: "Dinner" },

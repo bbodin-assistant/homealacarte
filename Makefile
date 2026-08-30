@@ -43,6 +43,7 @@ test-web:
 	node --check www/core/ui-i18n.js
 	node --check www/core/stock-availability.js
 	node --check www/core/purchases.js
+	node --check www/core/purchase-pricing.js
 	node --check www/translations.js
 	node --check www/worker.js
 	node --check www/features/ai-dish.js
@@ -53,9 +54,11 @@ test-web:
 	node --check www/features/ai-list/ollama.js
 	node --check www/features/ai-list/payload.js
 	node --check www/features/grocery.js
+	node --check www/features/catalogue/price-history.js
 	node --check www/features/receipt-purchases.js
 	node --check www/features/ui-consistency.js
 	node tests/menu_rows.mjs
+	node tests/menu_navigation.mjs
 	node tests/food_rules.mjs
 	node tests/allergens.mjs
 	node tests/format.mjs
@@ -81,6 +84,7 @@ test-web:
 	node tests/purchases_feature.mjs
 	node tests/receipt_purchases.mjs
 	node tests/ui_consistency.mjs
+	node tests/detail_refinements.mjs
 	node tests/dishes_feature.mjs
 	node tests/dish_editor_feature.mjs
 	node tests/ai_dish_ollama.mjs
@@ -93,6 +97,7 @@ test-web:
 	node tests/shell_feature.mjs
 	node tests/style_layers.mjs
 	node tests/html_partials.mjs
+	node tests/catalogue_dish_usage.mjs
 
 test-browser-startup: web-build
 	PYTHON_EXECUTABLE="$(PYTHON)" bash tests/browser_startup.sh

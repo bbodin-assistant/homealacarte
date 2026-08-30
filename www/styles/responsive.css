@@ -79,6 +79,7 @@
   .planner-mode-switch { width: 100%; }
   .planner-mode-switch button { flex: 1; padding-inline: 9px; }
   .menu-profile-controls { align-items: stretch; flex-direction: column; }
+  .menu-date-navigation { flex-wrap: wrap; }
   .auto-menu-parameters { grid-template-columns: 1fr 1fr; }
   .auto-menu-slots { grid-template-columns: 1fr 1fr; }
   .auto-menu-section-heading, .auto-menu-run { align-items: stretch; flex-direction: column; }
@@ -176,11 +177,13 @@
   .item-price-history-row {
     grid-template-areas:
       "date price remove"
+      "basis basis basis"
       "description description description";
     grid-template-columns: minmax(120px, 1fr) minmax(90px, .7fr) 32px;
   }
   .item-price-history-date { grid-area: date; }
   .item-price-history-price { grid-area: price; }
+  .item-price-history-basis { grid-area: basis; }
   .item-price-history-description { grid-area: description; }
   .item-price-history-row .remove-price-observation { grid-area: remove; }
   .item-catalogue-tabs { width: 100%; }

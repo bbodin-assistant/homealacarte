@@ -10,7 +10,7 @@ pub(crate) fn dish_retail_cost(dish: &Dish, ingredients: &HashMap<&str, &Ingredi
         .iter()
         .filter_map(|component| {
             ingredients.get(component.item_key.as_str()).map(|ingredient| {
-                component.grams * ingredient.price_per_kg / 1000.0 / dish.servings
+                ingredient.price_for_grams(component.grams) / dish.servings
             })
         })
         .sum()
