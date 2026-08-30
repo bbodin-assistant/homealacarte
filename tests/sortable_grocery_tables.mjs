@@ -40,7 +40,6 @@ const [moduleSource, index, groceryView] = await Promise.all([
 ]);
 assert.match(moduleSource, /data-extra-needs-sort/);
 assert.match(moduleSource, /data-purchase-history-sort/);
-assert.match(moduleSource, /purchase-date-group/);
 assert.match(moduleSource, /MutationObserver/);
 assert.match(moduleSource, /direction === "desc" \? " ↓" : " ↑"/);
 assert.match(moduleSource, /historyPanel\.insertBefore\(singleForm/);
@@ -49,9 +48,11 @@ assert.match(moduleSource, /purchase-batch-open/);
 assert.match(moduleSource, /Ajouter avec AI/);
 assert.match(moduleSource, /queueMicrotask\(\(\) => \{[\s\S]*purchase-batch-error[\s\S]*dialog\.close\(\)/);
 assert.match(moduleSource, /purchaseState = \{ \.\.\.DEFAULT_PURCHASE_SORT \}/);
+assert.match(moduleSource, /if \(!sortState\.key\) return;/);
+assert.match(moduleSource, /list\.replaceChildren\(\.\.\.sorted\)/);
 assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(groceryView, /purchase-history-panel/);
 assert.match(index, /features\/sortable-grocery-tables\.js\?v=homealacarte-114/);
 
-console.log("Extra needs and purchase history use stock-style sorting, while purchases open on a date-grouped history-first layout with batch entry in a dialog.");
+console.log("Extra needs and purchase history use stock-style sorting; purchases default to date groups, then switch to a global column sort on demand.");
