@@ -35,6 +35,16 @@ export function createDetailRefinements({
     documentRef.head.append(link);
   }
 
+  function refineRecipeLink() {
+    const link = select("#dish-details-recipe-link");
+    if (!link) return;
+    const label = translate("open_recipe");
+    link.removeAttribute("data-i18n");
+    link.setAttribute("aria-label", label);
+    link.setAttribute("title", label);
+    link.innerHTML = `<span aria-hidden="true">↗</span><span class="sr-only">${escapeHtml(label)}</span>`;
+  }
+
   function ensureHealthLayout() {
     const content = select("#dish-details-dialog .dish-details-content");
     const ingredients = select("#dish-details-ingredients-section");
@@ -58,7 +68,7 @@ export function createDetailRefinements({
       health.className = "dish-details-health";
       content.insertBefore(health, ingredients);
     }
-    health.append(status, allergens);
+    health.append(allergens, status);
     return { health, status, allergens };
   }
 
@@ -149,6 +159,7 @@ export function createDetailRefinements({
   }
 
   function apply() {
+    refineRecipeLink();
     const dishKey = state?.dishDetailsDishKey;
     const dish = (state?.snapshot?.dishes || []).find((candidate) => candidate.key === dishKey);
     renderHealth(dish || null);
@@ -159,6 +170,7 @@ export function createDetailRefinements({
 
   function mount() {
     installStyles();
+    refineRecipeLink();
     const dialog = select("#dish-details-dialog");
     if (!dialog || typeof MutationObserver === "undefined") return;
     const observer = new MutationObserver(() => {
