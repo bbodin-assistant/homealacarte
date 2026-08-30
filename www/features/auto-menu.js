@@ -5,7 +5,7 @@ import {
   menuRowsForWeek,
   menuWeek,
   migrateUndatedMenuRows,
-} from "./menu/week.js?v=homealacarte-113";
+} from "./menu/week.js?v=homealacarte-114";
 
 export const autoMenuSettingKey = (...parts) => JSON.stringify(parts);
 

@@ -2,7 +2,7 @@ import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
 import { dishAllergenBadges } from "./dishes/allergen-display.js?v=homealacarte-104";
 import { buildScheduledDishRow } from "./menu/scheduling.js?v=homealacarte-81";
 import { mergeCompatibleMenuRows } from "./menu/rows.js?v=homealacarte-81";
-import { createMenuDragNavigation } from "./menu/navigation.js?v=homealacarte-113";
+import { createMenuDragNavigation } from "./menu/navigation.js?v=homealacarte-114";
 import {
   menuDateWindow,
   menuDateForDay,
@@ -10,7 +10,7 @@ import {
   menuRowsForWeek,
   menuWeek,
   migrateUndatedMenuRows,
-} from "./menu/week.js?v=homealacarte-113";
+} from "./menu/week.js?v=homealacarte-114";
 
 export function createMenuFeature({
   state,
@@ -51,7 +51,7 @@ export function createMenuFeature({
     dragNavigation.stop();
     selectAll("#weekly-menu .menu-entry.dragging").forEach((entry) => entry.classList.remove("dragging"));
     selectAll("#weekly-menu td.menu-drop-target").forEach((cell) => cell.classList.remove("menu-drop-target"));
-    select("#menu-date-navigation")?.classList.remove("meal-drag-active");
+    select("#menu-table-frame")?.classList.remove("meal-drag-active");
     state.draggedMenuIndex = null;
   }
 
@@ -476,8 +476,8 @@ export function createMenuFeature({
     state.menuDayOffset = 0;
     renderMenu();
   });
-  const dateNavigation = select("#menu-date-navigation");
-  dragNavigation.mount(dateNavigation, finishMenuDrag);
+  const menuTableFrame = select("#menu-table-frame");
+  dragNavigation.mount(menuTableFrame, finishMenuDrag);
   select("#profile-select").addEventListener("change", (event) => send("set-profile", { profile: event.target.value }));
   select("#show-selected-only").addEventListener("change", (event) => {
     state.menuSelectedOnly = event.target.checked;
@@ -522,7 +522,7 @@ export function createMenuFeature({
     if (!entry) return;
     state.draggedMenuIndex = Number(entry.dataset.menuDragIndex);
     entry.classList.add("dragging");
-    dateNavigation.classList.add("meal-drag-active");
+    menuTableFrame.classList.add("meal-drag-active");
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", entry.dataset.menuDragIndex);
   });

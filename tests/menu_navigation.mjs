@@ -41,15 +41,15 @@ timers.delete(pending[0]);
 pending[1].callback();
 assert.deepEqual(movements, [1, 1]);
 
-repeater.start(-7);
+repeater.start(-1);
 assert.equal(timers.size, 1);
 pending = [...timers.entries()][0];
 timers.delete(pending[0]);
 pending[1].callback();
-assert.deepEqual(movements, [1, 1, -7]);
+assert.deepEqual(movements, [1, 1, -1]);
 
 repeater.stop();
 assert.equal(timers.size, 0);
 assert.ok(cleared.length > 0);
 
-console.log("Drag navigation waits one second, repeats, changes direction, and stops deterministically.");
+console.log("Menu-edge drag navigation waits one second, repeats by one day, changes direction, and stops deterministically.");

@@ -4,12 +4,12 @@ import { createStockFeature } from "../features/stock.js?v=homealacarte-77";
 import { createExtraNeedsFeature } from "../features/extra-needs.js?v=homealacarte-77";
 import { createGroceryFeature } from "../features/grocery.js?v=homealacarte-110";
 import { createDishesFeature } from "../features/dishes.js?v=homealacarte-110";
-import { createAutoMenuFeature } from "../features/auto-menu.js?v=homealacarte-113";
+import { createAutoMenuFeature } from "../features/auto-menu.js?v=homealacarte-114";
 import { createItemDetailsFeature } from "../features/item-details.js?v=homealacarte-112";
 import { createDishEditorFeature } from "../features/dish-editor.js?v=homealacarte-110";
 import { createCatalogueFeature } from "../features/catalogue.js?v=homealacarte-112";
 import { createFamilyFeature } from "../features/family.js?v=homealacarte-104";
-import { createMenuFeature } from "../features/menu.js?v=homealacarte-113";
+import { createMenuFeature } from "../features/menu.js?v=homealacarte-114";
 import { createDataAccountFeature } from "../features/data-account.js?v=homealacarte-99";
 import { createShellFeature } from "../features/shell.js?v=homealacarte-91";
 

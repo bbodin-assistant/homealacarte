@@ -91,16 +91,29 @@
 
 .menu-profile-controls { display: flex; align-items: flex-end; gap: 14px; }
 .menu-date-navigation { flex-wrap: nowrap; }
-.menu-date-navigation #menu-week-range { min-width: 165px; text-align: center; }
 .menu-date-navigation [data-menu-navigation-days] { min-width: 38px; font-size: 15px; }
-.menu-date-navigation.meal-drag-active [data-menu-navigation-days] {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+.menu-table-range { padding: 10px 14px; color: var(--muted); background: #f8f5ef; border-bottom: 1px solid var(--line); font-size: 11px; text-align: center; }
+.menu-table-frame { position: relative; }
+.menu-drag-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 62px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-dark);
+  font-size: 30px;
+  font-weight: 900;
+  pointer-events: none;
 }
-.menu-date-navigation [data-menu-navigation-days].drag-navigation-active {
+.menu-table-frame.meal-drag-active .menu-drag-edge { display: flex; pointer-events: auto; }
+.menu-drag-edge-previous { left: 0; background: linear-gradient(to right, var(--accent-soft), transparent); }
+.menu-drag-edge-next { right: 0; background: linear-gradient(to left, var(--accent-soft), transparent); }
+.menu-drag-edge.drag-navigation-active {
   color: white;
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 82%, transparent);
 }
 .profile-control { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
 .profile-control select { min-width: 180px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--ink); background: var(--surface); text-transform: none; }

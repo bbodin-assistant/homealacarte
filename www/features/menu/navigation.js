@@ -38,41 +38,41 @@ export function createDragNavigationRepeater(
 }
 
 export function createMenuDragNavigation({ isDragging, onNavigate }) {
-  let activeButton = null;
+  let activeEdge = null;
   const repeater = createDragNavigationRepeater(onNavigate);
 
   function stop() {
     repeater.stop();
-    activeButton?.classList.remove("drag-navigation-active");
-    activeButton = null;
+    activeEdge?.classList.remove("drag-navigation-active");
+    activeEdge = null;
   }
 
-  function start(button) {
-    if (!button || !isDragging()) {
+  function start(edge) {
+    if (!edge || !isDragging()) {
       stop();
       return;
     }
-    if (activeButton !== button) {
-      activeButton?.classList.remove("drag-navigation-active");
-      activeButton = button;
-      activeButton.classList.add("drag-navigation-active");
+    if (activeEdge !== edge) {
+      activeEdge?.classList.remove("drag-navigation-active");
+      activeEdge = edge;
+      activeEdge.classList.add("drag-navigation-active");
     }
-    repeater.start(button.dataset.menuNavigationDays);
+    repeater.start(edge.dataset.menuDragNavigationDays);
   }
 
   function mount(container, onDrop) {
     container.addEventListener("dragover", (event) => {
-      const button = event.target.closest("[data-menu-navigation-days]");
-      if (!button || !isDragging()) {
+      const edge = event.target.closest("[data-menu-drag-navigation-days]");
+      if (!edge || !isDragging()) {
         stop();
         return;
       }
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
-      start(button);
+      start(edge);
     });
     container.addEventListener("dragleave", (event) => {
-      if (!activeButton?.contains(event.relatedTarget)) stop();
+      if (!activeEdge?.contains(event.relatedTarget)) stop();
     });
     container.addEventListener("drop", (event) => {
       event.preventDefault();
