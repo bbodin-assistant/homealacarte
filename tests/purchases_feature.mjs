@@ -304,7 +304,7 @@ assert.match(worker, /homealacarte_web\.js\?v=homealacarte-97/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-110/);
 assert.match(composition, /features\/grocery\.js\?v=homealacarte-110/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-110/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-112/);
 assert.match(app, /worker\.js\?v=homealacarte-110/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");

@@ -101,5 +101,6 @@ assert.match(uiConsistency, /data-auto-availability-select-all/);
 assert.match(uiConsistency, /dispatchEvent\(new Event\("change", \{ bubbles: true \}\)\)/);
 assert.match(uiConsistency, /#item-category-filter, #item-incomplete-filter/);
 assert.match(uiConsistency, /beforeinput/);
+assert.match(uiConsistency, /dish-country-filter\[open\].*dish-allergen-filter\[open\]/s);
 
 console.log("UI consistency safeguards cover calendar-only dates, purchase matches, availability helpers, family editing, and live catalogue counts.");

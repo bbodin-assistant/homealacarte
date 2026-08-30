@@ -215,6 +215,15 @@ function installAvailabilitySelectAll(documentRef, translate) {
   enhance();
 }
 
+function installDismissableDishFilters(documentRef) {
+  documentRef.addEventListener("click", (event) => {
+    documentRef.querySelectorAll("#dish-country-filter[open], #dish-allergen-filter[open]")
+      .forEach((filter) => {
+        if (!filter.contains(event.target)) filter.removeAttribute("open");
+      });
+  });
+}
+
 function installUiConsistencyStyles(documentRef) {
   if (documentRef.querySelector("#ui-consistency-styles")) return;
   const style = documentRef.createElement("style");
@@ -238,4 +247,5 @@ export function installUiConsistency({
   installCatalogueCountUpdates(documentRef, state);
   installPurchaseStatusSync(documentRef);
   installAvailabilitySelectAll(documentRef, translate);
+  installDismissableDishFilters(documentRef);
 }

@@ -7,6 +7,7 @@ import {
   priceChartGeometry,
 } from "../core/item-details.js?v=homealacarte-110";
 import { ingredientAllergenBadges } from "./catalogue/allergens.js?v=homealacarte-104";
+import { dishesUsingIngredient } from "./catalogue/usage.js?v=homealacarte-112";
 
 const EDITABLE_DETAIL_FIELDS = {
   sugars_g: { label: "sugars_grams", kind: "number", reference: "nutrition" },
@@ -54,18 +55,25 @@ export function createItemDetailsFeature({
   openItemEditor,
 }) {
 function groceryItemUsage(item) {
+  const itemKey = item?.key || "";
   const dishKeys = new Set(
-    state.snapshot.dishes
-      .filter((dish) => dish.components.some((component) => component.name === item.name))
+    (state.snapshot.dishes || [])
+      .filter((dish) => (dish.components || []).some((component) => {
+        const componentKey = component.key || component.item_key;
+        return itemKey ? componentKey === itemKey : component.name === item.name;
+      }))
       .map((dish) => dish.key),
   );
   const directIngredientKeys = new Set(
-    state.snapshot.item_options
-      .filter((option) => option.kind === "ingredient" && option.name === item.name)
-      .map((option) => option.key),
+    itemKey
+      ? [itemKey]
+      : (state.snapshot.item_options || [])
+        .filter((option) => option.kind === "ingredient" && option.name === item.name)
+        .map((option) => option.key),
   );
-  const itemNames = new Map(state.snapshot.item_options.map((option) => [option.key, option.name]));
-  return state.draft
+  const itemNames = new Map((state.snapshot.item_options || [])
+    .map((option) => [option.key, option.name]));
+  return (state.draft || [])
     .map((row, index) => ({ row, index }))
     .filter(({ row }) => dishKeys.has(row.item_key) || directIngredientKeys.has(row.item_key))
     .map(({ row, index }) => ({
@@ -74,6 +82,37 @@ function groceryItemUsage(item) {
       context: menuUsageContext(row, state.snapshot.people),
       direct: directIngredientKeys.has(row.item_key),
     }));
+}
+
+function ensureCatalogueDishUsageSection() {
+  let section = select("#grocery-details-library-usages");
+  if (section) return section;
+  select("#grocery-details-usages").insertAdjacentHTML("afterend", `
+    <section id="grocery-details-library-usages" hidden>
+      <h3 id="grocery-details-library-title"></h3>
+      <div id="grocery-details-library-list" class="grocery-details-list"></div>
+    </section>`);
+  return select("#grocery-details-library-usages");
+}
+
+function renderCatalogueDishUsage(item) {
+  const section = ensureCatalogueDishUsageSection();
+  const dishes = item?.key
+    ? dishesUsingIngredient(item.key, state.snapshot.dishes || [])
+    : [];
+  select("#grocery-details-library-title").textContent =
+    `${translate("recipes_eyebrow")} · ${translate("nav_dishes")}: ${formatNumber(dishes.length, 0)}`;
+  select("#grocery-details-library-list").innerHTML = dishes.map((dish) => {
+    const context = [
+      dish.source || "",
+      dish.servings ? `${formatNumber(dish.servings, 0)} ${translate("servings")}` : "",
+    ].filter(Boolean).join(" · ");
+    return `<article class="grocery-usage">
+      <strong>${escapeHtml(dish.name)}</strong>
+      ${context ? `<small>${escapeHtml(context)}</small>` : ""}
+    </article>`;
+  }).join("");
+  section.hidden = dishes.length === 0;
 }
 
 function detailValue(value, suffix = "") {
@@ -298,6 +337,7 @@ function openItemDetails(items, groceryItem = null) {
       </article>
     `).join("") || `<p class="grocery-usage-empty">${escapeHtml(translate("no_linked_dishes"))}</p>`;
   select("#grocery-details-usages").hidden = !usages.length;
+  renderCatalogueDishUsage(item && Object.hasOwn(item, "kcal") ? item : null);
   const dialog = select("#grocery-details-dialog");
   if (typeof dialog.showModal === "function") dialog.showModal();
   else dialog.setAttribute("open", "");

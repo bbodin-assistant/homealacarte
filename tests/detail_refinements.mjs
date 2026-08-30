@@ -21,10 +21,13 @@ assert.equal(refinements.preferredDishDetailPortions({
   draft: [{ item_key: "dish", quantity_unit: "g", quantity: 300 }],
 }, "dish"), 1);
 
-assert.match(feature, /detail-refinements\.css\?v=homealacarte-111/);
+assert.match(feature, /detail-refinements\.css\?v=homealacarte-112/);
 assert.match(feature, /<details class="dish-nutri-disclosure">/);
 assert.match(feature, /summary title=/);
 assert.match(feature, /data-dish-details-portions/);
+assert.match(feature, /refineRecipeLink/);
+assert.match(feature, /health\.append\(allergens, status\)/);
+assert.match(feature, /↗/);
 assert.match(feature, /MutationObserver/);
 assert.match(app, /createDetailRefinements/);
 assert.match(app, /detailRefinements\.mount\(\)/);
