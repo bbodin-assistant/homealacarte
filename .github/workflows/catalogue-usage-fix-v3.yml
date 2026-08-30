@@ -1,0 +1,51 @@
+name: Finalize catalogue dish usage fix
+
+on:
+  push:
+    branches:
+      - fix/catalog-item-dish-usage-2026-08-30
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply focused changes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path(".github/workflows/catalogue-usage-fix-v2.yml").read_text()
+          marker = "python3 - <<'PY'\n"
+          script = workflow.split(marker, 1)[1].split("\n          PY", 1)[0]
+          exec(compile(textwrap.dedent(script), "catalogue-usage-fix-v2", "exec"))
+          PY
+      - name: Validate affected code
+        shell: bash
+        run: |
+          python3 scripts/check_source_boundaries.py
+          node --check www/features/catalogue.js
+          node --check www/features/item-details.js
+          node --check www/features/catalogue/usage.js
+          node --check www/app/feature-composition.js
+          node --check www/app.js
+          node tests/catalogue_dish_usage.mjs
+          git diff --check
+      - name: Commit fixes
+        shell: bash
+        run: |
+          rm .github/workflows/catalogue-usage-fix.yml \
+             .github/workflows/catalogue-usage-fix-v2.yml \
+             .github/workflows/catalogue-usage-fix-v3.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add menu and library dish usage to catalogue"
+          git push origin HEAD:${GITHUB_REF_NAME}
