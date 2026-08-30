@@ -1,0 +1,47 @@
+name: Temporary integration merge
+
+on:
+  push:
+    branches:
+      - integration/all-unmerged-2026-08-30
+
+permissions:
+  contents: write
+
+jobs:
+  merge-legacy-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge remaining unmerged branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin fix/catalogue-sorting-batch-purchase
+          set +e
+          git merge --no-ff --no-commit -X ours origin/fix/catalogue-sorting-batch-purchase
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ]; then
+            while IFS= read -r path; do
+              [ -n "$path" ] || continue
+              if git cat-file -e ":2:$path" 2>/dev/null; then
+                git checkout --ours -- "$path"
+                git add -- "$path"
+              else
+                git rm -f --ignore-unmatch -- "$path"
+              fi
+            done < <(git diff --name-only --diff-filter=U)
+          fi
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "Unresolved merge conflicts remain" >&2
+            git status --short
+            exit 1
+          fi
+          git rm -f .github/workflows/integration-merge-unmerged.yml
+          git commit -m "Merge unmerged branch fix/catalogue-sorting-batch-purchase"
+          git push origin HEAD:integration/all-unmerged-2026-08-30
