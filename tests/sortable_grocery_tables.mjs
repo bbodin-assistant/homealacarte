@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
+  DEFAULT_PURCHASE_SORT,
   nextSort,
   sortableNumber,
   sortRecords,
@@ -10,6 +11,7 @@ assert.equal(sortableNumber("1 234,50 €"), 1234.5);
 assert.equal(sortableNumber("€12.75"), 12.75);
 assert.deepEqual(nextSort("name", "asc", "name"), { key: "name", direction: "desc" });
 assert.deepEqual(nextSort("name", "desc", "quantity"), { key: "quantity", direction: "asc" });
+assert.deepEqual(DEFAULT_PURCHASE_SORT, { key: null, direction: "asc" });
 
 const rows = [
   { name: "Banana", quantity: 2 },
@@ -31,15 +33,25 @@ assert.deepEqual(sortRecords(rows, {
   tieBreaker: (row) => row.name,
 }).map((row) => row.quantity), [10, 4, 2]);
 
-const [moduleSource, index] = await Promise.all([
+const [moduleSource, index, groceryView] = await Promise.all([
   readFile(new URL("../www/features/sortable-grocery-tables.js", import.meta.url), "utf8"),
   readFile(new URL("../www/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../www/views/grocery.html", import.meta.url), "utf8"),
 ]);
 assert.match(moduleSource, /data-extra-needs-sort/);
 assert.match(moduleSource, /data-purchase-history-sort/);
 assert.match(moduleSource, /purchase-date-group/);
 assert.match(moduleSource, /MutationObserver/);
 assert.match(moduleSource, /direction === "desc" \? " ↓" : " ↑"/);
+assert.match(moduleSource, /historyPanel\.insertBefore\(singleForm/);
+assert.match(moduleSource, /purchase-batch-dialog/);
+assert.match(moduleSource, /purchase-batch-open/);
+assert.match(moduleSource, /Ajouter avec AI/);
+assert.match(moduleSource, /queueMicrotask\(\(\) => \{[\s\S]*purchase-batch-error[\s\S]*dialog\.close\(\)/);
+assert.match(moduleSource, /purchaseState = \{ \.\.\.DEFAULT_PURCHASE_SORT \}/);
+assert.match(groceryView, /id="purchase-add-form"/);
+assert.match(groceryView, /id="purchase-batch-form"/);
+assert.match(groceryView, /purchase-history-panel/);
 assert.match(index, /features\/sortable-grocery-tables\.js\?v=homealacarte-114/);
 
-console.log("Extra needs and purchase history expose stock-style sortable column headers.");
+console.log("Extra needs and purchase history use stock-style sorting, while purchases open on a date-grouped history-first layout with batch entry in a dialog.");
