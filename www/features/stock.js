@@ -77,7 +77,14 @@ export function updateStockItem(item, field, value) {
   return false;
 }
 
-export function sortStockRows(rows = [], { key = "name", direction = "asc", locale } = {}) {
+export function nextStockSort(currentKey, currentDirection, key) {
+  if (currentKey !== key) return { key, direction: "asc" };
+  if (currentDirection === "asc") return { key, direction: "desc" };
+  return { key: null, direction: "asc" };
+}
+
+export function sortStockRows(rows = [], { key = null, direction = "asc", locale } = {}) {
+  if (!key) return [...rows];
   const multiplier = direction === "desc" ? -1 : 1;
   const collator = new Intl.Collator(locale || undefined, { numeric: true, sensitivity: "base" });
   const value = (row) => {
@@ -121,7 +128,7 @@ export function createStockFeature({
   send,
 }) {
   let mounted = false;
-  let sortKey = "name";
+  let sortKey = null;
   let sortDirection = "asc";
 
   function payload() {
@@ -273,12 +280,9 @@ export function createStockFeature({
     select("#stock-list").addEventListener("click", (event) => {
       const sort = event.target.closest("[data-stock-sort]");
       if (sort) {
-        const key = sort.dataset.stockSort;
-        if (sortKey === key) sortDirection = sortDirection === "asc" ? "desc" : "asc";
-        else {
-          sortKey = key;
-          sortDirection = "asc";
-        }
+        const next = nextStockSort(sortKey, sortDirection, sort.dataset.stockSort);
+        sortKey = next.key;
+        sortDirection = next.direction;
         render();
         return;
       }
