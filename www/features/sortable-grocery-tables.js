@@ -63,7 +63,8 @@ function updateHeaderControls(header, attribute, sortState) {
     const key = control.getAttribute(attribute);
     const active = sortState.key === key;
     const indicator = active ? (sortState.direction === "desc" ? " ↓" : " ↑") : "";
-    control.textContent = `${label}${indicator}`;
+    const text = `${label}${indicator}`;
+    if (control.textContent !== text) control.textContent = text;
     control.setAttribute("aria-pressed", active ? "true" : "false");
   });
 }
