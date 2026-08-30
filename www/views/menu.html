@@ -12,10 +12,13 @@
                 <p data-i18n="menu_intro">Une vue claire des repas et apports quotidiens.</p>
               </div>
               <div class="menu-profile-controls">
-                <div class="auto-menu-inline-actions">
-                  <button id="menu-previous-week" class="button ghost compact" type="button" aria-label="−7 days">←</button>
+                <div id="menu-date-navigation" class="auto-menu-inline-actions menu-date-navigation">
+                  <button id="menu-previous-week" class="button ghost compact" type="button" data-menu-navigation-days="-7" data-i18n-title="previous_week" aria-label="Previous week">«</button>
+                  <button id="menu-previous-day" class="button ghost compact" type="button" data-menu-navigation-days="-1" data-i18n-title="previous_day" aria-label="Previous day">←</button>
                   <strong id="menu-week-range"></strong>
-                  <button id="menu-next-week" class="button ghost compact" type="button" aria-label="+7 days">→</button>
+                  <button id="menu-today" class="button ghost compact" type="button" data-i18n="today">TODAY</button>
+                  <button id="menu-next-day" class="button ghost compact" type="button" data-menu-navigation-days="1" data-i18n-title="next_day" aria-label="Next day">→</button>
+                  <button id="menu-next-week" class="button ghost compact" type="button" data-menu-navigation-days="7" data-i18n-title="next_week" aria-label="Next week">»</button>
                 </div>
                 <label class="profile-control">
                   <span data-i18n="nutrition_profile">Profil nutrition</span>
@@ -102,4 +105,3 @@
             <div id="auto-menu-result" class="auto-menu-result" hidden></div>
           </div>
         </section>
-

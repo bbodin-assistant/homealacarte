@@ -11,10 +11,10 @@ function addScaledNutrients(target, source, multiplier) {
   }
 }
 
-export function menuWeek(days, weekOffset = 0, today = new Date()) {
+export function menuDateWindow(days, dayOffset = 0, today = new Date()) {
   if (!Array.isArray(days) || days.length !== 7) return [];
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  start.setDate(start.getDate() + Number(weekOffset || 0) * 7);
+  start.setDate(start.getDate() + Number(dayOffset || 0));
   const mondayIndex = (start.getDay() + 6) % 7;
   return days.map((_, index) => {
     const date = new Date(start);
@@ -24,6 +24,10 @@ export function menuWeek(days, weekOffset = 0, today = new Date()) {
       date: localIsoDate(date),
     };
   });
+}
+
+export function menuWeek(days, weekOffset = 0, today = new Date()) {
+  return menuDateWindow(days, Number(weekOffset || 0) * 7, today);
 }
 
 export function menuDateForDay(week, day) {

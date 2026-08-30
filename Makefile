@@ -58,6 +58,7 @@ test-web:
 	node --check www/features/receipt-purchases.js
 	node --check www/features/ui-consistency.js
 	node tests/menu_rows.mjs
+	node tests/menu_navigation.mjs
 	node tests/food_rules.mjs
 	node tests/allergens.mjs
 	node tests/format.mjs

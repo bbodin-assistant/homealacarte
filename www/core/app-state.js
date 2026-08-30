@@ -29,7 +29,7 @@ export function createAppState(storage, getStorageStatus, defaultLanguage = "") 
     groceryMode: storage.getItem("homealacarte-grocery-mode") || "list",
     menuMode: storage.getItem("homealacarte-menu-mode") || "manual",
     menuSelectedOnly: storage.getItem("homealacarte-menu-selected-only") === "true",
-    menuWeekOffset: 0,
+    menuDayOffset: 0,
     groceryHideStocked: storage.getItem("homealacarte-grocery-hide-stocked") === "true",
     colorTheme: Number(storage.getItem("homealacarte-color-theme") || 0),
     randomThemes: storedJson(storage, "homealacarte-random-themes", []),

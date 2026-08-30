@@ -79,6 +79,8 @@
   .planner-mode-switch { width: 100%; }
   .planner-mode-switch button { flex: 1; padding-inline: 9px; }
   .menu-profile-controls { align-items: stretch; flex-direction: column; }
+  .menu-date-navigation { flex-wrap: wrap; }
+  .menu-date-navigation #menu-week-range { flex: 1 1 100%; order: -1; }
   .auto-menu-parameters { grid-template-columns: 1fr 1fr; }
   .auto-menu-slots { grid-template-columns: 1fr 1fr; }
   .auto-menu-section-heading, .auto-menu-run { align-items: stretch; flex-direction: column; }

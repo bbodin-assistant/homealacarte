@@ -12,6 +12,7 @@ const state = createAppState(storage, () => ({ state: "local" }), "de");
 assert.equal(state.language, "es");
 assert.equal(state.itemCatalogueTab, "other");
 assert.equal(state.groceryHideStocked, true);
+assert.equal(state.menuDayOffset, 0);
 assert.equal(state.autoMenuOptions.kcalThreshold, 200);
 assert.equal(state.autoMenuOptions.samePortionForEveryone, true);
 assert.deepEqual(state.storageStatus, { state: "local" });

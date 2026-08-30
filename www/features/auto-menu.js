@@ -5,7 +5,7 @@ import {
   menuRowsForWeek,
   menuWeek,
   migrateUndatedMenuRows,
-} from "./menu/week.js?v=homealacarte-81";
+} from "./menu/week.js?v=homealacarte-113";
 
 export const autoMenuSettingKey = (...parts) => JSON.stringify(parts);
 
@@ -291,7 +291,7 @@ export function createAutoMenuFeature({
       structuredClone(state.autoMenuProposal.rows),
       menuWeek(state.snapshot.days, 0),
     );
-    state.menuWeekOffset = 0;
+    state.menuDayOffset = 0;
     state.autoMenuProposal = null;
     applyProposal(rows);
   });
