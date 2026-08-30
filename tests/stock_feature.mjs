@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   addStockQuantity,
+  nextStockSort,
   sortStockRows,
   stockPayload,
   updateStockItem,
@@ -72,8 +73,12 @@ const sortable = [
   { name: "Rice", category: "Food", quantity: 2.2, added_at: "2026-08-28" },
   { name: "Old", category: "Food", quantity: 8, added_at: "" },
 ];
+assert.deepEqual(nextStockSort(null, "asc", "name"), { key: "name", direction: "asc" });
+assert.deepEqual(nextStockSort("name", "asc", "name"), { key: "name", direction: "desc" });
+assert.deepEqual(nextStockSort("name", "desc", "name"), { key: null, direction: "asc" });
+assert.deepEqual(sortStockRows(sortable, { key: null }).map((row) => row.name), ["Soap", "Rice", "Old"]);
 assert.deepEqual(sortStockRows(sortable, { key: "name", direction: "asc", locale: "en" }).map((row) => row.name), ["Old", "Rice", "Soap"]);
 assert.deepEqual(sortStockRows(sortable, { key: "quantity", direction: "desc", locale: "en" }).map((row) => row.name), ["Old", "Soap", "Rice"]);
 assert.deepEqual(sortStockRows(sortable, { key: "added_at", direction: "desc", locale: "en" }).map((row) => row.name), ["Rice", "Soap", "Old"]);
 
-console.log("Stock feature preserves payloads, added dates, sortable columns, and unit conversions after extraction.");
+console.log("Stock feature preserves payloads and unit conversions while table sorting cycles ascending, descending, then default order.");
