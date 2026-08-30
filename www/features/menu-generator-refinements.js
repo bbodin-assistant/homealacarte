@@ -75,7 +75,8 @@ export function decorateDisabledAutoMenuDishes(documentRef = document) {
     const name = label.querySelector("strong")?.textContent?.trim() || "";
     if (!input || !detail || !input.disabled) return;
 
-    const reason = disabledAutoMenuDishReason(true, detail.textContent);
+    const reason = detail.dataset.autoDishDisabledReason
+      || disabledAutoMenuDishReason(true, detail.textContent);
     const reasonText = menuGeneratorRefinementCopy(currentLanguage, reason);
     if (!reasonText) return;
 
