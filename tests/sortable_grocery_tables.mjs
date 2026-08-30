@@ -53,6 +53,6 @@ assert.match(moduleSource, /list\.replaceChildren\(\.\.\.sorted\)/);
 assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(groceryView, /purchase-history-panel/);
-assert.match(index, /features\/sortable-grocery-tables\.js\?v=homealacarte-114/);
+assert.match(index, /features\/sortable-grocery-tables\.js\?v=homealacarte-115/);
 
 console.log("Extra needs and purchase history use stock-style sorting; purchases default to date groups, then switch to a global column sort on demand.");
