@@ -136,6 +136,9 @@ assert.match(feature, /current_stock/);
 assert.match(filters, /data-catalogue-sort/);
 assert.match(filters, /item-dish-count/);
 assert.match(filters, /value="original"/);
+assert.match(filters, /sortSelect\.value = "original"/);
+assert.match(filters, /directionButton\.dataset\.direction !== "asc"/);
+assert.match(filters, /directionButton\.click\(\)/);
 assert.match(filters, /catalogueSortSignature/);
 assert.match(filters, /observer\.observe\(catalogue, \{ childList: true \}\)/);
 assert.doesNotMatch(filters, /observer\.observe\(catalogue, \{ childList: true, subtree: true \}\)/);
@@ -144,4 +147,4 @@ assert.match(feature, /ingredientAllergenOptions/);
 assert.match(feature, /#ingredient-allergens.*input:checked/);
 assert.match(feature, /renderIngredientAllergenOptions\(ingredient\.allergens\)/);
 
-console.log("Catalogue filters cover idempotent header sorting, original order, incomplete food detection, dish counts, and stock summaries.");
+console.log("Catalogue filters cover three-state header sorting, original order restoration, incomplete food detection, dish counts, and stock summaries.");
