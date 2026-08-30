@@ -15,6 +15,52 @@
   gap: 8px;
 }
 
+.dish-details-recipe {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  margin-top: 10px;
+}
+
+.dish-details-url {
+  display: none !important;
+}
+
+#dish-details-recipe-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 10px 14px;
+  color: #fff;
+  background: #5a382a;
+  border-color: #5a382a;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+}
+
+#dish-details-recipe-link:hover,
+#dish-details-recipe-link:focus-visible {
+  color: #fff;
+  background: #452a1f;
+  border-color: #452a1f;
+}
+
+.dish-details-recipe-url {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dish-details-recipe-arrow {
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .dish-details-metrics {
   display: flex;
   flex-wrap: wrap;
@@ -52,11 +98,13 @@
 }
 
 .dish-details-health {
-  display: flex;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 12px 18px;
   padding: 12px 0;
+  overflow: visible;
   border-bottom: 1px solid var(--line);
 }
 
@@ -65,7 +113,9 @@
 }
 
 .dish-details-health > .nutri-score-detail {
-  flex: 0 0 auto;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
   margin: 0;
   padding: 0;
   background: transparent;
@@ -73,8 +123,9 @@
 }
 
 .dish-details-health #dish-details-allergens-section {
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
-  flex: 1 1 320px;
   align-content: start;
 }
 
@@ -86,12 +137,18 @@
   margin-bottom: 6px;
 }
 
+.dish-nutri-disclosure {
+  position: relative;
+}
+
 .dish-nutri-disclosure summary {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 7px;
   cursor: pointer;
   list-style: none;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 850;
 }
@@ -135,12 +192,19 @@
 }
 
 .dish-nutri-disclosure p {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 48px));
   max-width: 420px;
-  margin: 8px 0 0;
-  padding: 9px 10px;
+  margin: 0;
+  padding: 10px 12px;
   color: var(--muted);
   background: var(--paper);
+  border: 1px solid var(--line);
   border-radius: 8px;
+  box-shadow: var(--shadow);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -237,6 +301,10 @@
     padding: 16px;
   }
 
+  #dish-details-recipe-link {
+    width: 100%;
+  }
+
   .dish-details-metrics div {
     min-width: 50%;
     flex-basis: 50%;
@@ -244,7 +312,7 @@
   }
 
   .dish-details-health {
-    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .dish-portion-toolbar {
