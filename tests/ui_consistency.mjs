@@ -82,11 +82,12 @@ const formatInputNumber = (value) => String(value);
 assert.equal(installFamilyFormatCompatibility(formatInputNumber, compatibilityGlobal), true);
 assert.equal(compatibilityGlobal.formatInputNumber, formatInputNumber);
 
-const [app, family, groceryView, catalogueFeature, uiConsistency] = await Promise.all([
+const [app, family, groceryView, catalogueFeature, priceHistoryEditor, uiConsistency] = await Promise.all([
   readFile(new URL("../www/app.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/family.js", import.meta.url), "utf8"),
   readFile(new URL("../www/views/grocery.html", import.meta.url), "utf8"),
   readFile(new URL("../www/features/catalogue.js", import.meta.url), "utf8"),
+  readFile(new URL("../www/features/catalogue/price-history.js", import.meta.url), "utf8"),
   readFile(new URL("../www/features/ui-consistency.js", import.meta.url), "utf8"),
 ]);
 assert.match(app, /installUiConsistency/);
@@ -94,7 +95,8 @@ assert.match(app, /ui-consistency\.js\?v=homealacarte-1/);
 assert.match(family, /formatInputNumber\(quantity\)/);
 assert.match(groceryView, /id="purchase-add-date" type="date"/);
 assert.match(groceryView, /id="purchase-batch-date" type="date"/);
-assert.match(catalogueFeature, /data-price-observation-date/);
+assert.match(catalogueFeature, /createPriceHistoryEditor/);
+assert.match(priceHistoryEditor, /data-price-observation-date/);
 assert.match(uiConsistency, /data-auto-availability-select-all/);
 assert.match(uiConsistency, /dispatchEvent\(new Event\("change", \{ bubbles: true \}\)\)/);
 assert.match(uiConsistency, /#item-category-filter, #item-incomplete-filter/);

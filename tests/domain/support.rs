@@ -17,11 +17,13 @@ pub fn synthetic_dataset() -> SourceFile {
               "category": "Produce::Vegetables",
               "source": "Synthetic test fixture",
               "url": "",
-              "price_per_kg": 2,
+              "price": 2,
+              "price_basis": "kg",
               "measure_unit": "pieces",
               "grams_per_measure_unit": 150,
               "purchase_unit": "500 g pack",
-              "purchase_quantity_grams": 500
+              "purchase_quantity": 500,
+              "purchase_quantity_unit": "g"
             },
             {
               "key": "bread_test",
@@ -35,11 +37,13 @@ pub fn synthetic_dataset() -> SourceFile {
               "category": "Bakery",
               "source": "Synthetic test fixture",
               "url": "",
-              "price_per_kg": 4,
+              "price": 4,
+              "price_basis": "kg",
               "measure_unit": "slices",
               "grams_per_measure_unit": 25,
               "purchase_unit": "250 g loaf",
-              "purchase_quantity_grams": 250
+              "purchase_quantity": 250,
+              "purchase_quantity_unit": "g"
             },
             {
               "key": "cleaner_test",

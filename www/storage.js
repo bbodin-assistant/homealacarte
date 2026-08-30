@@ -2,9 +2,9 @@ import {
   clearLocalState,
   readLocalState,
   readSyncMeta,
-} from "./storage/local-store.js?v=homealacarte-106";
+} from "./storage/local-store.js?v=homealacarte-110";
 import { createRemoteClient } from "./storage/remote-client.js?v=homealacarte-105";
-import { createDocumentSync } from "./storage/document-sync.js?v=homealacarte-106";
+import { createDocumentSync } from "./storage/document-sync.js?v=homealacarte-110";
 
 let syncStatus = { state: "local", email: "", message: "" };
 

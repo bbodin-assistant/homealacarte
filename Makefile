@@ -43,6 +43,7 @@ test-web:
 	node --check www/core/ui-i18n.js
 	node --check www/core/stock-availability.js
 	node --check www/core/purchases.js
+	node --check www/core/purchase-pricing.js
 	node --check www/translations.js
 	node --check www/worker.js
 	node --check www/features/ai-dish.js
@@ -53,6 +54,7 @@ test-web:
 	node --check www/features/ai-list/ollama.js
 	node --check www/features/ai-list/payload.js
 	node --check www/features/grocery.js
+	node --check www/features/catalogue/price-history.js
 	node --check www/features/receipt-purchases.js
 	node --check www/features/ui-consistency.js
 	node tests/menu_rows.mjs

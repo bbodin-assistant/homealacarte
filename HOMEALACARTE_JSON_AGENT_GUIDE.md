@@ -67,7 +67,7 @@ Agent rules:
 
 - Localized values may contain any valid language-tag keys for which reliable text is available; do not restrict records to the locales currently present in the UI translation catalogue.
 - Do not invent a translation only to fill a locale. A normal string remains valid and is treated as language-neutral.
-- The same localized representation may be used for other user-facing text such as `source`, `measure_unit`, `purchase_unit`, dish `source_notes`, component `source_quantity`, person descriptions, and notes.
+- The same localized representation may be used for other user-facing text such as `source`, `measure_unit`, `purchase_unit`, `purchase_quantity_unit`, dish `source_notes`, component `source_quantity`, person descriptions, and notes.
 - Locale keys may include a region suffix such as `en-GB`, `fr-FR`, or `zh-CN`.
 - Resolution tries the requested locale, then its base language, then the first available localized value.
 - Keep identifiers and machine-readable codes stable. Do **not** localize fields such as `key`, `item_key`, person keys, `origin_country`, `nutri_score`, booleans, or numeric values.
@@ -99,12 +99,19 @@ Agent rules:
   "fruit_vegetable_legume_percent": 0.0,
   "incomplete": false,
   "allergens": [],
-  "purchase_quantity_grams": 100.0,
   "purchase_unit": "package description",
-  "price_per_kg": 0.0,
+  "purchase_quantity": 100.0,
+  "purchase_quantity_unit": "g",
+  "price": 0.0,
+  "price_basis": "kg",
   "price_checked_at": "",
   "price_source": "",
-  "price_history": [],
+  "price_history": [{
+    "date": "2026-08-29",
+    "price": 2.5,
+    "price_basis": "purchase_unit",
+    "description": "Receipt"
+  }],
   "source": "",
   "url": ""
 }
@@ -116,7 +123,14 @@ Notes:
 - A genuinely custom category may remain a language-neutral string.
 - Nutrition values apply to `grams` grams.
 - `grams_per_measure_unit` converts one `measure_unit` to grams.
-- `grams`, `grams_per_measure_unit`, and `purchase_quantity_grams` must be positive.
+- `grams`, `grams_per_measure_unit`, and `purchase_quantity` must be positive.
+- `purchase_quantity_unit` must be either `g` or the item’s `measure_unit`. Use the physical
+  unit that describes the package: for example `1000` + `ml` for a one-litre oil bottle,
+  `12` + `eggs` for an egg box, or `500` + `g` for a weighed package.
+- `price_basis` is required and must be `kg` when `price` is a mass-normalized price, or
+  `purchase_unit` when `price` is the price of one `purchase_unit`. Every `price_history`
+  observation carries its own `price_basis`; observations may therefore preserve the basis
+  printed or inferred from each source without losing comparability.
 - When recipes deliberately use a non-purchasable form such as cooked rice, `purchase_item_key`
   may reference the corresponding purchasable food and `purchase_grams_per_gram` gives the
   purchasable grams required per recipe gram (for example `0.3333333333` for dry rice per gram

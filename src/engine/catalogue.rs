@@ -37,7 +37,8 @@ impl Engine {
                 &mut ingredient.price_history,
                 &[],
                 &ingredient.price_checked_at,
-                ingredient.price_per_kg,
+                ingredient.price,
+                &ingredient.price_basis,
                 &ingredient.price_source,
             );
             validate_ingredient(&ingredient)?;
@@ -94,7 +95,8 @@ impl Engine {
                 &dataset.ingredients[index].price_history
             },
             &input.price_checked_at,
-            input.price_per_kg,
+            input.price,
+            &input.price_basis,
             &input.price_source,
         );
         input.custom = input.custom || dataset.ingredients[index].custom;
@@ -117,7 +119,8 @@ impl Engine {
             &mut input.price_history,
             &[],
             &input.price_checked_at,
-            input.price_per_kg,
+            input.price,
+            &input.price_basis,
             &input.price_source,
         );
         validate_ingredient(&input)?;
@@ -160,6 +163,7 @@ impl Engine {
             },
             &input.last_bought_at,
             input.estimated_price,
+            "purchase_unit",
             &input.notes,
         );
         input.custom = input.custom || dataset.household_items[index].custom;
@@ -177,6 +181,7 @@ impl Engine {
             &[],
             &input.last_bought_at,
             input.estimated_price,
+            "purchase_unit",
             &input.notes,
         );
         validate_household_item(&input)?;
@@ -384,10 +389,18 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
     let positive = [
         ingredient.grams,
         ingredient.grams_per_measure_unit,
-        ingredient.purchase_quantity_grams,
+        ingredient.purchase_quantity,
     ];
     if positive.into_iter().any(|value| !value.is_finite() || value <= 0.0) {
-        return Err("the ingredient gram quantities must be positive".to_string());
+        return Err("the ingredient quantities must be positive".to_string());
+    }
+    if !matches!(ingredient.price_basis.as_str(), "kg" | "purchase_unit") {
+        return Err("the ingredient price basis must be kg or purchase_unit".to_string());
+    }
+    if ingredient.purchase_quantity_unit != "g"
+        && ingredient.purchase_quantity_unit != ingredient.measure_unit
+    {
+        return Err("the ingredient purchase quantity unit must be g or its measure unit".to_string());
     }
     if !ingredient.purchase_grams_per_gram.is_finite()
         || ingredient.purchase_grams_per_gram <= 0.0
@@ -401,7 +414,7 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
         ingredient.carbs_g,
         ingredient.fat_g,
         ingredient.fiber_g,
-        ingredient.price_per_kg,
+        ingredient.price,
     ];
     if non_negative
         .into_iter()
@@ -434,13 +447,7 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
     {
         return Err(format!("invalid ingredient allergen: {allergen}"));
     }
-    if ingredient
-        .price_history
-        .iter()
-        .any(|entry| !entry.price.is_finite() || entry.price < 0.0)
-    {
-        return Err("the ingredient price history contains an invalid price".to_string());
-    }
+    validate_price_history(&ingredient.price_history, None)?;
     Ok(())
 }
 
@@ -497,18 +504,40 @@ fn validate_household_item(item: &HouseholdItem) -> Result<(), String> {
     if !item.estimated_price.is_finite() || item.estimated_price < 0.0 {
         return Err("the item price cannot be negative".to_string());
     }
-    if item
-        .price_history
-        .iter()
-        .any(|entry| !entry.price.is_finite() || entry.price < 0.0)
-    {
-        return Err("the item price history contains an invalid price".to_string());
-    }
+    validate_price_history(&item.price_history, Some("purchase_unit"))?;
     if item
         .lasting_days
         .is_some_and(|days| !days.is_finite() || days <= 0.0)
     {
         return Err("the item lasting days must be positive".to_string());
+    }
+    Ok(())
+}
+
+fn validate_price_history(
+    history: &[PriceObservation],
+    required_basis: Option<&str>,
+) -> Result<(), String> {
+    for entry in history {
+        if !entry.price.is_finite() || entry.price < 0.0 {
+            return Err("the price history contains an invalid price".to_string());
+        }
+        if !matches!(entry.price_basis.as_str(), "kg" | "purchase_unit") {
+            return Err("the price history contains an invalid price basis".to_string());
+        }
+        if required_basis.is_some_and(|basis| entry.price_basis != basis) {
+            return Err("the item price history must use purchase_unit prices".to_string());
+        }
+        if let Some(purchase) = &entry.purchase {
+            if !purchase.quantity.is_finite()
+                || purchase.quantity <= 0.0
+                || purchase.unit.trim().is_empty()
+                || !purchase.total_paid.is_finite()
+                || purchase.total_paid < 0.0
+            {
+                return Err("the price history contains invalid purchase details".to_string());
+            }
+        }
     }
     Ok(())
 }

@@ -22,7 +22,8 @@
         "fr": "Anses Ciqual 2025, code aliment 20385 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
       },
       "url": "https://ciqual.anses.fr/#/aliments/20385/tomate-sans-precision-crue-(aliment-moyen)",
-      "price_per_kg": 1.99,
+      "price": 1.99,
+      "price_basis": "kg",
       "measure_unit": {
         "en": "piece",
         "fr": "pièce"
@@ -32,7 +33,8 @@
         "en": "500 g pack",
         "fr": "barquette de 500 g"
       },
-      "purchase_quantity_grams": 500
+      "purchase_quantity": 500,
+      "purchase_quantity_unit": "g"
     },
     {
       "key": "sample_bread",
@@ -56,7 +58,8 @@
         "fr": "Anses Ciqual 2025, code aliment 7110 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
       },
       "url": "https://ciqual.anses.fr/#/aliments/7110/pain-complet-ou-integral-(a-la-farine-t150)",
-      "price_per_kg": 2.98,
+      "price": 2.98,
+      "price_basis": "kg",
       "measure_unit": {
         "en": "slice",
         "fr": "tranche"
@@ -66,7 +69,8 @@
         "en": "500 g loaf",
         "fr": "pain de 500 g"
       },
-      "purchase_quantity_grams": 500
+      "purchase_quantity": 500,
+      "purchase_quantity_unit": "g"
     },
     {
       "key": "sample_cheese",
@@ -90,14 +94,16 @@
         "fr": "Anses Ciqual 2025, code aliment 12118 ; estimation du prix Carrefour France vérifiée le 2026-07-30"
       },
       "url": "https://ciqual.anses.fr/#/aliments/12118/emmental-ou-emmenthal-rape",
-      "price_per_kg": 7.75,
+      "price": 7.75,
+      "price_basis": "kg",
       "measure_unit": "g",
       "grams_per_measure_unit": 1,
       "purchase_unit": {
         "en": "200 g bag",
         "fr": "sachet de 200 g"
       },
-      "purchase_quantity_grams": 200
+      "purchase_quantity": 200,
+      "purchase_quantity_unit": "g"
     },
     {
       "key": "sample_hand_soap",

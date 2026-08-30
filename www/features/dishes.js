@@ -7,7 +7,7 @@ import {
 } from "../core/allergens.js?v=homealacarte-104";
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishAllergenBadges, dishAllergenCodes } from "./dishes/allergen-display.js?v=homealacarte-104";
-import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-77";
+import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-110";
 
 export { allergenCodesOverlap, countryFlag };
 

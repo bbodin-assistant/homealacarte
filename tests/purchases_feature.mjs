@@ -19,7 +19,7 @@ const snapshot = {
   ingredients: [{
     key: "tomato",
     name: "Tomato",
-    price_history: [{ date: "2026-08-01", price: 2, description: "Market check" }],
+    price_history: [{ date: "2026-08-01", price: 2, price_basis: "kg", description: "Market check" }],
   }],
   household_items: [{
     key: "soap",
@@ -59,14 +59,16 @@ const document = {
       category: "Produce",
       source: "test",
       url: "",
-      price_per_kg: 2,
+      price: 2,
+      price_basis: "kg",
       price_source: "old",
       price_checked_at: "2026-08-01",
-      price_history: [{ date: "2026-08-01", price: 2, description: "Market check" }],
+      price_history: [{ date: "2026-08-01", price: 2, price_basis: "kg", description: "Market check" }],
       measure_unit: "piece",
       grams_per_measure_unit: 120,
       purchase_unit: "500 g",
-      purchase_quantity_grams: 500,
+      purchase_quantity: 500,
+      purchase_quantity_unit: "g",
     },
     {
       key: "soap",
@@ -115,7 +117,8 @@ const updated = applyPurchaseToDocument(document, {
   ],
 });
 
-assert.equal(updated.items.find((item) => item.key === "tomato").price_per_kg, 12.5);
+assert.equal(updated.items.find((item) => item.key === "tomato").price, 12.5);
+assert.equal(updated.items.find((item) => item.key === "tomato").price_basis, "kg");
 assert.equal(updated.stock.find((row) => row.item_key === "tomato").quantity, 3);
 assert.equal(updated.items.find((item) => item.key === "soap").estimated_price, 2.2);
 assert.equal(updated.stock.find((row) => row.item_key === "soap").quantity, 3);
@@ -165,7 +168,8 @@ const withNewItems = applyPurchaseToDocument(updated, {
     },
   ],
 });
-assert.equal(withNewItems.items.find((item) => item.name === "Lentils").price_per_kg, 3);
+assert.equal(withNewItems.items.find((item) => item.name === "Lentils").price, 2.25);
+assert.equal(withNewItems.items.find((item) => item.name === "Lentils").price_basis, "purchase_unit");
 assert.equal(withNewItems.items.find((item) => item.name === "Kitchen roll").estimated_price, 3.6);
 
 assert.throws(
@@ -263,7 +267,7 @@ assert.match(PURCHASE_LAYOUT_CSS, /problem-item \.receipt-review-field input[^}]
 assert.match(PURCHASE_LAYOUT_CSS, /receipt-review-weight/);
 
 const history = collectPurchaseHistory({
-  ingredients: withNewItems.items.filter((item) => Object.hasOwn(item, "price_per_kg")),
+  ingredients: withNewItems.items.filter((item) => Object.hasOwn(item, "kcal")),
   household_items: withNewItems.items.filter((item) => Object.hasOwn(item, "estimated_price")),
 });
 assert.ok(history.some((row) => row.description === "Market check"));
@@ -295,13 +299,13 @@ assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(shell, /\["list", "stock", "needs", "purchases"\]/);
 assert.match(worker, /type === "record-purchase"/);
-assert.match(worker, /core\/purchases\.js\?v=homealacarte-3/);
+assert.match(worker, /core\/purchases\.js\?v=homealacarte-110/);
 assert.match(worker, /homealacarte_web\.js\?v=homealacarte-97/);
-assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-3/);
-assert.match(composition, /features\/grocery\.js\?v=homealacarte-82/);
+assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-110/);
+assert.match(composition, /features\/grocery\.js\?v=homealacarte-110/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
-assert.match(app, /feature-composition\.js\?v=homealacarte-106/);
-assert.match(app, /worker\.js\?v=homealacarte-98/);
+assert.match(app, /feature-composition\.js\?v=homealacarte-110/);
+assert.match(app, /worker\.js\?v=homealacarte-110/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(index, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));

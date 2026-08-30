@@ -1,3 +1,10 @@
+import {
+  ingredientPurchaseGrams,
+  ingredientPurchasePrice,
+} from "./purchase-pricing.js?v=homealacarte-110";
+
+export { ingredientPurchaseGrams, ingredientPurchasePrice };
+
 const splitCategory = (value) => {
   const [category = "", ...subcategory] = String(value || "").split("::");
   return [category, subcategory.join("::")];
@@ -19,7 +26,11 @@ export function catalogItemsForGrocery(snapshot, groceryItem) {
       && item.measure_unit === groceryItem.measure_unit
       && item.purchase_unit === groceryItem.purchase_unit
       && sameNumber(item.grams_per_measure_unit, groceryItem.grams_per_measure_unit)
-      && sameNumber(item.purchase_quantity_grams, groceryItem.purchase_quantity);
+      && item.purchase_quantity_unit === groceryItem.purchase_quantity_unit
+      && sameNumber(
+        item.purchase_quantity,
+        Number(groceryItem.purchase_quantity) / Math.max(1, Number(groceryItem.purchase_units)),
+      );
   });
   return exact.length
     ? exact
@@ -32,13 +43,19 @@ export function combinedPriceHistory(items) {
     for (const row of item.price_history || []) {
       const price = Number(row.price);
       if (!Number.isFinite(price) || price < 0) continue;
+      const priceBasis = String(row.price_basis || "purchase_unit");
+      const normalizedPrice = Object.hasOwn(item, "kcal") && priceBasis === "kg"
+        ? price * ingredientPurchaseGrams(item) / 1000
+        : price;
       const observation = {
         date: String(row.date || "").trim(),
-        price,
+        price: normalizedPrice,
+        source_price: price,
+        price_basis: priceBasis,
         description: String(row.description || "").trim(),
         ...(row.purchase ? { purchase: structuredClone(row.purchase) } : {}),
       };
-      const identity = `${observation.date}\u001f${observation.price}\u001f${observation.description}`;
+      const identity = `${observation.date}\u001f${observation.price}\u001f${observation.price_basis}\u001f${observation.description}`;
       const existing = observations.get(identity);
       if (!existing?.purchase || observation.purchase) observations.set(identity, observation);
     }

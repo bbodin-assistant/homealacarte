@@ -279,6 +279,7 @@ impl Engine {
                 &[],
                 &item.last_bought_at,
                 item.estimated_price,
+                "purchase_unit",
                 &item.notes,
             );
             if let Some(item_index) = existing.get(&key) {

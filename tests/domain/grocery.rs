@@ -100,11 +100,13 @@ fn cooked_recipe_items_use_their_raw_purchase_reference_and_conversion() {
               "category": "Produce::Vegetables",
               "source": "Synthetic test fixture",
               "url": "",
-              "price_per_kg": 6,
+              "price": 6,
+              "price_basis": "kg",
               "measure_unit": "g",
               "grams_per_measure_unit": 1,
               "purchase_unit": "100 g pack",
-              "purchase_quantity_grams": 100
+              "purchase_quantity": 100,
+              "purchase_quantity_unit": "g"
             },
             {
               "key": "cleaner_test","#,

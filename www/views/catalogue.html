@@ -137,8 +137,15 @@
               </div>
               <div class="ingredient-editor-grid">
                 <label class="dialog-field">
-                  <span data-i18n="price_per_kg">Prix au kg</span>
+                  <span data-i18n="price">Prix</span>
                   <input id="ingredient-price" type="number" min="0" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="price_basis">Base du prix</span>
+                  <select id="ingredient-price-basis" required>
+                    <option value="kg" data-i18n="price_basis_kg">Par kg</option>
+                    <option value="purchase_unit" data-i18n="price_basis_purchase_unit">Par unité d’achat</option>
+                  </select>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="estimated_purchase_price">Prix calculé du conditionnement</span>
@@ -149,8 +156,12 @@
                   <input id="ingredient-purchase-unit" required>
                 </label>
                 <label class="dialog-field">
-                  <span data-i18n="purchase_quantity_grams">Poids d’une unité d’achat (g)</span>
-                  <input id="ingredient-purchase-grams" type="number" min="0.000000001" step="any" required>
+                  <span data-i18n="purchase_quantity">Quantité d’une unité d’achat</span>
+                  <input id="ingredient-purchase-quantity" type="number" min="0.000000001" step="any" required>
+                </label>
+                <label class="dialog-field">
+                  <span data-i18n="purchase_quantity_unit">Unité de la quantité d’achat</span>
+                  <select id="ingredient-purchase-quantity-unit" required></select>
                 </label>
                 <label class="dialog-field">
                   <span data-i18n="price_checked_at">Date du prix / dernier achat</span>
@@ -174,7 +185,8 @@
                 </div>
                 <div class="item-price-history-head" aria-hidden="true">
                   <span data-i18n="observation_date">Date</span>
-                  <span data-i18n="price_per_kg">Prix au kg</span>
+                  <span data-i18n="observed_price">Prix</span>
+                  <span data-i18n="price_basis">Base du prix</span>
                   <span data-i18n="observation_description">Description / source</span>
                   <span></span>
                 </div>
