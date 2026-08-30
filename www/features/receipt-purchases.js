@@ -477,16 +477,20 @@ export function installReceiptPurchaseUi(documentRef = document) {
       return;
     }
 
-    event.preventDefault();
-    event.stopImmediatePropagation();
     errorPanel.textContent = "";
     const structured = validateAndSerialize();
-    if (!structured) return;
+    if (!structured) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     textarea.value = structured;
     reviewing = false;
     submit.textContent = strings(language(documentRef)).parse;
 
-    form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    // Keep the original submit alive. The grocery feature's normal submit
+    // handler now receives the reviewed structured rows directly, instead of
+    // relying on a nested synthetic submit that can be swallowed by validators.
     setTimeout(() => {
       if (!textarea.value) resetReview();
       else {
