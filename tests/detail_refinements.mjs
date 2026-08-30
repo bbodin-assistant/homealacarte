@@ -22,7 +22,7 @@ assert.equal(refinements.preferredDishDetailPortions({
 }, { key: "dish", servings: 4 }), 4);
 assert.equal(refinements.preferredDishDetailPortions({}, { key: "dish", servings: 6 }), 6);
 
-assert.match(feature, /detail-refinements\.css\?v=homealacarte-112/);
+assert.match(feature, /detail-refinements\.css\?v=homealacarte-113/);
 assert.match(feature, /function renderRecipeLink\(\)/);
 assert.match(feature, /recipeLink\.replaceChildren\(url, arrow\)/);
 assert.match(feature, /health\.append\(allergens, status\)/);
@@ -38,7 +38,9 @@ assert.match(app, /createDetailRefinements/);
 assert.match(app, /detailRefinements\.mount\(\)/);
 assert.match(style, /#dish-details-recipe-link/);
 assert.match(style, /background: #5a382a/);
+assert.match(style, /\.dish-details-health \{[\s\S]*align-items: center;/);
 assert.match(style, /grid-template-columns: minmax\(0, 1fr\) auto/);
+assert.match(style, /#dish-details-allergens-section h3 \{\s*display: none;/s);
 assert.match(style, /\.dish-nutri-disclosure p \{\s*position: absolute/s);
 assert.match(style, /\.dish-nutri-score-badge\.metric-a/);
 assert.match(style, /\.dish-details-health/);

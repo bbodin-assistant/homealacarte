@@ -31,7 +31,7 @@ export function createDetailRefinements({
     if (documentRef.querySelector("link[data-detail-refinements]")) return;
     const link = documentRef.createElement("link");
     link.rel = "stylesheet";
-    link.href = "./styles/detail-refinements.css?v=homealacarte-112";
+    link.href = "./styles/detail-refinements.css?v=homealacarte-113";
     link.dataset.detailRefinements = "";
     documentRef.head.append(link);
   }
