@@ -167,6 +167,13 @@ jobs:
                   raise SystemExit("ui test anchor not found")
               ui_test = ui_test.replace(marker, marker + addition, 1)
           write("tests/ui_consistency.mjs", ui_test)
+
+          purchases_test = read("tests/purchases_feature.mjs")
+          purchases_test = purchases_test.replace(
+              "feature-composition\\.js\\?v=homealacarte-110",
+              f"feature-composition\\.js\\?v=homealacarte-{VERSION}",
+          )
+          write("tests/purchases_feature.mjs", purchases_test)
           PY
 
           grep -F 'menu_dish_count' www/features/catalogue.js
@@ -185,9 +192,9 @@ jobs:
           make test-web
           git diff --check
 
-          git add Makefile tests/detail_refinements.mjs tests/ui_consistency.mjs tests/catalogue_dish_usage.mjs \
-            www/app.js www/app/feature-composition.js www/features/catalogue.js \
-            www/features/catalogue/usage.js www/features/detail-refinements.js \
+          git add Makefile tests/detail_refinements.mjs tests/ui_consistency.mjs tests/purchases_feature.mjs \
+            tests/catalogue_dish_usage.mjs www/app.js www/app/feature-composition.js \
+            www/features/catalogue.js www/features/catalogue/usage.js www/features/detail-refinements.js \
             www/features/item-details.js www/features/ui-consistency.js www/index.html
           if ! git diff --cached --quiet; then
             git commit -m "Resolve PR 44 against current main"
