@@ -255,11 +255,6 @@ Rules:
       "item_keys": ["tomato"]
     },
     {
-      "kind": "like",
-      "meal": "any",
-      "item_keys": ["tomato_emmental_toast"]
-    },
-    {
       "kind": "dislike",
       "meal": "any",
       "item_keys": ["tomato"]
@@ -270,14 +265,14 @@ Rules:
 
 Food rules:
 
-- Valid `kind` codes are `routine`, `never`, `allergy`, `favorite`, `like`, and `dislike`.
+- Valid `kind` codes are `routine`, `never`, `allergy`, `favorite`, and `dislike`.
 - `routine`: on each selected and available day, schedule one of `item_keys` at `meal`; one key expresses a fixed habit.
 - `days` applies only to `routine`. An omitted or empty list means every available day. Otherwise use any of `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, and `sunday`. Days on non-routine rules are ignored.
 - `period_start` and `period_end` optionally limit a `routine` to an inclusive annual period. Both must be present together in `MM-DD` format. Omit both for a year-round rule. A period whose start follows its end (for example `11-01` to `02-28`) wraps across New Year. Periods on non-routine rules are ignored.
 - `never`: exclude a listed dish or item at the selected meal. Listing an ingredient also excludes dishes containing that ingredient. Use `meal: "any"` to apply the rule to every meal.
 - `allergy`: exclude a listed dish or item, and dishes containing a listed ingredient, at every meal. Use `meal: "any"`; allergy matching is global rather than meal-specific.
-- `favorite`: make matching candidate dishes, including dishes containing a listed ingredient, preferred during automatic menu generation without forcing their selection. Use `meal: "any"`; favorite matching is currently global rather than meal-specific.
-- `like` and `dislike`: store a person's preference library for future automatic rules. They deliberately have no effect on menu generation yet, use `meal: "any"`, and ignore days and annual periods. A `like` entry accepts dishes; a `dislike` entry accepts foods or dishes.
+- `favorite`: store a person's liked dishes and prefer matching candidates during automatic menu generation without forcing their selection. It accepts dishes, uses `meal: "any"`, and is currently global rather than meal-specific.
+- `dislike`: store foods or dishes a person dislikes for future automatic rules. It currently has no effect on menu generation, uses `meal: "any"`, and ignores days and annual periods.
 - Meal codes are `any`, `breakfast`, `morning_snack`, `lunch`, `afternoon_snack_1`, `afternoon_snack_2`, `dinner`, and `anytime`. `any` is the all-meals rule code and cannot be used by a `routine` rule.
 - `quantity` must be positive. `quantity_unit` must be `portion`, `g`, or `unit`; omitted values default to `1.0` and `portion`.
 - Every `item_keys` entry must resolve to an existing item or dish.

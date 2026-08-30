@@ -16,13 +16,13 @@ export { dishAllergenCodes };
 export function dishPreferenceBadges(dish, people = [], language) {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
   const badges = [];
-  const favoritePeople = [];
+  const likedByPeople = [];
   const forbiddenPeople = [];
 
   for (const person of people || []) {
     for (const rule of person.food_rules || []) {
       if (rule.kind === "favorite" && (rule.item_keys || []).includes(dish.key)) {
-        favoritePeople.push(person.name);
+        likedByPeople.push(person.name);
       }
       if (rule.kind === "never") {
         const matchesDish = (rule.item_keys || []).some((key) => key === dish.key || components.has(key));
@@ -31,8 +31,8 @@ export function dishPreferenceBadges(dish, people = [], language) {
     }
   }
 
-  if (favoritePeople.length) {
-    badges.push({ kind: "favorite", icon: "❤️", title: `Favorite: ${favoritePeople.join(", ")}` });
+  if (likedByPeople.length) {
+    badges.push({ kind: "favorite", icon: "❤️", title: `Liked by: ${likedByPeople.join(", ")}` });
   }
   if (forbiddenPeople.length) {
     badges.push({ kind: "forbidden", icon: "⛔", title: `Forbidden: ${[...new Set(forbiddenPeople)].join(", ")}` });

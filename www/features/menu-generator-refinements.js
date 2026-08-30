@@ -64,7 +64,7 @@ export const MENU_GENERATOR_REFINEMENT_CSS = `
 `;
 
 function language(documentRef) {
-  return documentRef.documentElement.lang || globalThis.navigator?.language || "en";
+  return documentRef.documentElement.lang || globalThis.navigator?.language;
 }
 
 export function decorateDisabledAutoMenuDishes(documentRef = document) {

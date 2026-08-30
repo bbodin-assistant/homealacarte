@@ -110,7 +110,7 @@ pub(crate) fn normalize_food_rules(
         rule.period_end = rule.period_end.trim().to_string();
         if !matches!(
             rule.kind.as_str(),
-            "routine" | "never" | "allergy" | "favorite" | "like" | "dislike"
+            "routine" | "never" | "allergy" | "favorite" | "dislike"
         ) {
             return Err(format!("{context} food rule {} has invalid kind", index + 1));
         }
