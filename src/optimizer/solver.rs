@@ -352,7 +352,7 @@ pub(crate) fn solve_menu_once(
             package_variables.push(PackageVariable {
                 ingredient_index,
                 variable: problem.add_var(
-                    ingredient.price_per_kg / 1000.0,
+                    ingredient.price_per_kg() / 1000.0,
                     (0.0, (maximum_need - stock).max(1.0)),
                 ),
             });

@@ -64,6 +64,7 @@ pub struct PriceObservation {
     #[serde(default)]
     pub date: String,
     pub price: f64,
+    pub price_basis: String,
     #[serde(default)]
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -97,7 +98,8 @@ pub struct Ingredient {
     pub category: String,
     pub source: String,
     pub url: String,
-    pub price_per_kg: f64,
+    pub price: f64,
+    pub price_basis: String,
     #[serde(default)]
     pub price_source: String,
     #[serde(default)]
@@ -107,7 +109,8 @@ pub struct Ingredient {
     pub measure_unit: String,
     pub grams_per_measure_unit: f64,
     pub purchase_unit: String,
-    pub purchase_quantity_grams: f64,
+    pub purchase_quantity: f64,
+    pub purchase_quantity_unit: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub purchase_item_key: String,
     #[serde(
@@ -115,6 +118,109 @@ pub struct Ingredient {
         skip_serializing_if = "is_default_purchase_grams_per_gram"
     )]
     pub purchase_grams_per_gram: f64,
+}
+
+impl Ingredient {
+    pub fn purchase_quantity_grams(&self) -> f64 {
+        if self.purchase_quantity_unit == "g" {
+            self.purchase_quantity
+        } else {
+            self.purchase_quantity * self.grams_per_measure_unit
+        }
+    }
+
+    pub fn purchase_quantity_in_measure_units(&self) -> f64 {
+        if self.purchase_quantity_unit == "g" {
+            self.purchase_quantity / self.grams_per_measure_unit
+        } else {
+            self.purchase_quantity
+        }
+    }
+
+    pub fn price_per_kg(&self) -> f64 {
+        if self.price_basis == "kg" {
+            self.price
+        } else {
+            self.price * 1000.0 / self.purchase_quantity_grams()
+        }
+    }
+
+    pub fn purchase_price(&self) -> f64 {
+        if self.price_basis == "purchase_unit" {
+            self.price
+        } else {
+            self.price * self.purchase_quantity_grams() / 1000.0
+        }
+    }
+
+    pub fn price_for_grams(&self, grams: f64) -> f64 {
+        grams * self.price_per_kg() / 1000.0
+    }
+
+    pub fn observation_purchase_price(&self, observation: &PriceObservation) -> f64 {
+        if observation.price_basis == "purchase_unit" {
+            observation.price
+        } else {
+            observation.price * self.purchase_quantity_grams() / 1000.0
+        }
+    }
+}
+
+#[cfg(test)]
+mod purchase_pricing_tests {
+    use super::*;
+
+    fn liquid() -> Ingredient {
+        Ingredient {
+            key: "oil".to_string(),
+            name: "Oil".to_string(),
+            custom: false,
+            incomplete: false,
+            allergens: vec![],
+            grams: 100.0,
+            kcal: 900.0,
+            protein_g: 0.0,
+            carbs_g: 0.0,
+            fat_g: 100.0,
+            fiber_g: 0.0,
+            sugars_g: None,
+            saturated_fat_g: None,
+            salt_g: None,
+            fruit_vegetable_legume_percent: None,
+            category: "Pantry::Oil".to_string(),
+            source: String::new(),
+            url: String::new(),
+            price: 8.99,
+            price_basis: "purchase_unit".to_string(),
+            price_source: String::new(),
+            price_checked_at: String::new(),
+            price_history: vec![],
+            measure_unit: "ml".to_string(),
+            grams_per_measure_unit: 0.92,
+            purchase_unit: "1 L bottle".to_string(),
+            purchase_quantity: 1000.0,
+            purchase_quantity_unit: "ml".to_string(),
+            purchase_item_key: String::new(),
+            purchase_grams_per_gram: 1.0,
+        }
+    }
+
+    #[test]
+    fn unit_based_liquid_price_converts_to_grams_only_for_calculation() {
+        let item = liquid();
+        assert_eq!(item.purchase_quantity_grams(), 920.0);
+        assert!((item.price_per_kg() - 9.7717391304).abs() < 0.000001);
+        assert_eq!(item.purchase_price(), 8.99);
+        assert!((item.price_for_grams(460.0) - 4.495).abs() < 0.000001);
+    }
+
+    #[test]
+    fn kilogram_price_derives_the_price_of_a_measure_based_package() {
+        let mut item = liquid();
+        item.price = 10.0;
+        item.price_basis = "kg".to_string();
+        assert_eq!(item.purchase_price(), 9.2);
+    }
 }
 
 fn default_purchase_grams_per_gram() -> f64 {
@@ -482,6 +588,7 @@ pub struct GroceryItem {
     pub purchase_unit: String,
     pub purchase_units: u32,
     pub purchase_quantity: f64,
+    pub purchase_quantity_unit: String,
     pub purchase_quantity_text: String,
     pub estimated_need_price: f64,
     pub estimated_purchase_price: f64,

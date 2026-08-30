@@ -1,3 +1,5 @@
+import { ingredientPricePerKg } from "./purchase-pricing.js?v=homealacarte-110";
+
 export function stockGramsByKey(stockRows = []) {
   const totals = new Map();
   stockRows.forEach((row) => {
@@ -27,7 +29,7 @@ export function estimatedStockValue(stockRows = [], ingredients = [], householdI
         : total;
     }
     const item = foodByKey.get(row.item_key);
-    const pricePerKg = Number(item?.price_per_kg);
+    const pricePerKg = ingredientPricePerKg(item);
     const gramsPerUnit = Number(row.grams_per_measure_unit);
     const grams = row.quantity_unit === "unit" ? quantity * gramsPerUnit : quantity;
     return Number.isFinite(grams) && grams > 0

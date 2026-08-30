@@ -77,11 +77,13 @@ fn post_deletion_starter_state_is_valid_and_person_free() {
             "category": "Basics",
             "source": "Home à la Carte starter item",
             "url": "",
-            "price_per_kg": 0,
+            "price": 0,
+            "price_basis": "kg",
             "measure_unit": "g",
             "grams_per_measure_unit": 1,
             "purchase_unit": "1 L bottle",
-            "purchase_quantity_grams": 1000
+            "purchase_quantity": 1000,
+            "purchase_quantity_unit": "g"
           }],
           "dishes": [],
           "people": [],

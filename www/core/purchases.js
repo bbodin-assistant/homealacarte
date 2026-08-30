@@ -1,3 +1,4 @@
+import { purchasedFoodPrice } from "./purchase-pricing.js?v=homealacarte-110";
 const PURCHASE_DESCRIPTION_PREFIX = "Purchase · ";
 function text(value, maxLength = 200) { return String(value || "").trim().slice(0, maxLength); }
 function plainNumber(value) {
@@ -50,7 +51,7 @@ function kindFromText(value) {
   return null;
 }
 function optionKind(option) { return option?.household ? "household" : "food"; }
-function isFoodItem(item) { return Object.hasOwn(item || {}, "price_per_kg"); }
+function isFoodItem(item) { return Object.hasOwn(item || {}, "kcal"); }
 function stockItemKey(row) { return String(row?.item_key || row?.key || "").trim(); }
 function uniqueItemKey(name, items, reserved = new Set()) {
   const slug = normalizeName(name).replace(/\s+/g, "_") || "item";
@@ -120,7 +121,9 @@ export function collectPurchaseHistory(snapshot) {
         itemKey: item.key,
         itemName: item.name,
         household,
-        purchaseUnit: household ? item.purchase_unit : "kg",
+        purchaseUnit: household || observation.price_basis === "purchase_unit"
+          ? item.purchase_unit
+          : "kg",
         date: text(observation.date, 40),
         price,
         description: String(observation.description || ""),
@@ -204,14 +207,16 @@ function createNewItem(document, line, index, reserved) {
       category: "",
       source: "Purchase import; nutritional values require review",
       url: "",
-      price_per_kg: 0,
+      price: 0,
+      price_basis: "kg",
       price_source: "",
       price_checked_at: "",
       price_history: [],
       measure_unit: "g",
       grams_per_measure_unit: 1,
       purchase_unit: `${plainNumber(grams)} g`,
-      purchase_quantity_grams: grams,
+      purchase_quantity: grams,
+      purchase_quantity_unit: "g",
     };
   }
   const measureUnit = text(line.newItem?.measure_unit, 60) || line.displayUnit || "unit";
@@ -323,13 +328,19 @@ export function applyPurchaseToDocument(sourceDocument, rawPurchase) {
       if (!Number.isFinite(grams) || grams <= 0) {
         throw new Error(`purchase_invalid_quantity:${index + 1}`);
       }
-      const pricePerKg = line.totalPrice / grams * 1000;
-      item.price_per_kg = pricePerKg;
+      const pricing = purchasedFoodPrice(item, grams, line.totalPrice);
+      if (!pricing) {
+        throw new Error(`purchase_invalid_item_conversion:${index + 1}`);
+      }
+      const { price, priceBasis } = pricing;
+      item.price = price;
+      item.price_basis = priceBasis;
       item.price_checked_at = purchase.date;
       item.price_source = purchase.store || "Purchase";
       addObservation(item, {
         date: purchase.date,
-        price: pricePerKg,
+        price,
+        price_basis: priceBasis,
         description,
         purchase: purchaseDetails,
       });
@@ -350,6 +361,7 @@ export function applyPurchaseToDocument(sourceDocument, rawPurchase) {
     addObservation(item, {
       date: purchase.date,
       price: unitPrice,
+      price_basis: "purchase_unit",
       description,
       purchase: purchaseDetails,
     });
@@ -388,6 +400,14 @@ function resolveExistingQuantity(option, rawQuantity, rawUnit, lineNumber) {
   }
   if (unit === "g") return { quantity, quantity_unit: "g", display_unit: "g" };
   const measureUnit = normalizeUnit(option.measure_unit);
+  const volumeFactors = { ml: 1, cl: 10, l: 1000 };
+  if (volumeFactors[unit] && volumeFactors[measureUnit]) {
+    return {
+      quantity: quantity * volumeFactors[unit] / volumeFactors[measureUnit],
+      quantity_unit: "unit",
+      display_unit: String(option.measure_unit),
+    };
+  }
   if (unit === "unit" || unit === measureUnit) {
     return {
       quantity,

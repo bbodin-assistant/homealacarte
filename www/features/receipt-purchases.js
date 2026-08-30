@@ -157,12 +157,12 @@ function packageAmount(label, packCount) {
   if (volumeMultipacks.length) {
     const [, rawCount, amount, unit] = volumeMultipacks.at(-1);
     const free = /\+\s*1\s+offert/i.test(source) ? 1 : 0;
-    return { quantity: multiplier * (Number(rawCount) + free) * unitAmount(amount, unit), unit: "g" };
+    return { quantity: multiplier * (Number(rawCount) + free) * unitAmount(amount, unit), unit: "ml" };
   }
   const volumes = [...source.matchAll(/(\d+(?:[.,]\d+)?)\s*(litres?|l|cl|ml)\b/gi)];
   if (volumes.length) {
     const [, amount, unit] = volumes.at(-1);
-    return { quantity: multiplier * unitAmount(amount, unit), unit: "g" };
+    return { quantity: multiplier * unitAmount(amount, unit), unit: "ml" };
   }
   const explicitCounts = [
     ...source.matchAll(/\b(?:bte|boite|tr|sach|sachet|barq|barquette)\.?\s*x\s*(\d+)\b/gi),
@@ -173,6 +173,20 @@ function packageAmount(label, packCount) {
     return { quantity: multiplier * Number(explicitCounts.at(-1)[1]), unit: "unit" };
   }
   return { quantity: multiplier, unit: "unit" };
+}
+
+function catalogueVolume(amount, suggested) {
+  if (amount.unit !== "ml") return amount;
+  if (!suggested) return amount;
+  const measureUnit = normalizeName(suggested?.measureUnit);
+  if (measureUnit === "ml") return amount;
+  if (measureUnit === "cl") {
+    return { quantity: amount.quantity / 10, unit: suggested.measureUnit || "cl" };
+  }
+  if (["l", "litre", "litres"].includes(measureUnit)) {
+    return { quantity: amount.quantity / 1000, unit: suggested.measureUnit || "L" };
+  }
+  return { quantity: amount.quantity, unit: "g" };
 }
 
 function householdPackageCount(label, packCount) {
@@ -240,6 +254,7 @@ export function parseSupermarketReceipt(receiptText, catalogueOptions = []) {
       amount = { quantity: pending.weighedGrams, unit: "g" };
     } else {
       amount = packageAmount(pending.label, pending.packCount);
+      amount = catalogueVolume(amount, suggested);
       const suggestedPackageGrams = Number(suggested?.purchaseQuantityGrams || 0);
       if (amount.unit === "unit" && suggestedPackageGrams > 0) {
         amount = {
@@ -322,6 +337,7 @@ function catalogueFromDocument(documentRef) {
       name: option.textContent.trim(),
       household: option.dataset.household === "true",
       purchaseQuantityGrams: Number(option.dataset.purchaseGrams || 0),
+      measureUnit: option.dataset.measureUnit || "",
     }));
 }
 

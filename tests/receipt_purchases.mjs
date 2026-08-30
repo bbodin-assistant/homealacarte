@@ -28,6 +28,9 @@ PEPSI MAX PET 5X1,5L+1 OFFERT 6,00 € 11
 EAUX
 EAU SRCE GAZ.CRISTALINE 6X1,5L 5,76 € 11
 3 x 1,92 EUR
+HUILES
+HUILE OLIVE VIERGE EXTRA U 1L 8,99 € 11
+1 x 8,99 EUR
 ENTRETIEN DE LA MAISON
 CREME CITRON CIF 750ML 2,89 € 13
 1 x 2,89 EUR`;
@@ -35,9 +38,12 @@ CREME CITRON CIF 750ML 2,89 € 13
 const rows = parseSupermarketReceipt(receipt, [
   { value: "apple", name: "Pomme Golden" },
   { value: "salmon", name: "Filet de saumon" },
+  { value: "pepsi", name: "Pepsi Max", measureUnit: "L" },
+  { value: "sparkling_water", name: "EAU SRCE GAZ.CRISTALINE", measureUnit: "L" },
+  { value: "olive_oil", name: "Huile olive vierge extra", measureUnit: "ml" },
 ]);
 
-assert.equal(rows.length, 7);
+assert.equal(rows.length, 8);
 
 const chips = rows.find((row) => row.label.startsWith("CHIPS EXT"));
 assert.equal(chips.quantity, 180);
@@ -61,13 +67,17 @@ assert.equal(salmon.suggested.value, "salmon");
 assert.equal(salmon.sourceLines.length, 6);
 
 const pepsi = rows.find((row) => row.label.startsWith("PEPSI"));
-assert.equal(pepsi.quantity, 9000);
-assert.equal(pepsi.unit, "g");
+assert.equal(pepsi.quantity, 9);
+assert.equal(pepsi.unit, "L");
 assert.equal(pepsi.weightNeeded, false);
 
 const water = rows.find((row) => row.label.startsWith("EAU SRCE"));
-assert.equal(water.quantity, 27000);
-assert.equal(water.unit, "g");
+assert.equal(water.quantity, 27);
+assert.equal(water.unit, "L");
+
+const oliveOil = rows.find((row) => row.label.startsWith("HUILE OLIVE"));
+assert.equal(oliveOil.quantity, 1000);
+assert.equal(oliveOil.unit, "ml");
 
 const cleaner = rows.find((row) => row.label.startsWith("CREME CITRON"));
 assert.equal(cleaner.kind, "household");

@@ -28,13 +28,13 @@
 .item-price-history-heading h3 { margin: 0; color: var(--ink); font-family: Georgia, serif; font-size: 16px; font-weight: 500; }
 .item-price-history-heading p { max-width: 680px; margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
 .item-price-history-heading .button { flex: 0 0 auto; }
-.item-price-history-head, .item-price-history-row { display: grid; grid-template-columns: 135px 110px minmax(220px, 1fr) 32px; gap: 8px; align-items: center; }
+.item-price-history-head, .item-price-history-row { display: grid; grid-template-columns: 125px 90px 150px minmax(200px, 1fr) 32px; gap: 8px; align-items: center; }
 .item-price-history-head { padding: 0 9px; color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
 .item-price-history-list { display: grid; gap: 7px; }
 .item-price-history-row { padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
 .item-price-history-row label { min-width: 0; }
-.item-price-history-row input { width: 100%; min-width: 0; padding: 8px 9px; color: var(--ink); background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 8px; font-size: 11px; outline: none; }
-.item-price-history-row input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.item-price-history-row input, .item-price-history-row select { width: 100%; min-width: 0; padding: 8px 9px; color: var(--ink); background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 8px; font-size: 11px; outline: none; }
+.item-price-history-row input:focus, .item-price-history-row select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
 .item-price-history-row .remove-price-observation { width: 32px; height: 32px; }
 .item-price-history-empty { margin: 0; padding: 13px; color: var(--muted); background: color-mix(in srgb, var(--surface) 75%, transparent); border: 1px dashed var(--line-strong); border-radius: 10px; font-size: 10.5px; text-align: center; }
 .ingredient-incomplete-control { display: flex; align-items: center; gap: 9px; color: var(--ink); font-size: 12px; font-weight: 700; }
@@ -102,6 +102,7 @@
 .dialog-field-help { color: var(--muted); font-size: 9px; line-height: 1.45; }
 .item-detail-fields a { color: var(--accent-dark); }
 .price-history-chart { padding: 10px; overflow: hidden; background: #f8f5ef; border: 1px solid var(--line); border-radius: 12px; }
+.price-history-basis-note { margin: 0 0 8px; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .price-history-chart svg { width: 100%; height: auto; overflow: visible; }
 .price-history-chart line { stroke: var(--line-strong); stroke-width: 1; }
 .price-history-chart path { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }

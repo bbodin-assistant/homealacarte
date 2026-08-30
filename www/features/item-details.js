@@ -1,9 +1,11 @@
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
+  ingredientPurchaseGrams,
+  ingredientPurchasePrice,
   menuUsageContext,
   priceChartGeometry,
-} from "../core/item-details.js?v=homealacarte-78";
+} from "../core/item-details.js?v=homealacarte-110";
 import { ingredientAllergenBadges } from "./catalogue/allergens.js?v=homealacarte-104";
 import { dishesUsingIngredient } from "./catalogue/usage.js?v=homealacarte-109";
 
@@ -209,6 +211,7 @@ function priceHistoryMarkup(items) {
   }
   const dateLabel = (value) => value || translate("unknown");
   return `
+    <p class="price-history-basis-note">${escapeHtml(translate("price_history_purchase_unit_note"))}</p>
     <div class="price-history-chart">
       <svg viewBox="0 0 640 220" role="img" aria-label="${escapeHtml(translate("price_history_chart"))}">
         <line x1="42" y1="18" x2="42" y2="186"></line>
@@ -280,9 +283,13 @@ function itemInformationMarkup(items, groceryItem) {
   const purchase = food ? detailFields([
     [translate("grams_per_unit"), detailValue(item.grams_per_measure_unit, " g")],
     [translate("purchase_unit"), item.purchase_unit],
-    [translate("purchase_quantity_grams"), detailValue(item.purchase_quantity_grams, " g")],
-    [translate("price_per_kg"), formatMoney(item.price_per_kg)],
-    [translate("estimated_purchase_price"), formatMoney(item.price_per_kg * item.purchase_quantity_grams / 1000)],
+    [translate("purchase_quantity"), detailValue(item.purchase_quantity, ` ${item.purchase_quantity_unit}`)],
+    [translate("price_basis"), translate(item.price_basis === "kg" ? "price_basis_kg" : "price_basis_purchase_unit")],
+    [translate("price"), formatMoney(item.price)],
+    [translate("price_per_kg"), formatMoney(item.price_basis === "kg"
+      ? item.price
+      : item.price * 1000 / ingredientPurchaseGrams(item))],
+    [translate("estimated_purchase_price"), formatMoney(ingredientPurchasePrice(item))],
     [translate("price_checked_at"), item.price_checked_at, false, "price_checked_at"],
     [translate("price_source"), item.price_source, false, "price_source"],
   ], item.key) : detailFields([
@@ -442,9 +449,11 @@ select("#grocery-details-information").addEventListener("click", (event) => {
     if (!ingredient) return;
     const purchase = stockAction.hasAttribute("data-detail-stock-purchase");
     const quantity = purchase
-      ? Number(ingredient.purchase_quantity_grams)
+      ? Number(ingredient.purchase_quantity)
       : Number(section.querySelector("[data-detail-stock-quantity]").value);
-    const unit = purchase ? "g" : section.querySelector("[data-detail-stock-unit]").value;
+    const unit = purchase
+      ? (ingredient.purchase_quantity_unit === "g" ? "g" : "unit")
+      : section.querySelector("[data-detail-stock-unit]").value;
     if (!addStockQuantity(ingredient.key, quantity, unit)) return;
     renderStock();
     refreshIngredientDetailStock(

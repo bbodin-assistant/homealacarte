@@ -19,7 +19,8 @@ const NUTRI_SCORE_FIELDS: &[&str] = &[
     "fruit_vegetable_legume_percent",
 ];
 const ALL_CURRENT_PRICE_FIELDS: &[&str] = &[
-    "price_per_kg",
+    "price",
+    "price_basis",
     "price_source",
     "price_checked_at",
     "estimated_price",
@@ -54,6 +55,7 @@ pub struct PriceHistoryMerge {
     pub observations: usize,
     pub selected_date: String,
     pub selected_price: f64,
+    pub selected_price_basis: String,
     pub selected_description: String,
 }
 
@@ -204,9 +206,13 @@ fn key_of(value: &Value, collection: &str) -> Result<String, String> {
 
 fn current_price_observation(object: &Map<String, Value>, source_name: &str) -> Option<Value> {
     let price = object
-        .get("price_per_kg")
+        .get("price")
         .or_else(|| object.get("estimated_price"))
         .and_then(Value::as_f64)?;
+    let price_basis = object
+        .get("price_basis")
+        .and_then(Value::as_str)
+        .unwrap_or("purchase_unit");
     let date = object
         .get("price_checked_at")
         .or_else(|| object.get("last_bought_at"))
@@ -226,15 +232,17 @@ fn current_price_observation(object: &Map<String, Value>, source_name: &str) -> 
     Some(json!({
         "date": date,
         "price": price,
+        "price_basis": price_basis,
         "description": description,
     }))
 }
 
 fn price_observation_identity(value: &Value) -> String {
     format!(
-        "{}|{}|{}|{}",
+        "{}|{}|{}|{}|{}",
         value.get("date").and_then(Value::as_str).unwrap_or(""),
         value.get("price").and_then(Value::as_f64).unwrap_or(0.0),
+        value.get("price_basis").and_then(Value::as_str).unwrap_or(""),
         value
             .get("description")
             .and_then(Value::as_str)
@@ -270,9 +278,11 @@ fn merge_price_history(
     {
         let date = observation.get("date").and_then(Value::as_str);
         let price = observation.get("price").and_then(Value::as_f64);
+        let price_basis = observation.get("price_basis").and_then(Value::as_str);
         if !observations.iter().any(|existing| {
             existing.get("date").and_then(Value::as_str) == date
                 && existing.get("price").and_then(Value::as_f64) == price
+                && existing.get("price_basis").and_then(Value::as_str) == price_basis
         }) {
             observations.push(observation);
         }
@@ -336,8 +346,14 @@ fn merge_price_history(
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string();
-        if base.contains_key("price_per_kg") {
-            base.insert("price_per_kg".to_string(), json!(price));
+        let price_basis = selected
+            .get("price_basis")
+            .and_then(Value::as_str)
+            .unwrap_or("purchase_unit")
+            .to_string();
+        if base.contains_key("price") {
+            base.insert("price".to_string(), json!(price));
+            base.insert("price_basis".to_string(), json!(price_basis));
             base.insert("price_checked_at".to_string(), json!(date));
             base.insert("price_source".to_string(), json!(description));
         } else if base.contains_key("estimated_price") {
@@ -348,6 +364,7 @@ fn merge_price_history(
             observations: observations.len(),
             selected_date: date,
             selected_price: price,
+            selected_price_basis: price_basis,
             selected_description: description,
         });
     }

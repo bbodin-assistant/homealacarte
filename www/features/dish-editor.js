@@ -370,13 +370,15 @@ select("#new-dish-form").addEventListener("submit", (event) => {
         category: "",
         source: "",
         url: "",
-        price_per_kg: 0,
+        price: 0,
+        price_basis: "kg",
         price_source: "",
         price_checked_at: "",
         measure_unit: quantityUnit,
         grams_per_measure_unit: 1,
         purchase_unit: quantityUnit,
-        purchase_quantity_grams: 1,
+        purchase_quantity: 1,
+        purchase_quantity_unit: quantityUnit,
       });
     }
     return {

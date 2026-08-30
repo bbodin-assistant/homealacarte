@@ -11,7 +11,7 @@ import {
   buildAiExtraNeedsRows,
   buildAiStockPayload,
   itemOptionsForAi,
-} from "./ai-list/payload.js?v=homealacarte-82";
+} from "./ai-list/payload.js?v=homealacarte-110";
 import { installAiListUi } from "./ai-list/dialog.js?v=homealacarte-82";
 import { aiListText } from "./ai-list/strings.js?v=homealacarte-82";
 

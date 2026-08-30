@@ -5,6 +5,7 @@ pub(crate) fn preserve_price_history(
     previous: &[PriceObservation],
     date: &str,
     price: f64,
+    price_basis: &str,
     description: &str,
 ) {
     if history.is_empty() {
@@ -18,11 +19,13 @@ pub(crate) fn preserve_price_history(
     if !history.iter().any(|entry| {
         entry.date.trim() == date.trim()
             && entry.price == price
+            && entry.price_basis == price_basis
             && entry.description.trim() == description
     }) {
         history.push(PriceObservation {
             date: date.trim().to_string(),
             price,
+            price_basis: price_basis.to_string(),
             description: description.to_string(),
             purchase: None,
         });

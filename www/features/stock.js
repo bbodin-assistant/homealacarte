@@ -1,4 +1,4 @@
-import { estimatedStockValue } from "../core/stock-availability.js?v=homealacarte-77";
+import { estimatedStockValue } from "../core/stock-availability.js?v=homealacarte-110";
 
 function localDate() {
   const date = new Date();

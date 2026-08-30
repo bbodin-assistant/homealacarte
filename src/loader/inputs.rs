@@ -36,7 +36,8 @@ pub(crate) struct IngredientInput {
     pub(crate) category: String,
     pub(crate) source: String,
     pub(crate) url: String,
-    pub(crate) price_per_kg: f64,
+    pub(crate) price: f64,
+    pub(crate) price_basis: String,
     #[serde(default)]
     pub(crate) price_source: String,
     #[serde(default)]
@@ -48,7 +49,8 @@ pub(crate) struct IngredientInput {
     #[serde(default = "one")]
     pub(crate) grams_per_measure_unit: f64,
     pub(crate) purchase_unit: Option<String>,
-    pub(crate) purchase_quantity_grams: Option<f64>,
+    pub(crate) purchase_quantity: f64,
+    pub(crate) purchase_quantity_unit: String,
     #[serde(default)]
     pub(crate) purchase_item_key: String,
     #[serde(default = "one")]

@@ -18,12 +18,14 @@ fn localized_source() -> SourceFile {
               "category": {"en": "Produce::Vegetables", "fr": "Fruits et légumes::Légumes", "es": "Productos::Verduras"},
               "source": {"en": "Synthetic source", "fr": "Source synthétique", "es": "Fuente sintética"},
               "url": "",
-              "price_per_kg": 2,
+              "price": 2,
+              "price_basis": "kg",
               "price_source": {"es": "Mercado de prueba"},
               "measure_unit": {"en": "piece", "fr": "pièce", "es": "pieza"},
               "grams_per_measure_unit": 150,
               "purchase_unit": {"en": "500 g pack", "fr": "barquette de 500 g", "es": "paquete de 500 g"},
-              "purchase_quantity_grams": 500
+              "purchase_quantity": 500,
+              "purchase_quantity_unit": "g"
             },
             {
               "key": "soap",

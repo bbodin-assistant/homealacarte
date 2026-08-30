@@ -3,23 +3,28 @@ import { readFile } from "node:fs/promises";
 import {
   catalogItemsForGrocery,
   combinedPriceHistory,
+  ingredientPurchaseGrams,
+  ingredientPurchasePrice,
   latestPriceTrend,
   priceChartGeometry,
 } from "../www/core/item-details.js";
 
 const apple = {
   key: "apple",
+  kcal: 52,
   name: "Apple",
   category: "Produce::Fruit",
   measure_unit: "pieces",
   grams_per_measure_unit: 150,
   purchase_unit: "1 kg bag",
-  purchase_quantity_grams: 1000,
+  purchase_quantity: 1000,
+  purchase_quantity_unit: "g",
   price_history: [
-    { date: "2026-01-02", price: 2.8, description: "Estimate" },
+    { date: "2026-01-02", price: 2.8, price_basis: "kg", description: "Estimate" },
     {
       date: "2026-07-25",
       price: 3.2,
+      price_basis: "kg",
       description: "Receipt",
       purchase: { quantity: 1000, unit: "g", total_paid: 3.2 },
     },
@@ -28,7 +33,7 @@ const apple = {
 const soap = {
   key: "soap",
   name: "Soap",
-  price_history: [{ date: "2026-07-25", price: 1.2, description: "Receipt" }],
+  price_history: [{ date: "2026-07-25", price: 1.2, price_basis: "purchase_unit", description: "Receipt" }],
 };
 const snapshot = { ingredients: [apple], household_items: [soap] };
 
@@ -50,8 +55,8 @@ assert.deepEqual(catalogItemsForGrocery(snapshot, {
 
 const history = combinedPriceHistory([apple, {
   price_history: [
-    { date: "2026-07-25", price: 3.2, description: "Receipt" },
-    { date: "2026-09-01", price: 3.5, description: "Later receipt" },
+    { date: "2026-07-25", price: 3.2, price_basis: "kg", description: "Receipt" },
+    { date: "2026-09-01", price: 3.5, price_basis: "kg", description: "Later receipt" },
   ],
 }]);
 assert.equal(history.length, 3);
@@ -65,6 +70,21 @@ assert.deepEqual(latestPriceTrend([apple]), {
   percent: 14.285714285714299,
 });
 assert.equal(latestPriceTrend([soap]), null);
+const oil = {
+  kcal: 900,
+  purchase_quantity: 1000,
+  purchase_quantity_unit: "ml",
+  grams_per_measure_unit: 0.92,
+  price: 8.99,
+  price_basis: "purchase_unit",
+  price_history: [
+    { date: "2026-01-01", price: 10, price_basis: "kg", description: "Per kg" },
+    { date: "2026-02-01", price: 9.2, price_basis: "purchase_unit", description: "Per bottle" },
+  ],
+};
+assert.equal(ingredientPurchaseGrams(oil), 920);
+assert.equal(ingredientPurchasePrice(oil), 8.99);
+assert.deepEqual(combinedPriceHistory([oil]).map((row) => row.price), [9.2, 9.2]);
 assert.equal(latestPriceTrend([{
   price_history: [
     { date: "2026-01-01", price: 4, description: "Earlier" },
@@ -111,7 +131,7 @@ for (const source of [app, itemDetailsFeature, catalogueFeature, index, stockFea
   for (const input of source.matchAll(/<input\b[^>]*\btype="number"[^>]*>/g)) {
     assert.match(input[0], /\bstep="(?:any|\d+(?:\.\d+)?)"/);
   }
-  assert.doesNotMatch(source, /<input\b[^>]*\btype="(?:date|url)"/);
+  assert.doesNotMatch(source, /<input\b[^>]*\btype="url"/);
 }
 assert.doesNotMatch(app, /Math\.round\(\(Number\(value\)/);
 

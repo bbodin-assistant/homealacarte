@@ -1,4 +1,4 @@
-import { latestPriceTrend } from "../core/item-details.js?v=homealacarte-78";
+import { latestPriceTrend } from "../core/item-details.js?v=homealacarte-110";
 import {
   displayLocalizedName,
   localizedFormValues,
@@ -13,6 +13,7 @@ import {
 } from "./catalogue/filters.js?v=homealacarte-102";
 import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-109";
 import { ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-104";
+import { createPriceHistoryEditor } from "./catalogue/price-history.js?v=homealacarte-110";
 
 export function createCatalogueFeature({
   state,
@@ -35,68 +36,12 @@ export function createCatalogueFeature({
   openDetails,
   send,
 }) {
-function priceHistoryFormPayload(selector) {
-  return [...select(selector).querySelectorAll(".item-price-history-row")].map((row) => {
-    const priceInput = row.querySelector("[data-price-observation-price]");
-    return {
-      date: row.querySelector("[data-price-observation-date]").value,
-      price: priceInput.value === "" ? Number.NaN : Number(priceInput.value),
-      description: row.querySelector("[data-price-observation-description]").value.trim(),
-      ...(row.dataset.priceObservationPurchase
-        ? { purchase: JSON.parse(row.dataset.priceObservationPurchase) }
-        : {}),
-    };
-  });
-}
-
-function priceHistoryFormIsValid(history) {
-  return history.every((observation) => Number.isFinite(observation.price) && observation.price >= 0);
-}
-
-function priceHistoryRowMarkup(observation = {}) {
-  return `
-    <div class="item-price-history-row"${observation.purchase
-      ? ` data-price-observation-purchase="${escapeHtml(JSON.stringify(observation.purchase))}"`
-      : ""}>
-      <label class="item-price-history-date">
-        <span class="sr-only">${escapeHtml(translate("observation_date"))}</span>
-        <input type="text" inputmode="numeric" placeholder="${escapeHtml(translate("date_format_hint"))}" value="${escapeHtml(observation.date || "")}" data-price-observation-date>
-      </label>
-      <label class="item-price-history-price">
-        <span class="sr-only">${escapeHtml(translate("observed_price"))}</span>
-        <input type="number" min="0" step="any" value="${escapeHtml(observation.price ?? "")}" data-price-observation-price required>
-      </label>
-      <label class="item-price-history-description">
-        <span class="sr-only">${escapeHtml(translate("observation_description"))}</span>
-        <input value="${escapeHtml(observation.description || "")}" data-price-observation-description>
-      </label>
-      <button class="icon-button remove-price-observation" type="button" aria-label="${escapeHtml(translate("remove_price_observation"))}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
-      </button>
-    </div>`;
-}
-
-function updatePriceHistoryEmptyState(selector) {
-  const list = select(selector);
-  const empty = list.querySelector(".item-price-history-empty");
-  if (list.querySelector(".item-price-history-row")) {
-    empty?.remove();
-  } else if (!empty) {
-    list.innerHTML = `<p class="item-price-history-empty">${escapeHtml(translate("no_price_observations"))}</p>`;
-  }
-}
-
-function renderPriceHistoryForm(selector, history = []) {
-  select(selector).innerHTML = history.map(priceHistoryRowMarkup).join("");
-  updatePriceHistoryEmptyState(selector);
-}
-
-function addPriceHistoryFormRow(selector) {
-  const list = select(selector);
-  list.querySelector(".item-price-history-empty")?.remove();
-  list.insertAdjacentHTML("beforeend", priceHistoryRowMarkup());
-  list.querySelector(".item-price-history-row:last-child [data-price-observation-date]").focus();
-}
+const priceHistoryEditor = createPriceHistoryEditor({ select, translate, escapeHtml });
+const addPriceHistoryFormRow = priceHistoryEditor.add;
+const priceHistoryFormIsValid = priceHistoryEditor.isValid;
+const priceHistoryFormPayload = priceHistoryEditor.payload;
+const renderPriceHistoryForm = priceHistoryEditor.render;
+const updatePriceHistoryEmptyState = priceHistoryEditor.updateEmptyState;
 
 function itemNameFormValues(prefix) {
   return localizedFormValues(select(`#${prefix}-name-fields`));
@@ -153,13 +98,15 @@ function ingredientFormPayload() {
     category: normalizedCategory(select("#ingredient-category").value.trim()),
     source: select("#ingredient-source").value.trim(),
     url: select("#ingredient-url").value.trim(),
-    price_per_kg: Number(select("#ingredient-price").value),
+    price: Number(select("#ingredient-price").value),
+    price_basis: select("#ingredient-price-basis").value,
     price_source: select("#ingredient-price-source").value.trim(),
     price_checked_at: select("#ingredient-price-checked-at").value,
     measure_unit: select("#ingredient-measure-unit").value.trim(),
     grams_per_measure_unit: Number(select("#ingredient-grams-per-unit").value),
     purchase_unit: select("#ingredient-purchase-unit").value.trim(),
-    purchase_quantity_grams: Number(select("#ingredient-purchase-grams").value),
+    purchase_quantity: Number(select("#ingredient-purchase-quantity").value),
+    purchase_quantity_unit: select("#ingredient-purchase-quantity-unit").value,
     price_history: priceHistoryFormPayload("#ingredient-price-history-list"),
   };
 }
@@ -172,11 +119,13 @@ function ingredientFormIsValid(ingredient) {
     || !ingredient.name
     || !ingredient.measure_unit
     || !ingredient.purchase_unit
+    || !["kg", "purchase_unit"].includes(ingredient.price_basis)
+    || !["g", ingredient.measure_unit].includes(ingredient.purchase_quantity_unit)
     || (!ingredient.incomplete && !ingredient.category)) return false;
   return [
     ingredient.grams,
     ingredient.grams_per_measure_unit,
-    ingredient.purchase_quantity_grams,
+    ingredient.purchase_quantity,
   ].every((value) => Number.isFinite(value) && value > 0)
     && [
       ingredient.kcal,
@@ -184,7 +133,7 @@ function ingredientFormIsValid(ingredient) {
       ingredient.carbs_g,
       ingredient.fat_g,
       ingredient.fiber_g,
-      ingredient.price_per_kg,
+      ingredient.price,
     ].every((value) => Number.isFinite(value) && value >= 0)
     && [
       ingredient.sugars_g,
@@ -205,12 +154,27 @@ function updateIngredientSaveState() {
 }
 
 function updateIngredientPurchasePrice() {
-  const pricePerKg = Number(select("#ingredient-price").value);
-  const purchaseGrams = Number(select("#ingredient-purchase-grams").value);
-  const calculated = pricePerKg * purchaseGrams / 1000;
+  const price = Number(select("#ingredient-price").value);
+  const quantity = Number(select("#ingredient-purchase-quantity").value);
+  const quantityUnit = select("#ingredient-purchase-quantity-unit").value;
+  const gramsPerUnit = Number(select("#ingredient-grams-per-unit").value);
+  const purchaseGrams = quantityUnit === "g" ? quantity : quantity * gramsPerUnit;
+  const calculated = select("#ingredient-price-basis").value === "purchase_unit"
+    ? price
+    : price * purchaseGrams / 1000;
   select("#ingredient-purchase-price").value = Number.isFinite(calculated)
     ? formatMoney(calculated)
     : "";
+}
+
+function updateIngredientPurchaseQuantityUnits(preferred = "") {
+  const control = select("#ingredient-purchase-quantity-unit");
+  const measureUnit = select("#ingredient-measure-unit").value.trim();
+  const selected = preferred || control.value || "g";
+  control.innerHTML = `<option value="g">g</option>${measureUnit && measureUnit !== "g"
+    ? `<option value="${escapeHtml(measureUnit)}">${escapeHtml(measureUnit)}</option>`
+    : ""}`;
+  control.value = [...control.options].some((option) => option.value === selected) ? selected : "g";
 }
 
 function populateIngredientForm(key) {
@@ -237,16 +201,18 @@ function populateIngredientForm(key) {
   select("#ingredient-fvl-percent").value = ingredient.fruit_vegetable_legume_percent == null
     ? ""
     : formatInputNumber(ingredient.fruit_vegetable_legume_percent);
-  select("#ingredient-price").value = formatInputNumber(ingredient.price_per_kg);
+  select("#ingredient-price").value = formatInputNumber(ingredient.price);
+  select("#ingredient-price-basis").value = ingredient.price_basis;
   select("#ingredient-price-source").value = ingredient.price_source || "";
   select("#ingredient-price-checked-at").value = ingredient.price_checked_at || "";
   select("#ingredient-purchase-unit").value = ingredient.purchase_unit;
-  select("#ingredient-purchase-grams").value = formatInputNumber(ingredient.purchase_quantity_grams);
+  select("#ingredient-purchase-quantity").value = formatInputNumber(ingredient.purchase_quantity);
+  updateIngredientPurchaseQuantityUnits(ingredient.purchase_quantity_unit);
   select("#ingredient-source").value = ingredient.source;
   select("#ingredient-url").value = ingredient.url;
   select("#ingredient-incomplete").checked = Boolean(ingredient.incomplete);
   renderIngredientAllergenOptions(ingredient.allergens);
-  renderPriceHistoryForm("#ingredient-price-history-list", ingredient.price_history);
+  renderPriceHistoryForm("#ingredient-price-history-list", ingredient.price_history, true);
   updateIngredientPurchasePrice();
   const status = select("#ingredient-completeness");
   status.className = `ingredient-completeness ${ingredient.incomplete ? "incomplete" : "complete"}`;
@@ -383,15 +349,17 @@ function openNewCatalogueItem() {
     select("#ingredient-salt").value = "";
     select("#ingredient-fvl-percent").value = "";
     select("#ingredient-price").value = "0";
+    select("#ingredient-price-basis").value = "kg";
     select("#ingredient-price-source").value = "";
     select("#ingredient-price-checked-at").value = "";
     select("#ingredient-purchase-unit").value = "1 kg";
-    select("#ingredient-purchase-grams").value = "1000";
+    select("#ingredient-purchase-quantity").value = "1000";
+    updateIngredientPurchaseQuantityUnits("g");
     select("#ingredient-source").value = "";
     select("#ingredient-url").value = "";
     select("#ingredient-incomplete").checked = true;
     renderIngredientAllergenOptions();
-    renderPriceHistoryForm("#ingredient-price-history-list");
+    renderPriceHistoryForm("#ingredient-price-history-list", [], true);
     select("#ingredient-completeness").className = "ingredient-completeness incomplete";
     select("#ingredient-completeness").textContent = translate("ingredient_incomplete");
     select("#ingredient-form-message").textContent = "";
@@ -679,6 +647,10 @@ select("#item-catalogue").addEventListener("keydown", (event) => {
 selectAll(".item-editor-back").forEach((button) => button.addEventListener("click", closeItemEditor));
 select("#ingredient-form").addEventListener("input", updateIngredientSaveState);
 select("#ingredient-form").addEventListener("change", updateIngredientSaveState);
+select("#ingredient-measure-unit").addEventListener("input", () => {
+  updateIngredientPurchaseQuantityUnits();
+  updateIngredientSaveState();
+});
 select("#ingredient-price-history-add").addEventListener("click", () => {
   addPriceHistoryFormRow("#ingredient-price-history-list");
   updateIngredientSaveState();

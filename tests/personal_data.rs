@@ -26,11 +26,13 @@ fn current_personal_files_become_one_valid_document() {
                 "category": "Produce::Fruit",
                 "source": "Synthetic test fixture",
                 "url": "",
-                "price_per_kg": 2,
+                "price": 2,
+                "price_basis": "kg",
                 "measure_unit": "piece",
                 "grams_per_measure_unit": 150,
                 "purchase_unit": "bag",
-                "purchase_quantity_grams": 1000
+                "purchase_quantity": 1000,
+                "purchase_quantity_unit": "g"
               }, {
                 "key": "soap_test",
                 "name": "Test soap",
@@ -173,7 +175,13 @@ fn legacy_sections_and_field_aliases_are_rejected() {
                 "category": "Produce::Fruit",
                 "source": "Synthetic test fixture",
                 "url": "",
-                "price_per_kg": 2
+                "price": 2,
+                "price_basis": "kg",
+                "measure_unit": "g",
+                "grams_per_measure_unit": 1,
+                "purchase_unit": "1 kg",
+                "purchase_quantity": 1000,
+                "purchase_quantity_unit": "g"
               }],
               "dishes": [{
                 "key": "apple_plate_test",
@@ -219,13 +227,15 @@ fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
           "category": "Produce::Fruit",
           "source": "Base nutrition",
           "url": "",
-          "price_per_kg": 2,
+          "price": 2,
+          "price_basis": "kg",
           "price_source": "Old estimate",
           "price_checked_at": "2026-01-01",
           "measure_unit": "piece",
           "grams_per_measure_unit": 150,
           "purchase_unit": "bag",
-          "purchase_quantity_grams": 1000
+          "purchase_quantity": 1000,
+          "purchase_quantity_unit": "g"
         },
         {
           "key": "soap_test",
@@ -292,13 +302,15 @@ fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
           "category": "Produce::Fruit",
           "source": "Base nutrition",
           "url": "",
-          "price_per_kg": 2.5,
+          "price": 2.5,
+          "price_basis": "kg",
           "price_source": "Ticket de caisse 2026-07-25 — apples",
           "price_checked_at": "2026-07-25",
           "measure_unit": "piece",
           "grams_per_measure_unit": 150,
           "purchase_unit": "bag",
-          "purchase_quantity_grams": 1000
+          "purchase_quantity": 1000,
+          "purchase_quantity_unit": "g"
         },
         {
           "key": "banana_test",
@@ -316,11 +328,13 @@ fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
           "category": "Produce::Fruit",
           "source": "Overlay nutrition",
           "url": "",
-          "price_per_kg": 2,
+          "price": 2,
+          "price_basis": "kg",
           "measure_unit": "piece",
           "grams_per_measure_unit": 120,
           "purchase_unit": "bunch",
-          "purchase_quantity_grams": 1000
+          "purchase_quantity": 1000,
+          "purchase_quantity_unit": "g"
         }
       ],
       "dishes": [
@@ -396,7 +410,8 @@ fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
         apple["fruit_vegetable_legume_percent"].as_f64(),
         Some(100.0)
     );
-    assert_eq!(apple["price_per_kg"].as_f64(), Some(2.5));
+    assert_eq!(apple["price"].as_f64(), Some(2.5));
+    assert_eq!(apple["price_basis"].as_str(), Some("kg"));
     assert_eq!(
         apple["price_source"],
         "Ticket de caisse 2026-07-25 — apples"

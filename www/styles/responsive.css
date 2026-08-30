@@ -176,11 +176,13 @@
   .item-price-history-row {
     grid-template-areas:
       "date price remove"
+      "basis basis basis"
       "description description description";
     grid-template-columns: minmax(120px, 1fr) minmax(90px, .7fr) 32px;
   }
   .item-price-history-date { grid-area: date; }
   .item-price-history-price { grid-area: price; }
+  .item-price-history-basis { grid-area: basis; }
   .item-price-history-description { grid-area: description; }
   .item-price-history-row .remove-price-observation { grid-area: remove; }
   .item-catalogue-tabs { width: 100%; }

@@ -104,7 +104,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
         .filter(|(_, value)| {
             value.get("grams").is_some()
                 || value.get("kcal").is_some()
-                || value.get("price_per_kg").is_some()
+                || value.get("price").is_some()
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -116,17 +116,33 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
         if key.is_empty() || !item_keys.insert(key.clone()) {
             return Err(format!("{path}: duplicate or empty ingredient key: {key}"));
         }
-        if input.grams <= 0.0
+        if !input.grams.is_finite()
+            || input.grams <= 0.0
+            || !input.grams_per_measure_unit.is_finite()
             || input.grams_per_measure_unit <= 0.0
-            || input.purchase_quantity_grams.unwrap_or(input.grams) <= 0.0
+            || !input.purchase_quantity.is_finite()
+            || input.purchase_quantity <= 0.0
         {
-            return Err(format!("{path}: ingredient {key} has invalid gram quantities"));
+            return Err(format!("{path}: ingredient {key} has invalid quantities"));
         }
         let measure_unit = if input.measure_unit.trim().is_empty() {
             "g".to_string()
         } else {
             input.measure_unit.trim().to_string()
         };
+        let price_basis = input.price_basis.trim();
+        if !input.price.is_finite()
+            || input.price < 0.0
+            || !matches!(price_basis, "kg" | "purchase_unit")
+        {
+            return Err(format!("{path}: ingredient {key} has an invalid price or price basis"));
+        }
+        let purchase_quantity_unit = input.purchase_quantity_unit.trim();
+        if purchase_quantity_unit != "g" && purchase_quantity_unit != measure_unit {
+            return Err(format!(
+                "{path}: ingredient {key} purchase_quantity_unit must be g or {measure_unit}"
+            ));
+        }
         let mut seen_allergens = HashSet::new();
         let allergens = input
             .allergens
@@ -159,13 +175,15 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
             category: crate::locale::canonical_category(&input.category),
             source: input.source.trim().to_string(),
             url: input.url.trim().to_string(),
-            price_per_kg: input.price_per_kg,
+            price: input.price,
+            price_basis: price_basis.to_string(),
             price_source: input.price_source.trim().to_string(),
             price_checked_at: input.price_checked_at.trim().to_string(),
             price_history: normalize_price_history(
                 input.price_history,
                 &input.price_checked_at,
-                input.price_per_kg,
+                input.price,
+                &input.price_basis,
                 &input.price_source,
             )?,
             measure_unit: measure_unit.clone(),
@@ -174,9 +192,8 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
                 .purchase_unit
                 .filter(|value| !value.trim().is_empty())
                 .unwrap_or(measure_unit),
-            purchase_quantity_grams: input
-                .purchase_quantity_grams
-                .unwrap_or(input.grams_per_measure_unit.max(input.grams)),
+            purchase_quantity: input.purchase_quantity,
+            purchase_quantity_unit: purchase_quantity_unit.to_string(),
             purchase_item_key: input.purchase_item_key.trim().to_string(),
             purchase_grams_per_gram: input.purchase_grams_per_gram,
         });
@@ -271,7 +288,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
         .filter(|(_, value)| {
             value.get("grams").is_none()
                 && value.get("kcal").is_none()
-                && value.get("price_per_kg").is_none()
+                && value.get("price").is_none()
         });
     for (path, value) in household_values {
         let input: HouseholdItemInput = deserialize(&path, "items", value)?;
@@ -286,6 +303,21 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
         if purchase_quantity <= 0.0 || input.estimated_price < 0.0 {
             return Err(format!("{path}: household item {key} has invalid quantity/price"));
         }
+        let price_history = normalize_price_history(
+            input.price_history,
+            input.last_bought_at.as_deref().unwrap_or(""),
+            input.estimated_price,
+            "purchase_unit",
+            input.notes.as_deref().unwrap_or(""),
+        )?;
+        if price_history
+            .iter()
+            .any(|entry| entry.price_basis != "purchase_unit")
+        {
+            return Err(format!(
+                "{path}: household item {key} price history must use purchase_unit prices"
+            ));
+        }
         household_items.push(HouseholdItem {
             key,
             name: input.name.trim().to_string(),
@@ -293,12 +325,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
             purchase_unit: input.purchase_unit.unwrap_or_else(|| "unité".to_string()),
             purchase_quantity,
             estimated_price: input.estimated_price,
-            price_history: normalize_price_history(
-                input.price_history,
-                input.last_bought_at.as_deref().unwrap_or(""),
-                input.estimated_price,
-                input.notes.as_deref().unwrap_or(""),
-            )?,
+            price_history,
             measure_unit: input.measure_unit.unwrap_or_else(|| "unit".to_string()),
             last_bought_at: input.last_bought_at.unwrap_or_default(),
             lasting_days: input.lasting_days,
