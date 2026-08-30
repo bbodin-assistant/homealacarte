@@ -5,14 +5,16 @@ export function scaledDishComponentQuantity(component, portions) {
   return quantity * multiplier;
 }
 
-export function preferredDishDetailPortions(state, dishKey) {
+export function preferredDishDetailPortions(state, dish) {
+  const dishKey = typeof dish === "string" ? dish : dish?.key;
   const index = state?.dishDetailsMenuIndex;
   const row = Number.isInteger(index) ? state?.draft?.[index] : null;
   if (row?.item_key === dishKey && row.quantity_unit === "portion") {
     const quantity = Number(row.quantity);
     if (Number.isFinite(quantity) && quantity > 0) return quantity;
   }
-  return 1;
+  const servings = Number(typeof dish === "object" ? dish?.servings : Number.NaN);
+  return Number.isFinite(servings) && servings > 0 ? servings : 1;
 }
 
 export function createDetailRefinements({
@@ -30,7 +32,7 @@ export function createDetailRefinements({
     if (documentRef.querySelector("link[data-detail-refinements]")) return;
     const link = documentRef.createElement("link");
     link.rel = "stylesheet";
-    link.href = "./styles/detail-refinements.css?v=homealacarte-106";
+    link.href = "./styles/detail-refinements.css?v=homealacarte-107";
     link.dataset.detailRefinements = "";
     documentRef.head.append(link);
   }
@@ -145,21 +147,29 @@ export function createDetailRefinements({
   function configurePortions(dish) {
     const section = select("#dish-details-ingredients-section");
     if (!section || !dish) return;
+    const heading = section.querySelector("h3");
+    let headingRow = section.querySelector(".dish-ingredients-heading");
+    if (!headingRow && heading) {
+      headingRow = documentRef.createElement("div");
+      headingRow.className = "dish-ingredients-heading";
+      heading.before(headingRow);
+      headingRow.append(heading);
+    }
+
     let toolbar = section.querySelector(".dish-portion-toolbar");
     if (!toolbar) {
       toolbar = documentRef.createElement("div");
       toolbar.className = "dish-portion-toolbar";
-      section.querySelector("h3")?.insertAdjacentElement("afterend", toolbar);
     }
+    if (headingRow && toolbar.parentElement !== headingRow) headingRow.append(toolbar);
     toolbar.innerHTML = `
       <label class="dish-portion-control">
         <span>${escapeHtml(translate("portions"))}</span>
         <input type="number" min="0.25" step="0.25" inputmode="decimal" data-dish-details-portions>
-      </label>
-      <small>${escapeHtml(`${formatNumber(dish.servings)} ${translate("servings")}`)}</small>`;
+      </label>`;
 
     const input = toolbar.querySelector("[data-dish-details-portions]");
-    const initialPortions = preferredDishDetailPortions(state, dish.key);
+    const initialPortions = preferredDishDetailPortions(state, dish);
     input.value = String(initialPortions);
     renderIngredients(dish, initialPortions);
     input.addEventListener("input", () => {
