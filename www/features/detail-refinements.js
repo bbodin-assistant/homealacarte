@@ -30,7 +30,7 @@ export function createDetailRefinements({
     if (documentRef.querySelector("link[data-detail-refinements]")) return;
     const link = documentRef.createElement("link");
     link.rel = "stylesheet";
-    link.href = "./styles/detail-refinements.css?v=homealacarte-104";
+    link.href = "./styles/detail-refinements.css?v=homealacarte-106";
     link.dataset.detailRefinements = "";
     documentRef.head.append(link);
   }
@@ -58,8 +58,29 @@ export function createDetailRefinements({
       health.className = "dish-details-health";
       content.insertBefore(health, ingredients);
     }
-    health.append(status, allergens);
+    health.append(allergens, status);
     return { health, status, allergens };
+  }
+
+  function renderRecipeLink() {
+    const recipeLink = select("#dish-details-recipe-link");
+    const recipeUrlLabel = select("#dish-details-url");
+    if (recipeUrlLabel) recipeUrlLabel.hidden = true;
+    if (!recipeLink || recipeLink.hidden) return;
+    const recipeUrl = recipeLink.getAttribute("href");
+    if (!recipeUrl) return;
+
+    const url = documentRef.createElement("span");
+    url.className = "dish-details-recipe-url";
+    url.textContent = recipeUrl;
+    const arrow = documentRef.createElement("span");
+    arrow.className = "dish-details-recipe-arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "↗";
+    recipeLink.replaceChildren(url, arrow);
+    recipeLink.title = recipeUrl;
+    recipeLink.setAttribute("aria-label", `${translate("open_recipe")}: ${recipeUrl}`);
+    recipeLink.removeAttribute("data-i18n");
   }
 
   function renderMetrics(dish) {
@@ -151,6 +172,7 @@ export function createDetailRefinements({
   function apply() {
     const dishKey = state?.dishDetailsDishKey;
     const dish = (state?.snapshot?.dishes || []).find((candidate) => candidate.key === dishKey);
+    renderRecipeLink();
     renderHealth(dish || null);
     if (!dish) return;
     renderMetrics(dish);
