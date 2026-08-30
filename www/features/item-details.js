@@ -7,7 +7,7 @@ import {
   priceChartGeometry,
 } from "../core/item-details.js?v=homealacarte-110";
 import { ingredientAllergenBadges } from "./catalogue/allergens.js?v=homealacarte-104";
-import { dishesUsingIngredient } from "./catalogue/usage.js?v=homealacarte-109";
+import { dishesUsingIngredient } from "./catalogue/usage.js?v=homealacarte-112";
 
 const EDITABLE_DETAIL_FIELDS = {
   sugars_g: { label: "sugars_grams", kind: "number", reference: "nutrition" },

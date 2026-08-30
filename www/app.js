@@ -43,11 +43,11 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-110";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-112";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-110";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-110";
-import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-111";
-import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-102";
+import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-112";
+import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-112";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 

@@ -11,7 +11,7 @@ import {
   filterCatalogueItems,
   sortCatalogueItems,
 } from "./catalogue/filters.js?v=homealacarte-102";
-import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-109";
+import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-112";
 import { ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-104";
 import { createPriceHistoryEditor } from "./catalogue/price-history.js?v=homealacarte-110";
 
