@@ -46,8 +46,8 @@ import {
 import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-109";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
-import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-104";
-import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-102";
+import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-110";
+import { installUiConsistency } from "./features/ui-consistency.js?v=homealacarte-110";
 
 document.documentElement.dataset.appModuleLoaded = "true";
 
