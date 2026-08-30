@@ -168,12 +168,24 @@ jobs:
               ui_test = ui_test.replace(marker, marker + addition, 1)
           write("tests/ui_consistency.mjs", ui_test)
 
-          purchases_test = read("tests/purchases_feature.mjs")
-          purchases_test = purchases_test.replace(
-              "feature-composition\\.js\\?v=homealacarte-110",
-              f"feature-composition\\.js\\?v=homealacarte-{VERSION}",
-          )
-          write("tests/purchases_feature.mjs", purchases_test)
+          test_version_modules = {
+              "feature-composition": ("110",),
+              "detail-refinements": ("111",),
+              "ui-consistency": ("102",),
+              "item-details": ("110",),
+              "catalogue": ("110",),
+          }
+          for test_path in Path("tests").glob("*.mjs"):
+              text = test_path.read_text()
+              original = text
+              for module, old_versions in test_version_modules.items():
+                  for old_version in old_versions:
+                      text = text.replace(
+                          f"{module}\\.js\\?v=homealacarte-{old_version}",
+                          f"{module}\\.js\\?v=homealacarte-{VERSION}",
+                      )
+              if text != original:
+                  test_path.write_text(text)
           PY
 
           grep -F 'menu_dish_count' www/features/catalogue.js
@@ -192,8 +204,7 @@ jobs:
           make test-web
           git diff --check
 
-          git add Makefile tests/detail_refinements.mjs tests/ui_consistency.mjs tests/purchases_feature.mjs \
-            tests/catalogue_dish_usage.mjs www/app.js www/app/feature-composition.js \
+          git add Makefile tests/*.mjs www/app.js www/app/feature-composition.js \
             www/features/catalogue.js www/features/catalogue/usage.js www/features/detail-refinements.js \
             www/features/item-details.js www/features/ui-consistency.js www/index.html
           if ! git diff --cached --quiet; then
