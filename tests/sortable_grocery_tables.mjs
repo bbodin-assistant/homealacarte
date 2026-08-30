@@ -9,7 +9,9 @@ import {
 
 assert.equal(sortableNumber("1 234,50 €"), 1234.5);
 assert.equal(sortableNumber("€12.75"), 12.75);
+assert.deepEqual(nextSort(null, "asc", "name"), { key: "name", direction: "asc" });
 assert.deepEqual(nextSort("name", "asc", "name"), { key: "name", direction: "desc" });
+assert.deepEqual(nextSort("name", "desc", "name"), { key: null, direction: "asc" });
 assert.deepEqual(nextSort("name", "desc", "quantity"), { key: "quantity", direction: "asc" });
 assert.deepEqual(DEFAULT_PURCHASE_SORT, { key: null, direction: "asc" });
 
@@ -48,11 +50,15 @@ assert.match(moduleSource, /purchase-batch-open/);
 assert.match(moduleSource, /Ajouter avec AI/);
 assert.match(moduleSource, /queueMicrotask\(\(\) => \{[\s\S]*purchase-batch-error[\s\S]*dialog\.close\(\)/);
 assert.match(moduleSource, /purchaseState = \{ \.\.\.DEFAULT_PURCHASE_SORT \}/);
-assert.match(moduleSource, /if \(!sortState\.key\) return;/);
+assert.match(moduleSource, /extraState = \{ key: null, direction: "asc" \}/);
+assert.match(moduleSource, /capturePurchaseDefaultLayout/);
+assert.match(moduleSource, /restorePurchaseDefaultLayout/);
+assert.match(moduleSource, /defaultOrder\.get/);
 assert.match(moduleSource, /list\.replaceChildren\(\.\.\.sorted\)/);
 assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(groceryView, /purchase-history-panel/);
+assert.match(groceryView, /<div class="purchase-section-heading" hidden>\s*<h2 id="purchase-history-title">Historique<\/h2>/);
 assert.match(index, /features\/sortable-grocery-tables\.js\?v=homealacarte-115/);
 
-console.log("Extra needs and purchase history use stock-style sorting; purchases default to date groups, then switch to a global column sort on demand.");
+console.log("Extra needs and purchase history use three-state sorting, restore their natural default layouts, and keep the purchase history heading compact.");

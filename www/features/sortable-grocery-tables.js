@@ -23,10 +23,9 @@ export function sortableNumber(value) {
 }
 
 export function nextSort(currentKey, currentDirection, key) {
-  if (currentKey === key) {
-    return { key, direction: currentDirection === "asc" ? "desc" : "asc" };
-  }
-  return { key, direction: "asc" };
+  if (currentKey !== key) return { key, direction: "asc" };
+  if (currentDirection === "asc") return { key, direction: "desc" };
+  return { key: null, direction: "asc" };
 }
 
 export function sortRecords(rows = [], {
@@ -104,7 +103,7 @@ function purchaseValue(row, key) {
   return children[0]?.textContent.trim() || "";
 }
 
-function applyExtraNeedSort(documentRef, list, sortState) {
+function applyExtraNeedSort(documentRef, list, sortState, defaultOrder) {
   const header = list.querySelector(".custom-head");
   if (!header) return;
   replaceHeaderChildren(
@@ -116,18 +115,42 @@ function applyExtraNeedSort(documentRef, list, sortState) {
   updateHeaderControls(header, "data-extra-needs-sort", sortState);
   const rows = [...list.querySelectorAll(":scope > .custom-row")];
   if (!rows.length) return;
-  const sorted = sortRecords(rows, {
-    key: sortState.key,
-    direction: sortState.direction,
-    locale: locale(documentRef),
-    valueFor: extraNeedValue,
-    tieBreaker: (row) => extraNeedValue(row, "name"),
-  });
+  const sorted = sortState.key
+    ? sortRecords(rows, {
+      key: sortState.key,
+      direction: sortState.direction,
+      locale: locale(documentRef),
+      valueFor: extraNeedValue,
+      tieBreaker: (row) => extraNeedValue(row, "name"),
+    })
+    : [...rows].sort((left, right) =>
+      (defaultOrder.get(left) ?? 0) - (defaultOrder.get(right) ?? 0));
   if (sorted.every((row, index) => row === rows[index])) return;
   sorted.forEach((row) => list.append(row));
 }
 
-function applyPurchaseSort(documentRef, list, header, sortState) {
+function capturePurchaseDefaultLayout(list) {
+  const rows = [...list.querySelectorAll(".purchase-history-row")];
+  if (rows.length && !list.querySelector(":scope > .purchase-date-group")) return null;
+  return {
+    roots: [...list.children],
+    rows: rows.map((row) => ({ row, parent: row.parentElement })),
+  };
+}
+
+function restorePurchaseDefaultLayout(list, layout) {
+  if (!layout) return;
+  layout.rows.forEach(({ row, parent }) => {
+    if (parent && row.parentElement !== parent) parent.append(row);
+  });
+  const current = [...list.children];
+  const alreadyRestored = current.length === layout.roots.length
+    && layout.roots.every((root, index) => root === current[index]);
+  if (alreadyRestored) return;
+  list.replaceChildren(...layout.roots);
+}
+
+function applyPurchaseSort(documentRef, list, header, sortState, defaultLayout) {
   if (!header) return;
   header.removeAttribute("aria-hidden");
   replaceHeaderChildren(
@@ -137,7 +160,10 @@ function applyPurchaseSort(documentRef, list, header, sortState) {
     "data-purchase-history-sort",
   );
   updateHeaderControls(header, "data-purchase-history-sort", sortState);
-  if (!sortState.key) return;
+  if (!sortState.key) {
+    restorePurchaseDefaultLayout(list, defaultLayout);
+    return;
+  }
 
   const rows = [...list.querySelectorAll(".purchase-history-row")];
   if (!rows.length) return;
@@ -288,15 +314,38 @@ function installStyles(documentRef) {
 export function installSortableGroceryTables(documentRef = document) {
   installStyles(documentRef);
   installPurchaseLayout(documentRef);
-  const extraState = { key: "name", direction: "asc" };
+  const extraState = { key: null, direction: "asc" };
   const purchaseState = { ...DEFAULT_PURCHASE_SORT };
   const extraList = documentRef.querySelector("#custom-list");
   const purchaseList = documentRef.querySelector("#purchase-list");
   const purchaseHeader = documentRef.querySelector(".purchase-history-head");
+  const extraDefaultOrder = new WeakMap();
+  let extraDefaultSequence = 0;
+  let purchaseDefaultLayout = null;
 
-  const refreshExtra = () => extraList && applyExtraNeedSort(documentRef, extraList, extraState);
-  const refreshPurchases = () => purchaseList
-    && applyPurchaseSort(documentRef, purchaseList, purchaseHeader, purchaseState);
+  const captureExtraDefaultOrder = () => {
+    if (!extraList) return;
+    [...extraList.querySelectorAll(":scope > .custom-row")].forEach((row) => {
+      if (extraDefaultOrder.has(row)) return;
+      extraDefaultOrder.set(row, extraDefaultSequence);
+      extraDefaultSequence += 1;
+    });
+  };
+  const capturePurchaseLayout = () => {
+    if (!purchaseList) return;
+    const layout = capturePurchaseDefaultLayout(purchaseList);
+    if (layout) purchaseDefaultLayout = layout;
+  };
+  const refreshExtra = () => {
+    captureExtraDefaultOrder();
+    if (extraList) applyExtraNeedSort(documentRef, extraList, extraState, extraDefaultOrder);
+  };
+  const refreshPurchases = () => {
+    capturePurchaseLayout();
+    if (purchaseList) {
+      applyPurchaseSort(documentRef, purchaseList, purchaseHeader, purchaseState, purchaseDefaultLayout);
+    }
+  };
 
   if (extraList) {
     new MutationObserver(() => queueMicrotask(refreshExtra))
