@@ -58,6 +58,7 @@ assert.match(moduleSource, /list\.replaceChildren\(\.\.\.sorted\)/);
 assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(groceryView, /purchase-history-panel/);
+assert.match(groceryView, /<div class="purchase-section-heading" hidden>\s*<h2 id="purchase-history-title">Historique<\/h2>/);
 assert.match(index, /features\/sortable-grocery-tables\.js\?v=homealacarte-114/);
 
-console.log("Extra needs and purchase history use three-state sorting and restore their natural default layouts on the third click.");
+console.log("Extra needs and purchase history use three-state sorting, restore their natural default layouts, and keep the purchase history heading compact.");
