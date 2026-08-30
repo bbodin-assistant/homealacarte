@@ -90,10 +90,6 @@ fn person_food_rules_are_loaded_and_validated() {
               "meal": "any",
               "item_keys": ["test_salad"]
             }, {
-              "kind": "like",
-              "meal": "any",
-              "item_keys": ["test_salad"]
-            }, {
               "kind": "dislike",
               "meal": "any",
               "item_keys": ["tomato_test"]
@@ -101,12 +97,11 @@ fn person_food_rules_are_loaded_and_validated() {
         1,
     );
     let dataset = homealacarte_web::load_dataset(vec![source.clone()], "en").unwrap();
-    assert_eq!(dataset.people[0].food_rules.len(), 6);
+    assert_eq!(dataset.people[0].food_rules.len(), 5);
     assert_eq!(dataset.people[0].food_rules[0].item_keys.len(), 2);
     assert_eq!(dataset.people[0].food_rules[2].kind, "allergy");
     assert_eq!(dataset.people[0].food_rules[3].kind, "favorite");
-    assert_eq!(dataset.people[0].food_rules[4].kind, "favorite");
-    assert_eq!(dataset.people[0].food_rules[5].kind, "dislike");
+    assert_eq!(dataset.people[0].food_rules[4].kind, "dislike");
     assert_eq!(
         dataset.people[0].food_rules[0].days,
         vec!["monday", "wednesday", "friday"]

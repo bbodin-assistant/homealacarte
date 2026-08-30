@@ -104,9 +104,6 @@ pub(crate) fn normalize_food_rules(
     let mut normalized = Vec::new();
     for (index, mut rule) in rules.into_iter().enumerate() {
         rule.kind = rule.kind.trim().to_lowercase();
-        if rule.kind == "like" {
-            rule.kind = "favorite".to_string();
-        }
         rule.meal = rule.meal.trim().to_lowercase();
         rule.quantity_unit = rule.quantity_unit.trim().to_lowercase();
         rule.period_start = rule.period_start.trim().to_string();
@@ -299,9 +296,8 @@ pub(crate) fn merge_menu_rows(rows: Vec<MenuRow>) -> Vec<MenuRow> {
 
 #[cfg(test)]
 mod tests {
-    use super::{merge_menu_rows, normalize_food_rules};
-    use crate::model::{FoodRule, MenuRow};
-    use std::collections::HashSet;
+    use super::merge_menu_rows;
+    use crate::model::MenuRow;
 
     fn row(date: &str, people: &[&str], quantity: f64, notes: &str) -> MenuRow {
         MenuRow {
@@ -314,24 +310,6 @@ mod tests {
             quantity_unit: "portion".to_string(),
             notes: notes.to_string(),
         }
-    }
-
-    #[test]
-    fn legacy_like_rules_normalize_to_favorite_behavior() {
-        let rule = FoodRule {
-            kind: "like".to_string(),
-            meal: "any".to_string(),
-            item_keys: vec!["vegetable_curry".to_string()],
-            allergens: vec![],
-            days: vec![],
-            period_start: String::new(),
-            period_end: String::new(),
-            quantity: 1.0,
-            quantity_unit: "portion".to_string(),
-        };
-        let valid_items = HashSet::from(["vegetable_curry".to_string()]);
-        let normalized = normalize_food_rules(vec![rule], &valid_items, "person alex").unwrap();
-        assert_eq!(normalized[0].kind, "favorite");
     }
 
     #[test]
