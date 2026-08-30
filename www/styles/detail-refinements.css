@@ -209,24 +209,32 @@
   line-height: 1.45;
 }
 
-.dish-portion-toolbar {
+.dish-ingredients-heading {
   display: flex;
-  align-items: end;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
-  border-block: 1px solid var(--line);
 }
 
-.dish-portion-toolbar small {
-  color: var(--muted);
-  font-size: 9px;
+.dish-ingredients-heading h3 {
+  min-width: 0;
+}
+
+.dish-portion-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
 }
 
 .dish-portion-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
 .dish-portion-control > span {
@@ -238,8 +246,8 @@
 }
 
 .dish-portion-control input {
-  width: 82px;
-  padding: 7px 8px;
+  width: 72px;
+  padding: 6px 7px;
   color: var(--ink);
   background: var(--surface-strong);
   border: 1px solid var(--line-strong);
@@ -254,6 +262,11 @@
   color: var(--ink);
   font-size: 10px;
   font-weight: 750;
+}
+
+.item-allergen-badges,
+.ingredient-allergen-option > span {
+  color: #b52f2a;
 }
 
 .grocery-details-information {
@@ -315,8 +328,16 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .dish-portion-toolbar {
+  .dish-ingredients-heading {
     align-items: center;
+  }
+
+  .dish-portion-control > span {
+    font-size: 8px;
+  }
+
+  .dish-portion-control input {
+    width: 64px;
   }
 
   .item-detail-fields {
