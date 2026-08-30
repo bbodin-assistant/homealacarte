@@ -138,18 +138,21 @@ function applyPurchaseSort(documentRef, list, header, sortState) {
   );
   updateHeaderControls(header, "data-purchase-history-sort", sortState);
   if (!sortState.key) return;
-  list.querySelectorAll(":scope > .purchase-date-group").forEach((group) => {
-    const rows = [...group.querySelectorAll(":scope > .purchase-history-row")];
-    const sorted = sortRecords(rows, {
-      key: sortState.key,
-      direction: sortState.direction,
-      locale: locale(documentRef),
-      valueFor: purchaseValue,
-      tieBreaker: (row) => purchaseValue(row, "item"),
-    });
-    if (sorted.every((row, index) => row === rows[index])) return;
-    sorted.forEach((row) => group.append(row));
+
+  const rows = [...list.querySelectorAll(".purchase-history-row")];
+  if (!rows.length) return;
+  const sorted = sortRecords(rows, {
+    key: sortState.key,
+    direction: sortState.direction,
+    locale: locale(documentRef),
+    valueFor: purchaseValue,
+    tieBreaker: (row) => purchaseValue(row, "item"),
   });
+  const current = [...list.children];
+  const alreadyFlatAndSorted = current.length === sorted.length
+    && sorted.every((row, index) => row === current[index]);
+  if (alreadyFlatAndSorted) return;
+  list.replaceChildren(...sorted);
 }
 
 function purchaseLayoutCopy(documentRef) {
