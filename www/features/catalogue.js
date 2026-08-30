@@ -11,7 +11,7 @@ import {
   filterCatalogueItems,
   sortCatalogueItems,
 } from "./catalogue/filters.js?v=homealacarte-102";
-import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-83";
+import { ingredientCatalogueStats } from "./catalogue/usage.js?v=homealacarte-109";
 import { ingredientAllergenBadges, ingredientAllergenOptions } from "./catalogue/allergens.js?v=homealacarte-104";
 
 export function createCatalogueFeature({
@@ -479,12 +479,12 @@ function itemPriceTrendMarkup(item) {
 }
 
 function ingredientUsageMarkup(item) {
-  const dishSummary = `${translate("nav_dishes")}: ${formatNumber(item.dish_count, 0)}`;
+  const usageSummary = `${translate("nav_menu")}: ${formatNumber(item.menu_dish_count, 0)} · ${translate("nav_dishes")}: ${formatNumber(item.dish_count, 0)}`;
   const stockSummary = item.stock_quantity
     ? `${translate("current_stock")}: ${formatNumber(item.stock_quantity.quantity, 2)} ${item.stock_quantity.unit}`
     : "";
   return `<span class="item-catalogue-usage">
-    <small>${escapeHtml(dishSummary)}</small>
+    <small>${escapeHtml(usageSummary)}</small>
     ${item.stock_quantity ? `<small class="in-stock">${escapeHtml(stockSummary)}</small>` : ""}
   </span>`;
 }
@@ -493,17 +493,17 @@ function renderItemsCatalogue() {
   const ingredients = state.snapshot.ingredients || [];
   const householdItems = state.snapshot.household_items || [];
   const ingredientRows = ingredients.map((item) => {
-    const { dishCount, stockQuantity } = ingredientCatalogueStats(
+    const { dishCount, menuDishCount, stockQuantity } = ingredientCatalogueStats(
       item.key,
       state.snapshot.dishes || [],
       state.stockDraft || [],
-      item.measure_unit,
+      item.measure_unit, state.draft || [],
     );
     const missingNutriScore = ingredientNutriScoreMissing(item);
     return {
       ...item,
       item_kind: "food",
-      dish_count: dishCount,
+      dish_count: dishCount, menu_dish_count: menuDishCount,
       stock_quantity: stockQuantity,
       missing_nutri_score: missingNutriScore,
       catalogue_incomplete: catalogueItemIsIncomplete(item, missingNutriScore),

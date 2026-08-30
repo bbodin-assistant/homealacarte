@@ -43,7 +43,7 @@ import {
   createDishNutriScoreDetail,
   ingredientNutriScoreMissing,
 } from "./core/nutrition.js?v=homealacarte-77";
-import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-105";
+import { createFeatureComposition } from "./app/feature-composition.js?v=homealacarte-109";
 import { createAiDishFeature } from "./features/ai-dish.js?v=homealacarte-78";
 import { createAiListFeature } from "./features/ai-list.js?v=homealacarte-82";
 import { createDetailRefinements } from "./features/detail-refinements.js?v=homealacarte-104";

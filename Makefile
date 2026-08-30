@@ -93,6 +93,7 @@ test-web:
 	node tests/shell_feature.mjs
 	node tests/style_layers.mjs
 	node tests/html_partials.mjs
+	node tests/catalogue_dish_usage.mjs
 
 test-browser-startup: web-build
 	PYTHON_EXECUTABLE="$(PYTHON)" bash tests/browser_startup.sh
