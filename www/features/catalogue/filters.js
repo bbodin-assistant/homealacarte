@@ -84,6 +84,10 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
 
     if (!sortSelect.querySelector('option[value="original"]')) {
       sortSelect.insertAdjacentHTML("beforeend", '<option value="original">Original</option>');
+      sortSelect.value = "original";
+      directionButton.dataset.direction = "asc";
+      sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      return;
     }
     const sortLabel = sortSelect.closest("label");
     if (sortLabel) sortLabel.hidden = true;
@@ -128,6 +132,19 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
   }
 
   documentRef.addEventListener("click", (event) => {
+    if (event.target.closest?.("#item-clear-filters")) {
+      queueMicrotask(() => {
+        const sortSelect = documentRef.querySelector("#item-sort");
+        const directionButton = documentRef.querySelector("#item-sort-direction");
+        if (!sortSelect || !directionButton
+          || !sortSelect.querySelector('option[value="original"]')) return;
+        sortSelect.value = "original";
+        directionButton.dataset.direction = "asc";
+        sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      return;
+    }
+
     const button = event.target.closest?.("[data-catalogue-sort]");
     if (!button) return;
     const sortSelect = documentRef.querySelector("#item-sort");
@@ -136,12 +153,18 @@ export function installCatalogueHeaderSorting(documentRef = globalThis.document)
     event.preventDefault();
     event.stopPropagation();
     const key = button.dataset.catalogueSort;
-    if (sortSelect.value === key) {
-      directionButton.dataset.direction = directionButton.dataset.direction === "asc" ? "desc" : "asc";
-    } else {
+
+    if (sortSelect.value !== key) {
       sortSelect.value = key;
-      directionButton.dataset.direction = "asc";
+      sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      if (directionButton.dataset.direction !== "asc") directionButton.click();
+      return;
     }
+    if (directionButton.dataset.direction === "asc") {
+      directionButton.click();
+      return;
+    }
+    sortSelect.value = "original";
     sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
   });
 
