@@ -140,7 +140,13 @@ function capturePurchaseDefaultLayout(list) {
 
 function restorePurchaseDefaultLayout(list, layout) {
   if (!layout) return;
-  layout.rows.forEach(({ row, parent }) => parent?.append(row));
+  layout.rows.forEach(({ row, parent }) => {
+    if (parent && row.parentElement !== parent) parent.append(row);
+  });
+  const current = [...list.children];
+  const alreadyRestored = current.length === layout.roots.length
+    && layout.roots.every((root, index) => root === current[index]);
+  if (alreadyRestored) return;
   list.replaceChildren(...layout.roots);
 }
 
