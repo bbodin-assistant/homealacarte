@@ -1,6 +1,8 @@
-function locale() {
-  return document.documentElement.lang || navigator.language || undefined;
+function locale(documentRef = document) {
+  return documentRef.documentElement.lang || globalThis.navigator?.language || undefined;
 }
+
+export const DEFAULT_PURCHASE_SORT = Object.freeze({ key: null, direction: "asc" });
 
 export function sortableNumber(value) {
   const raw = String(value ?? "").trim().replace(/\s|\u00a0|\u202f/g, "");
@@ -69,11 +71,11 @@ function updateHeaderControls(header, attribute, sortState) {
   });
 }
 
-function replaceHeaderChildren(header, keys, attribute) {
+function replaceHeaderChildren(documentRef, header, keys, attribute) {
   [...header.children].forEach((child, index) => {
     const key = keys[index];
     if (!key || child.matches(`[${attribute}]`)) return;
-    const button = document.createElement("button");
+    const button = documentRef.createElement("button");
     button.type = "button";
     button.id = child.id;
     button.setAttribute(attribute, key);
@@ -102,10 +104,11 @@ function purchaseValue(row, key) {
   return children[0]?.textContent.trim() || "";
 }
 
-function applyExtraNeedSort(list, sortState) {
+function applyExtraNeedSort(documentRef, list, sortState) {
   const header = list.querySelector(".custom-head");
   if (!header) return;
   replaceHeaderChildren(
+    documentRef,
     header,
     ["name", "category", "quantity", "unit", "price", "notes"],
     "data-extra-needs-sort",
@@ -116,7 +119,7 @@ function applyExtraNeedSort(list, sortState) {
   const sorted = sortRecords(rows, {
     key: sortState.key,
     direction: sortState.direction,
-    locale: locale(),
+    locale: locale(documentRef),
     valueFor: extraNeedValue,
     tieBreaker: (row) => extraNeedValue(row, "name"),
   });
@@ -124,10 +127,11 @@ function applyExtraNeedSort(list, sortState) {
   sorted.forEach((row) => list.append(row));
 }
 
-function applyPurchaseSort(list, header, sortState) {
+function applyPurchaseSort(documentRef, list, header, sortState) {
   if (!header) return;
   header.removeAttribute("aria-hidden");
   replaceHeaderChildren(
+    documentRef,
     header,
     ["item", "quantity", "paid", "price", "source"],
     "data-purchase-history-sort",
@@ -139,7 +143,7 @@ function applyPurchaseSort(list, header, sortState) {
     const sorted = sortRecords(rows, {
       key: sortState.key,
       direction: sortState.direction,
-      locale: locale(),
+      locale: locale(documentRef),
       valueFor: purchaseValue,
       tieBreaker: (row) => purchaseValue(row, "item"),
     });
@@ -148,28 +152,148 @@ function applyPurchaseSort(list, header, sortState) {
   });
 }
 
-function installStyles() {
-  if (document.querySelector("#sortable-grocery-table-styles")) return;
-  const style = document.createElement("style");
+function purchaseLayoutCopy(documentRef) {
+  const language = String(locale(documentRef) || "en").toLowerCase();
+  if (language.startsWith("fr")) {
+    return {
+      addWithAi: "Ajouter avec AI",
+      close: "Fermer",
+    };
+  }
+  return {
+    addWithAi: "Add with AI",
+    close: "Close",
+  };
+}
+
+function updatePurchaseLayoutLanguage(documentRef) {
+  const copy = purchaseLayoutCopy(documentRef);
+  const open = documentRef.querySelector("#purchase-batch-open [data-purchase-ai-label]");
+  if (open) open.textContent = copy.addWithAi;
+  const close = documentRef.querySelector("#purchase-batch-close");
+  if (close) {
+    close.setAttribute("aria-label", copy.close);
+    close.title = copy.close;
+  }
+}
+
+function installPurchaseLayout(documentRef) {
+  const purchases = documentRef.querySelector('[data-grocery-panel="purchases"]');
+  const entryGrid = purchases?.querySelector(".purchase-entry-grid");
+  const historyPanel = purchases?.querySelector(".purchase-history-panel");
+  const singleForm = purchases?.querySelector("#purchase-add-form");
+  const batchForm = purchases?.querySelector("#purchase-batch-form");
+  const batchTitle = purchases?.querySelector("#purchase-batch-title");
+  const batchIntro = purchases?.querySelector("#purchase-batch-intro");
+  if (!purchases || !entryGrid || !historyPanel || !singleForm || !batchForm || !batchTitle || !batchIntro) return;
+  if (documentRef.querySelector("#purchase-batch-dialog")) {
+    updatePurchaseLayoutLanguage(documentRef);
+    return;
+  }
+
+  const historyHeading = historyPanel.querySelector(".purchase-section-heading");
+  singleForm.classList.add("purchase-add-inline");
+  historyPanel.insertBefore(singleForm, historyHeading || historyPanel.firstChild);
+  entryGrid.hidden = true;
+
+  const pageHeading = purchases.querySelector(".page-heading");
+  let actions = pageHeading?.querySelector(".page-actions");
+  if (pageHeading && !actions) {
+    actions = documentRef.createElement("div");
+    actions.className = "page-actions";
+    pageHeading.append(actions);
+  }
+  const open = documentRef.createElement("button");
+  open.id = "purchase-batch-open";
+  open.className = "button primary purchase-ai-button";
+  open.type = "button";
+  open.innerHTML = '<span class="purchase-ai-icon" aria-hidden="true">✦</span><span data-purchase-ai-label></span>';
+  actions?.append(open);
+
+  const dialog = documentRef.createElement("dialog");
+  dialog.id = "purchase-batch-dialog";
+  dialog.className = "menu-item-dialog purchase-batch-dialog";
+  dialog.setAttribute("aria-labelledby", "purchase-batch-title");
+
+  const shell = documentRef.createElement("div");
+  shell.className = "purchase-batch-dialog-shell";
+  const heading = documentRef.createElement("div");
+  heading.className = "menu-dialog-heading purchase-batch-dialog-heading";
+  const headingText = documentRef.createElement("div");
+  headingText.append(batchTitle, batchIntro);
+  const close = documentRef.createElement("button");
+  close.id = "purchase-batch-close";
+  close.className = "dialog-close";
+  close.type = "button";
+  close.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+  heading.append(headingText, close);
+  shell.append(heading, batchForm);
+  dialog.append(shell);
+  documentRef.body.append(dialog);
+
+  open.addEventListener("click", () => {
+    const error = documentRef.querySelector("#purchase-batch-error");
+    if (error) error.textContent = "";
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  });
+  close.addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+  batchForm.addEventListener("submit", () => {
+    queueMicrotask(() => {
+      const error = documentRef.querySelector("#purchase-batch-error");
+      if (!error?.textContent.trim() && dialog.open) dialog.close();
+    });
+  });
+
+  updatePurchaseLayoutLanguage(documentRef);
+  new MutationObserver(() => updatePurchaseLayoutLanguage(documentRef))
+    .observe(documentRef.documentElement, { attributes: true, attributeFilter: ["lang"] });
+  documentRef.querySelector("#language-select")?.addEventListener("change", () => {
+    queueMicrotask(() => updatePurchaseLayoutLanguage(documentRef));
+  });
+}
+
+function installStyles(documentRef) {
+  if (documentRef.querySelector("#sortable-grocery-table-styles")) return;
+  const style = documentRef.createElement("style");
   style.id = "sortable-grocery-table-styles";
   style.textContent = `
     .custom-head button,.purchase-history-head button{justify-self:start;padding:0;color:inherit;background:none;border:0;cursor:pointer;font:inherit;letter-spacing:inherit;text-align:left;text-transform:inherit}
     .custom-head button:hover,.custom-head button:focus-visible,.purchase-history-head button:hover,.purchase-history-head button:focus-visible{color:var(--ink);outline:none}
+    [data-grocery-panel="purchases"] .purchase-history-panel{overflow:hidden}
+    [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline{display:grid;grid-template-columns:minmax(180px,1.45fr) minmax(145px,1fr) 92px 92px 112px 130px minmax(140px,.9fr) auto;gap:10px;align-items:end;padding:14px;background:#f8f5ef;border-bottom:1px solid var(--line)}
+    [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline label{display:grid;gap:5px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+    [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline button{align-self:end;white-space:nowrap}
+    [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-section-heading{padding:13px 16px}
+    .purchase-ai-button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+    .purchase-ai-icon{font-size:14px;line-height:1}
+    .purchase-batch-dialog{width:min(720px,calc(100vw - 24px));max-height:min(760px,calc(100vh - 24px));padding:0;overflow:auto}
+    .purchase-batch-dialog-shell{display:grid;min-width:0;background:var(--surface)}
+    .purchase-batch-dialog-heading h2{margin:0;font-family:Georgia,serif;font-size:21px;font-weight:500}
+    .purchase-batch-dialog-heading p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.45}
+    .purchase-batch-dialog .purchase-batch-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:18px}
+    .purchase-batch-dialog .purchase-batch-form textarea{min-height:190px}
+    @media(max-width:1180px){[data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline{grid-template-columns:minmax(180px,1.4fr) minmax(130px,1fr) 90px 90px 110px 130px}.purchase-add-inline #purchase-add-store,.purchase-add-inline #purchase-add-submit{grid-column:auto}.purchase-add-inline>label:nth-last-of-type(1){grid-column:1/-2}.purchase-add-inline>#purchase-add-submit{grid-column:-2/-1}}
+    @media(max-width:760px){[data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline{grid-template-columns:1fr 1fr}.purchase-add-inline>label,.purchase-add-inline>button{grid-column:auto}.purchase-add-inline>label:first-child,.purchase-add-inline>#purchase-new-name-field,.purchase-add-inline>label:nth-last-of-type(1),.purchase-add-inline>#purchase-add-submit{grid-column:1/-1}.purchase-batch-dialog .purchase-batch-form{grid-template-columns:1fr}}
   `;
-  document.head.append(style);
+  documentRef.head.append(style);
 }
 
 export function installSortableGroceryTables(documentRef = document) {
-  installStyles();
+  installStyles(documentRef);
+  installPurchaseLayout(documentRef);
   const extraState = { key: "name", direction: "asc" };
-  const purchaseState = { key: null, direction: "asc" };
+  const purchaseState = { ...DEFAULT_PURCHASE_SORT };
   const extraList = documentRef.querySelector("#custom-list");
   const purchaseList = documentRef.querySelector("#purchase-list");
   const purchaseHeader = documentRef.querySelector(".purchase-history-head");
 
-  const refreshExtra = () => extraList && applyExtraNeedSort(extraList, extraState);
+  const refreshExtra = () => extraList && applyExtraNeedSort(documentRef, extraList, extraState);
   const refreshPurchases = () => purchaseList
-    && applyPurchaseSort(purchaseList, purchaseHeader, purchaseState);
+    && applyPurchaseSort(documentRef, purchaseList, purchaseHeader, purchaseState);
 
   if (extraList) {
     new MutationObserver(() => queueMicrotask(refreshExtra))
