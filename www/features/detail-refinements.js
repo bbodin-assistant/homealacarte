@@ -5,14 +5,15 @@ export function scaledDishComponentQuantity(component, portions) {
   return quantity * multiplier;
 }
 
-export function preferredDishDetailPortions(state, dishKey) {
+export function preferredDishDetailPortions(state, dish) {
   const index = state?.dishDetailsMenuIndex;
   const row = Number.isInteger(index) ? state?.draft?.[index] : null;
-  if (row?.item_key === dishKey && row.quantity_unit === "portion") {
+  if (row?.item_key === dish?.key && row.quantity_unit === "portion") {
     const quantity = Number(row.quantity);
     if (Number.isFinite(quantity) && quantity > 0) return quantity;
   }
-  return 1;
+  const servings = Number(dish?.servings);
+  return Number.isFinite(servings) && servings > 0 ? servings : 1;
 }
 
 export function createDetailRefinements({
@@ -35,14 +36,25 @@ export function createDetailRefinements({
     documentRef.head.append(link);
   }
 
-  function refineRecipeLink() {
-    const link = select("#dish-details-recipe-link");
-    if (!link) return;
-    const label = translate("open_recipe");
-    link.removeAttribute("data-i18n");
-    link.setAttribute("aria-label", label);
-    link.setAttribute("title", label);
-    link.innerHTML = `<span aria-hidden="true">↗</span><span class="sr-only">${escapeHtml(label)}</span>`;
+  function renderRecipeLink() {
+    const recipeLink = select("#dish-details-recipe-link");
+    const recipeUrlLabel = select("#dish-details-url");
+    if (recipeUrlLabel) recipeUrlLabel.hidden = true;
+    if (!recipeLink || recipeLink.hidden) return;
+    const recipeUrl = recipeLink.getAttribute("href");
+    if (!recipeUrl) return;
+
+    const url = documentRef.createElement("span");
+    url.className = "dish-details-recipe-url";
+    url.textContent = recipeUrl;
+    const arrow = documentRef.createElement("span");
+    arrow.className = "dish-details-recipe-arrow";
+    arrow.setAttribute("aria-hidden", "true");
+    arrow.textContent = "↗";
+    recipeLink.replaceChildren(url, arrow);
+    recipeLink.title = recipeUrl;
+    recipeLink.setAttribute("aria-label", `${translate("open_recipe")}: ${recipeUrl}`);
+    recipeLink.removeAttribute("data-i18n");
   }
 
   function ensureHealthLayout() {
@@ -134,21 +146,31 @@ export function createDetailRefinements({
   function configurePortions(dish) {
     const section = select("#dish-details-ingredients-section");
     if (!section || !dish) return;
-    let toolbar = section.querySelector(".dish-portion-toolbar");
+    const title = section.querySelector("h3");
+    if (!title) return;
+
+    let heading = section.querySelector(".dish-ingredients-heading");
+    if (!heading) {
+      heading = documentRef.createElement("div");
+      heading.className = "dish-ingredients-heading";
+      title.parentNode.insertBefore(heading, title);
+      heading.append(title);
+    }
+
+    let toolbar = heading.querySelector(".dish-portion-toolbar");
     if (!toolbar) {
       toolbar = documentRef.createElement("div");
       toolbar.className = "dish-portion-toolbar";
-      section.querySelector("h3")?.insertAdjacentElement("afterend", toolbar);
+      heading.append(toolbar);
     }
     toolbar.innerHTML = `
       <label class="dish-portion-control">
         <span>${escapeHtml(translate("portions"))}</span>
         <input type="number" min="0.25" step="0.25" inputmode="decimal" data-dish-details-portions>
-      </label>
-      <small>${escapeHtml(`${formatNumber(dish.servings)} ${translate("servings")}`)}</small>`;
+      </label>`;
 
     const input = toolbar.querySelector("[data-dish-details-portions]");
-    const initialPortions = preferredDishDetailPortions(state, dish.key);
+    const initialPortions = preferredDishDetailPortions(state, dish);
     input.value = String(initialPortions);
     renderIngredients(dish, initialPortions);
     input.addEventListener("input", () => {
@@ -159,7 +181,7 @@ export function createDetailRefinements({
   }
 
   function apply() {
-    refineRecipeLink();
+    renderRecipeLink();
     const dishKey = state?.dishDetailsDishKey;
     const dish = (state?.snapshot?.dishes || []).find((candidate) => candidate.key === dishKey);
     renderHealth(dish || null);
@@ -170,7 +192,6 @@ export function createDetailRefinements({
 
   function mount() {
     installStyles();
-    refineRecipeLink();
     const dialog = select("#dish-details-dialog");
     if (!dialog || typeof MutationObserver === "undefined") return;
     const observer = new MutationObserver(() => {
