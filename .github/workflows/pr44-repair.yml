@@ -1,0 +1,197 @@
+name: Repair PR 44
+
+on:
+  push:
+    branches:
+      - fix/catalog-item-dish-usage-2026-08-30
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Merge current upstream and reapply fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/bbodin/homealacarte.git || true
+          git fetch upstream main
+          git merge --no-edit -X theirs upstream/main
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          VERSION = "112"
+
+          def read(path):
+              return Path(path).read_text()
+
+          def write(path, text):
+              Path(path).write_text(text)
+
+          makefile = read("Makefile")
+          catalogue_test = "\tnode tests/catalogue_dish_usage.mjs\n"
+          if catalogue_test not in makefile:
+              anchor = "\tnode tests/html_partials.mjs\n"
+              if anchor not in makefile:
+                  raise SystemExit("Makefile html_partials anchor not found")
+              makefile = makefile.replace(anchor, anchor + catalogue_test, 1)
+          write("Makefile", makefile)
+
+          detail = read("www/features/detail-refinements.js")
+          detail = re.sub(
+              r"detail-refinements\.css\?v=homealacarte-\d+",
+              f"detail-refinements.css?v=homealacarte-{VERSION}",
+              detail,
+          )
+          if "function refineRecipeLink()" not in detail:
+              anchor = "  function ensureHealthLayout() {\n"
+              block = '''  function refineRecipeLink() {
+              const link = select("#dish-details-recipe-link");
+              if (!link) return;
+              const label = translate("open_recipe");
+              link.removeAttribute("data-i18n");
+              link.setAttribute("aria-label", label);
+              link.setAttribute("title", label);
+              link.innerHTML = `<span aria-hidden="true">↗</span><span class="sr-only">${escapeHtml(label)}</span>`;
+            }
+
+          '''
+              if anchor not in detail:
+                  raise SystemExit("detail health anchor not found")
+              detail = detail.replace(anchor, block + anchor, 1)
+          detail = detail.replace("health.append(status, allergens);", "health.append(allergens, status);")
+          if "  function apply() {\n    refineRecipeLink();\n" not in detail:
+              detail = detail.replace("  function apply() {\n", "  function apply() {\n    refineRecipeLink();\n", 1)
+          if "  function mount() {\n    installStyles();\n    refineRecipeLink();\n" not in detail:
+              detail = detail.replace("  function mount() {\n    installStyles();\n", "  function mount() {\n    installStyles();\n    refineRecipeLink();\n", 1)
+          write("www/features/detail-refinements.js", detail)
+
+          consistency = read("www/features/ui-consistency.js")
+          if "function installDismissableDishFilters" not in consistency:
+              anchor = "function installUiConsistencyStyles(documentRef) {\n"
+              block = '''function installDismissableDishFilters(documentRef) {
+            documentRef.addEventListener("click", (event) => {
+              documentRef.querySelectorAll("#dish-country-filter[open], #dish-allergen-filter[open]")
+                .forEach((filter) => {
+                  if (!filter.contains(event.target)) filter.removeAttribute("open");
+                });
+            });
+          }
+
+          '''
+              if anchor not in consistency:
+                  raise SystemExit("ui consistency style anchor not found")
+              consistency = consistency.replace(anchor, block + anchor, 1)
+          if "  installDismissableDishFilters(documentRef);\n" not in consistency:
+              anchor = "  installCalendarOnlyDates(documentRef);\n"
+              if anchor not in consistency:
+                  raise SystemExit("ui consistency install anchor not found")
+              consistency = consistency.replace(anchor, "  installDismissableDishFilters(documentRef);\n" + anchor, 1)
+          write("www/features/ui-consistency.js", consistency)
+
+          app = read("www/app.js")
+          for module in ("app/feature-composition.js", "features/detail-refinements.js", "features/ui-consistency.js"):
+              app = re.sub(
+                  rf"({re.escape(module)}\?v=homealacarte-)\d+",
+                  rf"\g<1>{VERSION}",
+                  app,
+              )
+          write("www/app.js", app)
+
+          composition = read("www/app/feature-composition.js")
+          for module in ("features/item-details.js", "features/catalogue.js"):
+              composition = re.sub(
+                  rf"({re.escape(module)}\?v=homealacarte-)\d+",
+                  rf"\g<1>{VERSION}",
+                  composition,
+              )
+          write("www/app/feature-composition.js", composition)
+
+          catalogue = read("www/features/catalogue.js")
+          catalogue = re.sub(
+              r"(catalogue/usage\.js\?v=homealacarte-)\d+",
+              rf"\g<1>{VERSION}",
+              catalogue,
+          )
+          write("www/features/catalogue.js", catalogue)
+
+          details = read("www/features/item-details.js")
+          details = re.sub(
+              r"(catalogue/usage\.js\?v=homealacarte-)\d+",
+              rf"\g<1>{VERSION}",
+              details,
+          )
+          write("www/features/item-details.js", details)
+
+          index = read("www/index.html")
+          index = re.sub(r"\?v=homealacarte-\d+", f"?v=homealacarte-{VERSION}", index)
+          index = re.sub(
+              r'(<small class="app-version" aria-label="Version de l’application">)v\d+(</small>)',
+              rf"\g<1>v{VERSION}\g<2>",
+              index,
+          )
+          write("www/index.html", index)
+
+          detail_test = read("tests/detail_refinements.mjs")
+          detail_test = re.sub(
+              r"detail-refinements\\\.css\\\?v=homealacarte-\d+",
+              f"detail-refinements\\.css\\?v=homealacarte-{VERSION}",
+              detail_test,
+          )
+          marker = 'assert.match(feature, /data-dish-details-portions/);\n'
+          additions = (
+              'assert.match(feature, /refineRecipeLink/);\n'
+              'assert.match(feature, /health\\.append\\(allergens, status\\)/);\n'
+              'assert.match(feature, /↗/);\n'
+          )
+          if 'assert.match(feature, /refineRecipeLink/);' not in detail_test:
+              if marker not in detail_test:
+                  raise SystemExit("detail test anchor not found")
+              detail_test = detail_test.replace(marker, marker + additions, 1)
+          write("tests/detail_refinements.mjs", detail_test)
+
+          ui_test = read("tests/ui_consistency.mjs")
+          marker = 'assert.match(uiConsistency, /beforeinput/);\n'
+          addition = 'assert.match(uiConsistency, /dish-country-filter\\[open\\].*dish-allergen-filter\\[open\\]/s);\n'
+          if addition not in ui_test:
+              if marker not in ui_test:
+                  raise SystemExit("ui test anchor not found")
+              ui_test = ui_test.replace(marker, marker + addition, 1)
+          write("tests/ui_consistency.mjs", ui_test)
+          PY
+
+          grep -F 'menu_dish_count' www/features/catalogue.js
+          grep -F 'grocery-details-library-usages' www/features/item-details.js
+          grep -F 'health.append(allergens, status);' www/features/detail-refinements.js
+          grep -F '↗' www/features/detail-refinements.js
+          grep -F '#dish-country-filter[open], #dish-allergen-filter[open]' www/features/ui-consistency.js
+
+          python3 scripts/check_source_boundaries.py
+          node --check www/features/detail-refinements.js
+          node --check www/features/ui-consistency.js
+          node --check www/features/catalogue.js
+          node --check www/features/item-details.js
+          node --check www/app/feature-composition.js
+          node --check www/app.js
+          make test-web
+          git diff --check
+
+          git add Makefile tests/detail_refinements.mjs tests/ui_consistency.mjs tests/catalogue_dish_usage.mjs \
+            www/app.js www/app/feature-composition.js www/features/catalogue.js \
+            www/features/catalogue/usage.js www/features/detail-refinements.js \
+            www/features/item-details.js www/features/ui-consistency.js www/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Resolve PR 44 against current main"
+          fi
+          git rm .github/workflows/pr44-repair.yml
+          git commit -m "Remove temporary PR repair workflow"
+          git push origin HEAD:fix/catalog-item-dish-usage-2026-08-30
