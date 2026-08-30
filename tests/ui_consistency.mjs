@@ -4,6 +4,7 @@ import {
   CALENDAR_DATE_SELECTOR,
   calendarDateKeyAction,
   catalogueFilterCounts,
+  catalogueSortLabel,
   installFamilyFormatCompatibility,
   prepareCalendarDateInput,
   selectedCatalogueMatchLabel,
@@ -16,6 +17,8 @@ assert.equal(calendarDateKeyAction("1"), "block");
 assert.match(CALENDAR_DATE_SELECTOR, /ingredient-price-checked-at/);
 assert.match(CALENDAR_DATE_SELECTOR, /household-item-last-bought/);
 assert.match(CALENDAR_DATE_SELECTOR, /data-price-observation-date/);
+assert.equal(catalogueSortLabel("en"), "Sorting");
+assert.equal(catalogueSortLabel("fr"), "Tri");
 
 const dateAttributes = new Map();
 const removedDateAttributes = new Set();
@@ -100,6 +103,7 @@ assert.match(priceHistoryEditor, /data-price-observation-date/);
 assert.match(uiConsistency, /data-auto-availability-select-all/);
 assert.match(uiConsistency, /dispatchEvent\(new Event\("change", \{ bubbles: true \}\)\)/);
 assert.match(uiConsistency, /#item-category-filter, #item-incomplete-filter/);
+assert.match(uiConsistency, /removeAttribute\("aria-hidden"\)/);
 assert.match(uiConsistency, /beforeinput/);
 assert.match(uiConsistency, /dish-country-filter\[open\].*dish-allergen-filter\[open\]/s);
 

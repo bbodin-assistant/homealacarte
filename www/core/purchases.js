@@ -246,9 +246,8 @@ function updateStock(document, item, line, purchasedGrams = 0) {
   let row = document.stock.find((candidate) => stockItemKey(candidate) === item.key);
   if (isFoodItem(item)) {
     const gramsPerUnit = Number(item.grams_per_measure_unit || 0);
-    if (!Number.isFinite(gramsPerUnit) || gramsPerUnit <= 0) {
-      throw new Error(`purchase_invalid_item_conversion:${item.key}`);
-    }
+    const hasUnitConversion = Number.isFinite(gramsPerUnit) && gramsPerUnit > 0;
+    if (!hasUnitConversion && (line.quantityUnit !== "g" || row?.quantity_unit === "unit")) throw new Error(`purchase_invalid_item_conversion:${item.key}`);
     if (!row) {
       document.stock.push({
         item_key: item.key,
@@ -319,19 +318,16 @@ export function applyPurchaseToDocument(sourceDocument, rawPurchase) {
     const description = purchase.store || "Purchase";
     if (isFoodItem(item)) {
       const gramsPerUnit = Number(item.grams_per_measure_unit || 0);
-      if (!Number.isFinite(gramsPerUnit) || gramsPerUnit <= 0) {
-        throw new Error(`purchase_invalid_item_conversion:${index + 1}`);
-      }
+      const hasUnitConversion = Number.isFinite(gramsPerUnit) && gramsPerUnit > 0;
+      if (line.quantityUnit !== "g" && !hasUnitConversion) throw new Error(`purchase_invalid_item_conversion:${index + 1}`);
       const grams = line.quantityUnit === "g"
         ? line.quantity
         : line.quantity * gramsPerUnit;
-      if (!Number.isFinite(grams) || grams <= 0) {
-        throw new Error(`purchase_invalid_quantity:${index + 1}`);
-      }
-      const pricing = purchasedFoodPrice(item, grams, line.totalPrice);
-      if (!pricing) {
-        throw new Error(`purchase_invalid_item_conversion:${index + 1}`);
-      }
+      if (!Number.isFinite(grams) || grams <= 0) throw new Error(`purchase_invalid_quantity:${index + 1}`);
+      const pricing = hasUnitConversion
+        ? purchasedFoodPrice(item, grams, line.totalPrice)
+        : { price: line.totalPrice / grams * 1000, priceBasis: "kg" };
+      if (!pricing || !Number.isFinite(pricing.price)) throw new Error(`purchase_invalid_item_conversion:${index + 1}`);
       const { price, priceBasis } = pricing;
       item.price = price;
       item.price_basis = priceBasis;

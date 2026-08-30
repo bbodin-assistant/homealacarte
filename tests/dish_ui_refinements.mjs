@@ -32,6 +32,6 @@ assert.match(feature, /dish-nutri-disclosure\[open\]/);
 assert.match(feature, /disclosure\.removeAttribute\("open"\)/);
 assert.match(feature, /MutationObserver/);
 assert.match(feature, /audit\.hidden = !nutriScoreAuditHasProblems/);
-assert.match(index, /dish-ui-refinements\.js\?v=homealacarte-115/);
+assert.match(index, /dish-ui-refinements\.js\?v=homealacarte-116/);
 
 console.log("Dish details use theme colors, align health indicators, close Nutri-Score outside clicks, and hide complete audits.");

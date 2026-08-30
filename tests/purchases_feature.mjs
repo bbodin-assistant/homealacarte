@@ -172,6 +172,20 @@ assert.equal(withNewItems.items.find((item) => item.name === "Lentils").price, 2
 assert.equal(withNewItems.items.find((item) => item.name === "Lentils").price_basis, "purchase_unit");
 assert.equal(withNewItems.items.find((item) => item.name === "Kitchen roll").estimated_price, 3.6);
 
+const gramOnlyDocument = structuredClone(document);
+gramOnlyDocument.items.find((item) => item.key === "tomato").grams_per_measure_unit = 0;
+gramOnlyDocument.stock = [{ item_key: "tomato", quantity: 100, quantity_unit: "g" }];
+const gramOnlyUpdated = applyPurchaseToDocument(gramOnlyDocument, {
+  date: "2026-08-19",
+  store: "Market",
+  purchase_id: "purchase-grams",
+  lines: [{ item_key: "tomato", quantity: 300, quantity_unit: "g", display_unit: "g", total_price: 1.5 }],
+});
+assert.equal(gramOnlyUpdated.items.find((item) => item.key === "tomato").price, 5);
+assert.equal(gramOnlyUpdated.items.find((item) => item.key === "tomato").price_basis, "kg");
+assert.equal(gramOnlyUpdated.stock.find((row) => row.item_key === "tomato").quantity, 400);
+assert.equal(gramOnlyUpdated.items.find((item) => item.key === "tomato").grams_per_measure_unit, 0);
+
 assert.throws(
   () => applyPurchaseToDocument(document, {
     date: "2026-08-18",
@@ -299,13 +313,13 @@ assert.match(groceryView, /id="purchase-add-form"/);
 assert.match(groceryView, /id="purchase-batch-form"/);
 assert.match(shell, /\["list", "stock", "needs", "purchases"\]/);
 assert.match(worker, /type === "record-purchase"/);
-assert.match(worker, /core\/purchases\.js\?v=homealacarte-110/);
+assert.match(worker, /core\/purchases\.js\?v=homealacarte-111/);
 assert.match(worker, /homealacarte_web\.js\?v=homealacarte-97/);
 assert.match(groceryFeature, /core\/purchases\.js\?v=homealacarte-110/);
 assert.match(composition, /features\/grocery\.js\?v=homealacarte-110/);
 assert.match(composition, /features\/shell\.js\?v=homealacarte-91/);
 assert.match(app, /feature-composition\.js\?v=homealacarte-114/);
-assert.match(app, /worker\.js\?v=homealacarte-110/);
+assert.match(app, /worker\.js\?v=homealacarte-111/);
 const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(index, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));
@@ -313,5 +327,7 @@ assert.match(index, new RegExp(`features\\/receipt-purchases\\.js\\?v=homealacar
 assert.match(index, new RegExp(`features\\/purchase-review-enhancements\\.js\\?v=homealacarte-${appVersion}`));
 assert.match(index, /Incomplete catalogue items/);
 assert.match(receiptFeature, /parseSupermarketReceipt/);
+assert.doesNotMatch(receiptFeature, /form\.dispatchEvent\(new Event\("submit"/);
+assert.match(receiptFeature, /textarea\.value = structured;[\s\S]*reviewing = false;/);
 
-console.log("Purchases update stock and price history, color full review rows, make unresolved weights actionable, and keep cache versions aligned.");
+console.log("Purchases reliably update stock and price history, including reviewed receipts and gram-only incomplete foods, while cache versions stay aligned.");

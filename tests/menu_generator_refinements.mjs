@@ -25,6 +25,6 @@ const [moduleSource, index] = await Promise.all([
 ]);
 assert.match(moduleSource, /data-auto-dish-disabled-reason/);
 assert.match(moduleSource, /MutationObserver/);
-assert.match(index, /features\/menu-generator-refinements\.js\?v=homealacarte-115/);
+assert.match(index, /features\/menu-generator-refinements\.js\?v=homealacarte-116/);
 
 console.log("Menu generator refinements keep desktop parameters compact and explain disabled dishes.");

@@ -36,7 +36,7 @@ const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(index, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));
 assert.match(entry, /app\/feature-composition\.js\?v=homealacarte-114/);
-assert.match(entry, /worker\.js\?v=homealacarte-110/);
+assert.match(entry, /worker\.js\?v=homealacarte-111/);
 assert.match(app, /features\/dish-editor\.js\?v=homealacarte-110/);
 
 console.log("Dish editor generates localized name fields from the shared locale list and keeps country metadata separate.");
