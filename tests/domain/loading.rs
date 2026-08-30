@@ -105,7 +105,7 @@ fn person_food_rules_are_loaded_and_validated() {
     assert_eq!(dataset.people[0].food_rules[0].item_keys.len(), 2);
     assert_eq!(dataset.people[0].food_rules[2].kind, "allergy");
     assert_eq!(dataset.people[0].food_rules[3].kind, "favorite");
-    assert_eq!(dataset.people[0].food_rules[4].kind, "like");
+    assert_eq!(dataset.people[0].food_rules[4].kind, "favorite");
     assert_eq!(dataset.people[0].food_rules[5].kind, "dislike");
     assert_eq!(
         dataset.people[0].food_rules[0].days,
