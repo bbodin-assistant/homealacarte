@@ -83,6 +83,7 @@ test-web:
 	node tests/purchases_feature.mjs
 	node tests/receipt_purchases.mjs
 	node tests/ui_consistency.mjs
+	node tests/detail_refinements.mjs
 	node tests/dishes_feature.mjs
 	node tests/dish_editor_feature.mjs
 	node tests/ai_dish_ollama.mjs

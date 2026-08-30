@@ -9,6 +9,11 @@
   padding: 18px 22px;
 }
 
+.dish-details-content {
+  grid-auto-rows: max-content;
+  align-content: start;
+}
+
 .dish-details-content section,
 .grocery-details-content section,
 .grocery-details-information {
