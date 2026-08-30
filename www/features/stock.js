@@ -108,9 +108,43 @@ export function sortStockRows(rows = [], { key = null, direction = "asc", locale
   });
 }
 
+export function groupStockRowsByCategory(rows = [], {
+  labelFor = (row) => row.category,
+  locale,
+} = {}) {
+  const groups = new Map();
+  for (const row of rows) {
+    const key = String(row.category || "");
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        label: String(labelFor(row) || key),
+        rows: [],
+      });
+    }
+    groups.get(key).rows.push(row);
+  }
+  const collator = new Intl.Collator(locale || undefined, { numeric: true, sensitivity: "base" });
+  return [...groups.values()].sort((left, right) => collator.compare(left.label, right.label));
+}
+
 function sortIndicator(activeKey, direction, key) {
   if (activeKey !== key) return "";
   return direction === "desc" ? " ↓" : " ↑";
+}
+
+function installStockCategoryGroupStyles(documentRef = globalThis.document) {
+  if (!documentRef || documentRef.querySelector("#stock-category-group-styles")) return;
+  const style = documentRef.createElement("style");
+  style.id = "stock-category-group-styles";
+  style.textContent = `
+    .stock-category-group{border-bottom:1px solid var(--line)}
+    .stock-category-group:last-child{border-bottom:0}
+    .stock-category-heading{position:sticky;top:33px;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:8px 12px;color:var(--ink);background:#e9e3d8;border-bottom:1px solid var(--line);font-size:10px;font-weight:800}
+    .stock-category-heading>span:last-child{min-width:22px;padding:2px 6px;color:var(--muted);background:var(--surface);border-radius:999px;text-align:center}
+    .stock-category-group .stock-row:last-child{border-bottom:0}
+  `;
+  documentRef.head.append(style);
 }
 
 export function createStockFeature({
@@ -127,6 +161,7 @@ export function createStockFeature({
   setBusy,
   send,
 }) {
+  installStockCategoryGroupStyles();
   let mounted = false;
   let sortKey = null;
   let sortDirection = "asc";
@@ -185,7 +220,8 @@ export function createStockFeature({
       day: "numeric",
       timeZone: "UTC",
     });
-    const rows = visibleItems.map((item) => {
+    const countFormat = new Intl.NumberFormat(state.language || undefined);
+    const rowMarkup = (item) => {
       const date = /^\d{4}-\d{2}-\d{2}$/.test(item.added_at || "")
         ? dateFormat.format(new Date(`${item.added_at}T00:00:00Z`))
         : item.added_at || "";
@@ -208,7 +244,23 @@ export function createStockFeature({
           <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
         </button>
       </div>`;
-    }).join("") || `<p class="stock-empty">${escapeHtml(translate(query ? "no_matching_items" : "empty"))}</p>`;
+    };
+    const rows = !visibleItems.length
+      ? `<p class="stock-empty">${escapeHtml(translate(query ? "no_matching_items" : "empty"))}</p>`
+      : sortKey
+        ? visibleItems.map(rowMarkup).join("")
+        : groupStockRowsByCategory(visibleItems, {
+          labelFor: (item) => displayCategory(item.category) || translate("other"),
+          locale: state.language,
+        }).map((group) => `
+          <section class="stock-category-group" data-stock-category="${escapeHtml(group.key)}">
+            <h3 class="stock-category-heading">
+              <span>${escapeHtml(group.label)}</span>
+              <span>${escapeHtml(countFormat.format(group.rows.length))}</span>
+            </h3>
+            ${group.rows.map(rowMarkup).join("")}
+          </section>
+        `).join("");
     select("#stock-list").innerHTML = `
       <div class="stock-head">
         <button type="button" data-stock-sort="name">${escapeHtml(translate("name"))}${sortIndicator(sortKey, sortDirection, "name")}</button>
