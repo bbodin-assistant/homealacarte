@@ -13,6 +13,20 @@ export { allergenCodesOverlap, countryFlag };
 
 export { dishAllergenCodes };
 
+function personLikesDish(person, dishKey) {
+  return (person?.food_rules || []).some((rule) =>
+    rule.kind === "favorite" && (rule.item_keys || []).includes(dishKey));
+}
+
+export function dishLikedBySelectedPeople(dish, people = [], selectedPeople = new Set()) {
+  const selected = selectedPeople instanceof Set
+    ? selectedPeople
+    : new Set(selectedPeople || []);
+  if (!selected.size) return true;
+  return (people || []).some((person) =>
+    selected.has(String(person?.name || "")) && personLikesDish(person, dish?.key));
+}
+
 export function dishPreferenceBadges(dish, people = [], language) {
   const components = new Map((dish.components || []).map((component) => [component.key, component]));
   const badges = [];
@@ -70,11 +84,13 @@ export function filterDishes(dishes, filters) {
   const search = String(filters.search || "").toLowerCase().trim();
   const countries = filters.countries instanceof Set ? filters.countries : new Set();
   const allergens = filters.allergens instanceof Set ? filters.allergens : new Set();
+  const likedBy = filters.likedBy instanceof Set ? filters.likedBy : new Set();
   return dishes.filter((dish) => {
     const matchesSearch = !search
       || `${dish.name} ${dish.key}`.toLowerCase().includes(search);
     return matchesSearch
       && (!countries.size || countries.has(String(dish.origin_country || "").toUpperCase()))
+      && dishLikedBySelectedPeople(dish, filters.people, likedBy)
       && !dishHasFilteredAllergen(dish, allergens)
       && matchesSelectedNutriScores(dish, filters.nutriScores)
       && (!filters.stockOnly || dishStockAvailability(dish, filters.stockRows).portions >= 1)
@@ -142,15 +158,28 @@ export function createDishesFeature({
 
   function configureSelectFilters() {
     const selectedCountries = selectedFilterValues("#dish-country-options");
+    const selectedLikedBy = selectedFilterValues("#dish-liked-by-options");
     const selectedAllergens = selectedFilterValues("#dish-allergen-options");
     const countries = [...new Set((state.snapshot.dishes || [])
       .map((dish) => String(dish.origin_country || "").trim().toUpperCase())
       .filter(Boolean))].sort();
+    const people = [...new Set((state.snapshot.people || [])
+      .map((person) => String(person?.name || "").trim())
+      .filter(Boolean))].sort((left, right) => left.localeCompare(right));
+    const likedByLabel = state.language === "en" ? "Liked by" : "Aimé par";
+    select("#dish-liked-by-label").textContent = likedByLabel;
+    select("#dish-liked-by-options").setAttribute("aria-label", likedByLabel);
     select("#dish-country-options").innerHTML = countries.map((country) => `
       <label class="dish-filter-option">
         <input type="checkbox" value="${escapeHtml(country)}" ${selectedCountries.has(country) ? "checked" : ""}>
         <span class="dish-country-option-flag" aria-hidden="true">${countryFlag(country)}</span>
         <strong>${escapeHtml(country)}</strong>
+      </label>`).join("") || `<p class="dish-filter-empty">—</p>`;
+    select("#dish-liked-by-options").innerHTML = people.map((name) => `
+      <label class="dish-filter-option">
+        <input type="checkbox" value="${escapeHtml(name)}" ${selectedLikedBy.has(name) ? "checked" : ""}>
+        <span aria-hidden="true">❤️</span>
+        <strong>${escapeHtml(name)}</strong>
       </label>`).join("") || `<p class="dish-filter-empty">—</p>`;
     select("#dish-allergen-options").innerHTML = ALLERGEN_CODES.map((code) => `
       <label class="dish-filter-option allergen">
@@ -165,6 +194,8 @@ export function createDishesFeature({
     const filters = {
       search: select("#dish-search").value,
       countries: selectedFilterValues("#dish-country-options"),
+      likedBy: selectedFilterValues("#dish-liked-by-options"),
+      people: state.snapshot.people || [],
       allergens: selectedFilterValues("#dish-allergen-options"),
       minimumCost: Number(select("#dish-cost-min").value),
       maximumCost: Number(select("#dish-cost-max").value),
@@ -177,6 +208,7 @@ export function createDishesFeature({
       stockRows: state.stockDraft,
     };
     updateFilterCount("#dish-country-count", filters.countries.size);
+    updateFilterCount("#dish-liked-by-count", filters.likedBy.size);
     updateFilterCount("#dish-allergen-count", filters.allergens.size);
     select("#dish-cost-output").textContent =
       `${formatMoney(filters.minimumCost)} – ${formatMoney(filters.maximumCost)}`;
@@ -258,7 +290,7 @@ export function createDishesFeature({
   });
   select("#dish-clear-filters").addEventListener("click", () => {
     select("#dish-search").value = "";
-    selectAll("#dish-country-options input, #dish-allergen-options input").forEach((input) => {
+    selectAll("#dish-country-options input, #dish-liked-by-options input, #dish-allergen-options input").forEach((input) => {
       input.checked = false;
     });
     select("#dish-stock-only").checked = false;
