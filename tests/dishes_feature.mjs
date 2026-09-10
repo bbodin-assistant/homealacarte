@@ -5,6 +5,7 @@ import {
   countryFlag,
   dishFilterAllergenMatches,
   dishAllergenCodes,
+  dishLikedBySelectedPeople,
   dishPreferenceBadges,
   dishRangeMaximums,
   filterDishes,
@@ -43,29 +44,44 @@ assert.equal(allergenCodesOverlap("pistachio", "walnut"), false);
 assert.equal(dishFilterAllergenMatches("brazil_nut", "brazil_nut"), true);
 assert.equal(dishFilterAllergenMatches("brazil_nut", "walnut"), false);
 
+const people = [
+  {
+    name: "Alex",
+    food_rules: [
+      { kind: "allergy", item_keys: ["peanut"] },
+      { kind: "favorite", item_keys: ["pad_thai", "cheap_a", "rich_c"] },
+    ],
+  },
+  {
+    name: "Sam",
+    food_rules: [
+      { kind: "never", item_keys: ["pad_thai"] },
+      { kind: "favorite", item_keys: ["unknown"] },
+    ],
+  },
+  {
+    name: "Taylor",
+    food_rules: [],
+  },
+];
+
 const badges = dishPreferenceBadges({
   key: "pad_thai",
   components: [
     { key: "peanut", name: "Peanuts", allergens: ["peanut"] },
     { key: "rice_noodle", name: "Rice noodles" },
   ],
-}, [
-  {
-    name: "Alex",
-    food_rules: [
-      { kind: "allergy", item_keys: ["peanut"] },
-      { kind: "favorite", item_keys: ["pad_thai"] },
-    ],
-  },
-  {
-    name: "Sam",
-    food_rules: [{ kind: "never", item_keys: ["pad_thai"] }],
-  },
-]);
+}, people);
 assert.deepEqual(badges.map((badge) => badge.kind), ["favorite", "forbidden", "allergy"]);
 assert.ok(badges.find((badge) => badge.kind === "allergy")?.icon.startsWith("<svg"));
 assert.match(badges.find((badge) => badge.kind === "allergy")?.title || "", /Alex/);
 assert.equal(badges.find((badge) => badge.kind === "allergy")?.householdWarning, true);
+
+assert.equal(dishLikedBySelectedPeople(dishes[0], people, new Set()), true);
+assert.equal(dishLikedBySelectedPeople(dishes[0], people, new Set(["Alex"])), true);
+assert.equal(dishLikedBySelectedPeople(dishes[0], people, new Set(["Sam"])), false);
+assert.equal(dishLikedBySelectedPeople(dishes[2], people, new Set(["Sam"])), true);
+assert.equal(dishLikedBySelectedPeople(dishes[2], people, new Set(["Taylor"])), false);
 
 const multiAllergenDish = {
   key: "custard_toast",
@@ -89,7 +105,10 @@ const detailRefinementSource = readFileSync(new URL("../www/styles/detail-refine
 assert.match(dialogSource, /dish-details-allergens-section/);
 assert.match(dialogSource, /dish-details-allergens/);
 assert.match(dishesViewSource, /id="dish-stock-only"/);
+assert.match(dishesViewSource, /id="dish-liked-by-filter"/);
+assert.match(dishesViewSource, /id="dish-liked-by-options"/);
 assert.match(dishesSource, /dish-card-nutri-score/);
+assert.match(dishesSource, /#dish-liked-by-options input/);
 assert.match(refinementSource, /\.dish-filter-panel\.panel[\s\S]*?overflow:\s*visible/);
 assert.match(refinementSource, /\.dish-preference-badge\.allergy[\s\S]*?border-radius:\s*50%/);
 assert.match(detailRefinementSource, /\.dish-card-nutri-score\s*\{[\s\S]*?position:\s*absolute[\s\S]*?top:\s*14px[\s\S]*?right:\s*14px/);
@@ -142,6 +161,34 @@ assert.deepEqual(
   ["cheap_a", "unknown"],
 );
 
+assert.deepEqual(
+  filterDishes(dishes, {
+    ...baseFilters,
+    allergens: new Set(),
+    people,
+    likedBy: new Set(["Alex"]),
+  }).map((dish) => dish.key),
+  ["cheap_a", "rich_c"],
+);
+assert.deepEqual(
+  filterDishes(dishes, {
+    ...baseFilters,
+    allergens: new Set(),
+    people,
+    likedBy: new Set(["Alex", "Sam"]),
+  }).map((dish) => dish.key),
+  ["cheap_a", "rich_c", "unknown"],
+);
+assert.deepEqual(
+  filterDishes(dishes, {
+    ...baseFilters,
+    allergens: new Set(),
+    people,
+    likedBy: new Set(["Taylor"]),
+  }).map((dish) => dish.key),
+  [],
+);
+
 const stockFilteredDishes = [
   {
     key: "exactly_one_portion",
@@ -170,4 +217,4 @@ assert.deepEqual(
   ["exactly_one_portion"],
 );
 
-console.log("Dishes feature owns multi-country/allergen filtering, stock-ready filtering, exact specific-nut browsing semantics, and SVG allergy badges.");
+console.log("Dishes feature owns multi-country/allergen/liked-by filtering, stock-ready filtering, exact specific-nut browsing semantics, and SVG allergy badges.");
