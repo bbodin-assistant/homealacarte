@@ -24,6 +24,36 @@
 .planner-mode-switch button.active .mode-count { color: var(--accent-dark); background: var(--surface-strong); }
 .mode-count[hidden] { display: none; }
 .planner-mode-switch button.active { color: white; background: var(--accent); box-shadow: 0 6px 14px color-mix(in srgb, var(--accent) 22%, transparent); }
+#grocery-view.active,
+#menu-view.active {
+  display: grid;
+  grid-template-columns: 164px minmax(0, 1fr);
+  column-gap: 24px;
+  align-items: start;
+}
+#grocery-view > .planner-mode-switch,
+#menu-view > .planner-mode-switch {
+  position: sticky;
+  top: 100px;
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+  display: grid;
+  align-self: start;
+  margin: 0;
+}
+#grocery-view > .planner-mode-switch button,
+#menu-view > .planner-mode-switch button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+#grocery-view > .grocery-subview,
+#menu-view > .menu-subview {
+  min-width: 0;
+  grid-column: 2;
+  grid-row: 1;
+}
 .planner-subview { display: none; }
 .planner-subview.active { display: block; animation: fade-in .18s ease both; }
 .grocery-subview { display: none; }
@@ -42,6 +72,26 @@
 }
 .household-plan-panel { overflow: visible; }
 .household-add { border-radius: 0 0 var(--radius) var(--radius); }
+
+@media(max-width:760px) {
+  #grocery-view.active,
+  #menu-view.active { display: block; }
+  #grocery-view > .planner-mode-switch,
+  #menu-view > .planner-mode-switch {
+    position: static;
+    width: 100%;
+    display: flex;
+    margin-bottom: 20px;
+    overflow-x: auto;
+  }
+  #grocery-view > .planner-mode-switch button,
+  #menu-view > .planner-mode-switch button {
+    width: auto;
+    flex: 1 0 auto;
+    justify-content: center;
+    text-align: center;
+  }
+}
 
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .data-table th {

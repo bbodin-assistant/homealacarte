@@ -12,6 +12,20 @@
 }
 .standalone-stock-panel { margin-bottom: 0; }
 .stock-value-summary { justify-content: flex-start; }
+.page-heading-with-summary { flex-wrap: wrap; }
+.page-heading-with-summary > :first-child { margin-right: auto; }
+.heading-summary {
+  min-width: 150px;
+  flex: 0 0 auto;
+  gap: 12px;
+  margin: 0;
+  padding: 10px 13px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.heading-summary strong { font-size: 21px; }
+.heading-summary .grocery-progress { width: 90px; gap: 5px; }
+.heading-summary .grocery-progress > div { height: 5px; }
 
 .grocery-summary > div:first-child { display: grid; gap: 4px; }
 .grocery-summary span { color: rgba(255,255,255,.65); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -27,7 +41,7 @@
 .stock-panel summary span:first-child { display: grid; gap: 3px; }
 .stock-panel summary strong { font-family: Georgia, serif; font-size: 18px; font-weight: 500; }
 .stock-panel summary small { color: var(--muted); font-size: 11px; }
-.stock-list { max-height: 620px; display: grid; grid-template-columns: 1fr; overflow: auto; border-top: 1px solid var(--line); }
+.stock-list { display: grid; grid-template-columns: 1fr; border-top: 1px solid var(--line); }
 .stock-row { display: grid; grid-template-columns: minmax(0, 1fr) 100px 100px 32px; gap: 9px; align-items: center; padding: 11px 13px; border-bottom: 1px solid var(--line); }
 .stock-row .stock-notes { grid-column: 1 / -2; grid-row: 2; }
 .stock-row .remove-stock { grid-column: 4; grid-row: 1; }
@@ -55,7 +69,19 @@
 .searchable-select-input { min-width: 0; width: 100%; }
 .searchable-select-source { display: none !important; }
 .purchase-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
-.purchase-entry-panel, .purchase-history-panel { overflow: hidden; }
+.purchase-entry-panel { overflow: hidden; }
+.purchase-history-panel,
+.standalone-stock-panel,
+.household-plan-panel { overflow: visible; }
+.household-sticky-table-controls {
+  position: sticky;
+  top: 76px;
+  z-index: 12;
+  overflow: hidden;
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: 0 9px 16px rgba(66,52,39,.09);
+}
 .purchase-section-heading { display: grid; gap: 5px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
 .purchase-section-heading h2 { margin: 0; font-family: Georgia, serif; font-size: 18px; font-weight: 500; }
 .purchase-section-heading p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
@@ -69,10 +95,10 @@
 .purchase-error:empty { display: none; }
 .purchase-history-head, .purchase-history-row { display: grid; grid-template-columns: minmax(160px, 1.3fr) 100px 90px 120px minmax(150px, 1fr); gap: 9px; align-items: center; padding: 9px 12px; }
 .purchase-history-head { color: var(--muted); background: #f3efe7; border-bottom: 1px solid var(--line); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
-.purchase-list { max-height: 520px; overflow: auto; }
+.purchase-list { overflow: visible; }
 .purchase-date-group { border-bottom: 1px solid var(--line); }
 .purchase-date-group:last-child { border-bottom: 0; }
-.purchase-date-heading { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 8px 12px; color: var(--ink); background: #e9e3d8; border-bottom: 1px solid var(--line); font-size: 10px; font-weight: 800; }
+.purchase-date-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 8px 12px; color: var(--ink); background: #e9e3d8; border-bottom: 1px solid var(--line); font-size: 10px; font-weight: 800; }
 .purchase-date-heading > span:last-child { min-width: 22px; padding: 2px 6px; color: var(--muted); background: var(--surface); border-radius: 999px; text-align: center; }
 .purchase-history-row { border-bottom: 1px solid var(--line); font-size: 10px; }
 .purchase-date-group .purchase-history-row:last-child { border-bottom: 0; }
@@ -100,6 +126,7 @@
 .stock-status.partial { color: #8a5b14; background: #f8e8bd; }
 .grocery-empty { margin: 0; padding: 28px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 15px; text-align: center; }
 @media(max-width:900px) {
+  .household-sticky-table-controls { position: static; box-shadow: none; }
   .purchase-entry-grid { grid-template-columns: 1fr; }
   .purchase-history-head { display: none; }
   .purchase-history-row { grid-template-columns: minmax(0, 1fr) 90px 90px; }

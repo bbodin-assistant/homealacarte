@@ -15,9 +15,10 @@ const STRINGS = {
     monthly: "Monthly spending",
     monthlyIntro: "Last 6 months",
     categories: "Spending by category",
-    categoriesIntro: "This month",
+    categoriesIntro: "Selected month",
     stores: "Spending by store",
-    storesIntro: "This month",
+    storesIntro: "Selected month",
+    selectMonth: "Select month",
     frequent: "Frequently purchased products",
     frequentIntro: "Across recorded purchase history",
     product: "Product",
@@ -42,9 +43,10 @@ const STRINGS = {
     monthly: "Dépenses mensuelles",
     monthlyIntro: "6 derniers mois",
     categories: "Dépenses par catégorie",
-    categoriesIntro: "Ce mois-ci",
+    categoriesIntro: "Mois sélectionné",
     stores: "Dépenses par magasin",
-    storesIntro: "Ce mois-ci",
+    storesIntro: "Mois sélectionné",
+    selectMonth: "Sélectionner le mois",
     frequent: "Produits achetés fréquemment",
     frequentIntro: "Sur l’historique des achats enregistrés",
     product: "Produit",
@@ -137,7 +139,7 @@ function purchaseRecords(snapshot, language) {
     }));
 }
 
-export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), language) {
+export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), language, selectedMonths = {}) {
   const strings = stringsFor(language);
   const records = purchaseRecords(snapshot, language);
   const today = parseDateKey(dateKey(referenceDate));
@@ -150,6 +152,20 @@ export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), lang
   const inRange = (row, start, end) => row.parsedDate >= start && row.parsedDate < end;
   const currentWeekRows = dated.filter((row) => inRange(row, weekStart, nextWeek));
   const currentMonthRows = dated.filter((row) => inRange(row, currentMonth, nextMonth));
+  const currentMonthKey = isoDate(currentMonth).slice(0, 7);
+  const availableMonths = [...new Set(dated.map((row) => row.date.slice(0, 7)))]
+    .filter((key) => /^\d{4}-\d{2}$/.test(key))
+    .sort((left, right) => right.localeCompare(left));
+  if (!availableMonths.includes(currentMonthKey)) availableMonths.unshift(currentMonthKey);
+  const selectedMonth = (requested) => availableMonths.includes(requested)
+    ? requested
+    : currentMonthKey;
+  const categoryMonth = selectedMonth(selectedMonths.category);
+  const storeMonth = selectedMonth(selectedMonths.store);
+  const rowsForMonth = (key) => {
+    const start = parseDateKey(`${key}-01`);
+    return dated.filter((row) => inRange(row, start, addUtcMonths(start, 1)));
+  };
 
   const weekly = [];
   for (let offset = -7; offset <= 0; offset += 1) {
@@ -172,8 +188,11 @@ export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), lang
     purchaseCount: records.length,
     weekly,
     monthly,
-    byCategory: aggregate(currentMonthRows, (row) => row.category),
-    byStore: aggregate(currentMonthRows, (row) => row.store),
+    availableMonths,
+    categoryMonth,
+    storeMonth,
+    byCategory: aggregate(rowsForMonth(categoryMonth), (row) => row.category),
+    byStore: aggregate(rowsForMonth(storeMonth), (row) => row.store),
     frequentProducts: aggregate(records, (row) => row.itemName).sort((left, right) => (
       right.count - left.count || right.spend - left.spend || left.key.localeCompare(right.key)
     )),
@@ -217,6 +236,15 @@ function formatMonth(start, language) {
   }).format(date);
 }
 
+function monthSelect(kind, selected, months, language, strings) {
+  return `<label class="spending-month-control">
+    <span class="sr-only">${escapeHtml(strings.selectMonth)}</span>
+    <select data-spending-month="${kind}" aria-label="${escapeHtml(strings.selectMonth)}">
+      ${months.map((month) => `<option value="${month}" ${month === selected ? "selected" : ""}>${escapeHtml(formatMonth(`${month}-01`, language))}</option>`).join("")}
+    </select>
+  </label>`;
+}
+
 function barRows(rows, language, labelFor) {
   const maximum = Math.max(0, ...rows.map((row) => row.spend));
   return rows.map((row) => {
@@ -253,9 +281,9 @@ function frequentRows(rows, language, strings) {
   </div>`).join("")}`;
 }
 
-function renderPanel(panel, state) {
+function renderPanel(panel, state, selectedMonths = {}) {
   const language = state?.language || document.documentElement.lang || "en";
-  const analysis = buildSpendingAnalysis(state?.snapshot, new Date(), language);
+  const analysis = buildSpendingAnalysis(state?.snapshot, new Date(), language, selectedMonths);
   const strings = analysis.strings;
   const tabLabel = document.querySelector("#grocery-spending-tab-label");
   if (tabLabel) tabLabel.textContent = strings.tab;
@@ -284,11 +312,11 @@ function renderPanel(panel, state) {
   </div>
   <div class="spending-analysis-grid">
     <section class="panel spending-card">
-      <header><div><h2>${escapeHtml(strings.categories)}</h2><p>${escapeHtml(strings.categoriesIntro)}</p></div></header>
+      <header><div><h2>${escapeHtml(strings.categories)}</h2><p>${escapeHtml(strings.categoriesIntro)}</p></div>${monthSelect("category", analysis.categoryMonth, analysis.availableMonths, language, strings)}</header>
       <div class="spending-breakdown">${breakdownRows(analysis.byCategory, language, strings.noPeriodPurchases)}</div>
     </section>
     <section class="panel spending-card">
-      <header><div><h2>${escapeHtml(strings.stores)}</h2><p>${escapeHtml(strings.storesIntro)}</p></div></header>
+      <header><div><h2>${escapeHtml(strings.stores)}</h2><p>${escapeHtml(strings.storesIntro)}</p></div>${monthSelect("store", analysis.storeMonth, analysis.availableMonths, language, strings)}</header>
       <div class="spending-breakdown">${breakdownRows(analysis.byStore, language, strings.noPeriodPurchases)}</div>
     </section>
   </div>
@@ -330,6 +358,7 @@ export function mountGrocerySpendingAnalysis() {
   if (!ui) return;
   const { button, panel } = ui;
   let active = false;
+  const selectedMonths = { category: "", store: "" };
 
   const deactivate = () => {
     active = false;
@@ -359,11 +388,18 @@ export function mountGrocerySpendingAnalysis() {
     event?.preventDefault();
     event?.stopPropagation();
     active = true;
-    renderPanel(panel, globalThis.homealacarteState);
+    renderPanel(panel, globalThis.homealacarteState, selectedMonths);
     enforce();
   };
 
   button.addEventListener("click", activate);
+  panel.addEventListener("change", (event) => {
+    const select = event.target.closest?.("[data-spending-month]");
+    if (!select) return;
+    selectedMonths[select.dataset.spendingMonth] = select.value;
+    renderPanel(panel, globalThis.homealacarteState, selectedMonths);
+    enforce();
+  });
   document.addEventListener("click", (event) => {
     if (event.target.closest("[data-grocery-mode], [data-tab]")) deactivate();
   });
@@ -372,7 +408,7 @@ export function mountGrocerySpendingAnalysis() {
   if (purchaseList && typeof MutationObserver !== "undefined") {
     new MutationObserver(() => {
       if (!active) return;
-      renderPanel(panel, globalThis.homealacarteState);
+      renderPanel(panel, globalThis.homealacarteState, selectedMonths);
       enforce();
     }).observe(purchaseList, { childList: true, subtree: true });
   }
@@ -381,7 +417,7 @@ export function mountGrocerySpendingAnalysis() {
   languageSelect?.addEventListener("change", () => {
     if (!active) return;
     queueMicrotask(() => {
-      renderPanel(panel, globalThis.homealacarteState);
+      renderPanel(panel, globalThis.homealacarteState, selectedMonths);
       enforce();
     });
   });

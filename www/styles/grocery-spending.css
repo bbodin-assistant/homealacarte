@@ -10,6 +10,18 @@
 .spending-card > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--line); }
 .spending-card > header h2 { margin: 0; font-family: Georgia, serif; font-size: 18px; font-weight: 500; }
 .spending-card > header p { margin: 4px 0 0; color: var(--muted); font-size: 10px; }
+.spending-month-control { flex: 0 0 auto; }
+.spending-month-control select {
+  min-width: 135px;
+  padding: 8px 30px 8px 10px;
+  color: var(--ink);
+  background: var(--surface-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
 .spending-bars { display: grid; gap: 10px; padding: 16px 18px 18px; }
 .spending-bar-row { display: grid; grid-template-columns: 72px minmax(90px, 1fr) 92px; gap: 10px; align-items: center; font-size: 10px; }
 .spending-bar-row > span { color: var(--muted); font-weight: 700; }

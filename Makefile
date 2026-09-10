@@ -81,6 +81,7 @@ test-web:
 	node tests/stock_feature.mjs
 	node tests/extra_needs_feature.mjs
 	node tests/grocery_total.mjs
+	node tests/grocery_layout_and_spending.mjs
 	node tests/purchases_feature.mjs
 	node tests/receipt_purchases.mjs
 	node tests/ui_consistency.mjs

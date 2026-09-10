@@ -140,7 +140,7 @@ function installStockCategoryGroupStyles(documentRef = globalThis.document) {
   style.textContent = `
     .stock-category-group{border-bottom:1px solid var(--line)}
     .stock-category-group:last-child{border-bottom:0}
-    .stock-category-heading{position:sticky;top:33px;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:8px 12px;color:var(--ink);background:#e9e3d8;border-bottom:1px solid var(--line);font-size:10px;font-weight:800}
+    .stock-category-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:8px 12px;color:var(--ink);background:#e9e3d8;border-bottom:1px solid var(--line);font-size:10px;font-weight:800}
     .stock-category-heading>span:last-child{min-width:22px;padding:2px 6px;color:var(--muted);background:var(--surface);border-radius:999px;text-align:center}
     .stock-category-group .stock-row:last-child{border-bottom:0}
   `;
@@ -261,8 +261,7 @@ export function createStockFeature({
             ${group.rows.map(rowMarkup).join("")}
           </section>
         `).join("");
-    select("#stock-list").innerHTML = `
-      <div class="stock-head">
+    select("#stock-head").innerHTML = `
         <button type="button" data-stock-sort="name">${escapeHtml(translate("name"))}${sortIndicator(sortKey, sortDirection, "name")}</button>
         <button type="button" data-stock-sort="category">${escapeHtml(translate("category"))}${sortIndicator(sortKey, sortDirection, "category")}</button>
         <button type="button" data-stock-sort="added_at">${escapeHtml(translate("date"))}${sortIndicator(sortKey, sortDirection, "added_at")}</button>
@@ -270,9 +269,8 @@ export function createStockFeature({
         <span>${escapeHtml(translate("unit"))}</span>
         <span>${escapeHtml(translate("notes"))}</span>
         <span></span>
-      </div>
-      ${rows}
     `;
+    select("#stock-list").innerHTML = rows;
 
     select("#stock-add-item").innerHTML = `<option value=""></option>${(state.snapshot?.stock_options || [])
       .map((item) => `<option value="${escapeHtml(item.item_key)}">${escapeHtml(item.name)} · ${escapeHtml(displayCategory(item.category))}</option>`)
@@ -329,7 +327,7 @@ export function createStockFeature({
       scheduleUpdate();
     });
 
-    select("#stock-list").addEventListener("click", (event) => {
+    select(".standalone-stock-panel").addEventListener("click", (event) => {
       const sort = event.target.closest("[data-stock-sort]");
       if (sort) {
         const next = nextStockSort(sortKey, sortDirection, sort.dataset.stockSort);

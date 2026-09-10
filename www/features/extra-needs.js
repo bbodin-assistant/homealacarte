@@ -114,18 +114,7 @@ export function createExtraNeedsFeature({
         </button>
       </div>
     `).join("") || `<p class="stock-empty">${escapeHtml(translate(query ? "no_matching_items" : "empty"))}</p>`;
-    select("#custom-list").innerHTML = `
-      <div class="custom-head">
-        <span>${translate("name")}</span>
-        <span>${translate("category")}</span>
-        <span>${translate("quantity")}</span>
-        <span>${translate("unit")}</span>
-        <span>${translate("unit_price")}</span>
-        <span>${translate("notes")}</span>
-        <span></span>
-      </div>
-      ${rows}
-    `;
+    select("#custom-list").innerHTML = rows;
     enhanceSearchableSelect(
       select("#custom-add-existing"),
       translate("type_or_create_item"),

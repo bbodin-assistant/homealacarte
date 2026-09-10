@@ -7,10 +7,20 @@
           </div>
 
           <div class="grocery-subview active" data-grocery-panel="list">
-            <div class="page-heading">
+            <div class="page-heading page-heading-with-summary">
               <div>
                 <p class="eyebrow" data-i18n="grocery_eyebrow">Prête pour le magasin</p>
                 <h1 data-i18n="grocery_title">Liste de courses</h1>
+              </div>
+              <div class="grocery-summary heading-summary">
+                <div>
+                  <span data-i18n="estimated_total">Total estimé</span>
+                  <strong id="grocery-total">—</strong>
+                </div>
+                <div class="grocery-progress">
+                  <span id="grocery-progress-label">0 / 0</span>
+                  <div><i id="grocery-progress-bar"></i></div>
+                </div>
               </div>
               <div class="page-actions">
                 <label class="grocery-filter-control">
@@ -23,24 +33,20 @@
                 </button>
               </div>
             </div>
-            <div class="grocery-summary">
-              <div>
-                <span data-i18n="estimated_total">Total estimé</span>
-                <strong id="grocery-total">—</strong>
-              </div>
-              <div class="grocery-progress">
-                <span id="grocery-progress-label">0 / 0</span>
-                <div><i id="grocery-progress-bar"></i></div>
-              </div>
-            </div>
             <div id="grocery-grid" class="grocery-grid"></div>
           </div>
 
           <div class="grocery-subview" data-grocery-panel="stock">
-            <div class="page-heading">
+            <div class="page-heading page-heading-with-summary">
               <div>
                 <p class="eyebrow" data-i18n="stock_eyebrow">Dans les placards</p>
                 <h1 data-i18n="stock_title">Stock disponible</h1>
+              </div>
+              <div class="grocery-summary heading-summary stock-value-summary">
+                <div>
+                  <span data-i18n="estimated_stock_value">Valeur totale estimée du stock</span>
+                  <strong id="stock-total">—</strong>
+                </div>
               </div>
               <div class="page-actions">
                 <label class="section-search">
@@ -50,35 +56,32 @@
                 <button id="empty-stock" class="button danger" type="button" data-i18n="empty_stock">Vider le stock</button>
               </div>
             </div>
-            <div class="grocery-summary stock-value-summary">
-              <div>
-                <span data-i18n="estimated_stock_value">Valeur totale estimée du stock</span>
-                <strong id="stock-total">—</strong>
-              </div>
-            </div>
             <div class="stock-panel panel standalone-stock-panel">
-              <form id="stock-add-form" class="stock-add household-add">
-                <label>
-                  <span data-i18n="catalog_item">Article</span>
-                  <select id="stock-add-item" required></select>
-                </label>
-                <label>
-                  <span data-i18n="quantity">Quantité</span>
-                  <input id="stock-add-quantity" type="number" min="0.000000001" step="any" required>
-                </label>
-                <label>
-                  <span data-i18n="unit">Unité</span>
-                  <select id="stock-add-unit">
-                    <option value="g">g</option>
-                    <option value="unit" data-i18n="units">unités</option>
-                  </select>
-                </label>
-                <label class="stock-add-notes-field">
-                  <span data-i18n="notes">Notes</span>
-                  <input id="stock-add-notes" data-i18n-placeholder="stock_notes_placeholder" placeholder="Origine, emplacement ou détail facultatif">
-                </label>
-                <button class="button ghost" type="submit" data-i18n="add_stock">Ajouter au stock</button>
-              </form>
+              <div class="household-sticky-table-controls">
+                <form id="stock-add-form" class="stock-add household-add">
+                  <label>
+                    <span data-i18n="catalog_item">Article</span>
+                    <select id="stock-add-item" required></select>
+                  </label>
+                  <label>
+                    <span data-i18n="quantity">Quantité</span>
+                    <input id="stock-add-quantity" type="number" min="0.000000001" step="any" required>
+                  </label>
+                  <label>
+                    <span data-i18n="unit">Unité</span>
+                    <select id="stock-add-unit">
+                      <option value="g">g</option>
+                      <option value="unit" data-i18n="units">unités</option>
+                    </select>
+                  </label>
+                  <label class="stock-add-notes-field">
+                    <span data-i18n="notes">Notes</span>
+                    <input id="stock-add-notes" data-i18n-placeholder="stock_notes_placeholder" placeholder="Origine, emplacement ou détail facultatif">
+                  </label>
+                  <button class="button ghost" type="submit" data-i18n="add_stock">Ajouter au stock</button>
+                </form>
+                <div id="stock-head" class="stock-head"></div>
+              </div>
               <div id="stock-list" class="stock-list"></div>
             </div>
           </div>
@@ -98,7 +101,8 @@
               </div>
             </div>
             <div class="panel household-plan-panel">
-              <form id="custom-add-form" class="custom-add household-add">
+              <div class="household-sticky-table-controls">
+                <form id="custom-add-form" class="custom-add household-add">
                 <label id="custom-existing-field">
                   <span data-i18n="name">Nom</span>
                   <select id="custom-add-existing"></select>
@@ -123,8 +127,18 @@
                   <span data-i18n="notes">Notes</span>
                   <input id="custom-add-notes" data-i18n-placeholder="need_notes_placeholder" placeholder="Contexte ou détail facultatif">
                 </label>
-                <button class="button ghost add-extra-need-button" type="submit" data-i18n="add_extra_need">Ajouter aux besoins</button>
-              </form>
+                  <button class="button ghost add-extra-need-button" type="submit" data-i18n="add_extra_need">Ajouter aux besoins</button>
+                </form>
+                <div class="custom-head">
+                  <span data-i18n="name">Nom</span>
+                  <span data-i18n="category">Catégorie</span>
+                  <span data-i18n="quantity">Quantité</span>
+                  <span data-i18n="unit">Unité</span>
+                  <span data-i18n="unit_price">Prix unitaire</span>
+                  <span data-i18n="notes">Notes</span>
+                  <span></span>
+                </div>
+              </div>
               <div id="custom-list" class="custom-list"></div>
             </div>
           </div>

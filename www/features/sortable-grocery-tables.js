@@ -104,7 +104,7 @@ function purchaseValue(row, key) {
 }
 
 function applyExtraNeedSort(documentRef, list, sortState, defaultOrder) {
-  const header = list.querySelector(".custom-head");
+  const header = list.closest(".household-plan-panel")?.querySelector(".custom-head");
   if (!header) return;
   replaceHeaderChildren(
     documentRef,
@@ -222,7 +222,10 @@ function installPurchaseLayout(documentRef) {
 
   const historyHeading = historyPanel.querySelector(".purchase-section-heading");
   singleForm.classList.add("purchase-add-inline");
-  historyPanel.insertBefore(singleForm, historyHeading || historyPanel.firstChild);
+  const stickyControls = documentRef.createElement("div");
+  stickyControls.className = "household-sticky-table-controls purchase-sticky-controls";
+  historyPanel.insertBefore(stickyControls, historyHeading || historyPanel.firstChild);
+  stickyControls.append(singleForm, historyPanel.querySelector(".purchase-history-head"));
   entryGrid.hidden = true;
 
   const pageHeading = purchases.querySelector(".page-heading");
@@ -292,10 +295,10 @@ function installStyles(documentRef) {
   style.textContent = `
     .custom-head button,.purchase-history-head button{justify-self:start;padding:0;color:inherit;background:none;border:0;cursor:pointer;font:inherit;letter-spacing:inherit;text-align:left;text-transform:inherit}
     .custom-head button:hover,.custom-head button:focus-visible,.purchase-history-head button:hover,.purchase-history-head button:focus-visible{color:var(--ink);outline:none}
-    [data-grocery-panel="purchases"] .purchase-history-panel{overflow:hidden}
-    [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline{display:grid;grid-template-columns:minmax(180px,1.45fr) minmax(145px,1fr) 92px 92px 112px 130px minmax(140px,.9fr) auto;gap:10px;align-items:end;padding:14px;background:#f8f5ef;border-bottom:1px solid var(--line)}
-    [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline label{display:grid;gap:5px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
-    [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline button{align-self:end;white-space:nowrap}
+    [data-grocery-panel="purchases"] .purchase-history-panel{overflow:visible}
+    [data-grocery-panel="purchases"] .purchase-sticky-controls>.purchase-add-inline{display:grid;grid-template-columns:minmax(180px,1.45fr) minmax(145px,1fr) 92px 92px 112px 130px minmax(140px,.9fr) auto;gap:10px;align-items:end;padding:14px;background:#f8f5ef;border-bottom:1px solid var(--line)}
+    [data-grocery-panel="purchases"] .purchase-sticky-controls>.purchase-add-inline label{display:grid;gap:5px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+    [data-grocery-panel="purchases"] .purchase-sticky-controls>.purchase-add-inline button{align-self:end;white-space:nowrap}
     [data-grocery-panel="purchases"] .purchase-history-panel>.purchase-section-heading{padding:13px 16px}
     .purchase-ai-button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
     .purchase-ai-icon{font-size:14px;line-height:1}
@@ -305,8 +308,8 @@ function installStyles(documentRef) {
     .purchase-batch-dialog-heading p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.45}
     .purchase-batch-dialog .purchase-batch-form{grid-template-columns:minmax(0,1fr) minmax(0,1fr);padding:18px}
     .purchase-batch-dialog .purchase-batch-form textarea{min-height:190px}
-    @media(max-width:1180px){[data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline{grid-template-columns:minmax(180px,1.4fr) minmax(130px,1fr) 90px 90px 110px 130px}.purchase-add-inline #purchase-add-store,.purchase-add-inline #purchase-add-submit{grid-column:auto}.purchase-add-inline>label:nth-last-of-type(1){grid-column:1/-2}.purchase-add-inline>#purchase-add-submit{grid-column:-2/-1}}
-    @media(max-width:760px){[data-grocery-panel="purchases"] .purchase-history-panel>.purchase-add-inline{grid-template-columns:1fr 1fr}.purchase-add-inline>label,.purchase-add-inline>button{grid-column:auto}.purchase-add-inline>label:first-child,.purchase-add-inline>#purchase-new-name-field,.purchase-add-inline>label:nth-last-of-type(1),.purchase-add-inline>#purchase-add-submit{grid-column:1/-1}.purchase-batch-dialog .purchase-batch-form{grid-template-columns:1fr}}
+    @media(max-width:1180px){[data-grocery-panel="purchases"] .purchase-sticky-controls>.purchase-add-inline{grid-template-columns:minmax(180px,1.4fr) minmax(130px,1fr) 90px 90px 110px 130px}.purchase-add-inline #purchase-add-store,.purchase-add-inline #purchase-add-submit{grid-column:auto}.purchase-add-inline>label:nth-last-of-type(1){grid-column:1/-2}.purchase-add-inline>#purchase-add-submit{grid-column:-2/-1}}
+    @media(max-width:760px){[data-grocery-panel="purchases"] .purchase-sticky-controls>.purchase-add-inline{grid-template-columns:1fr 1fr}.purchase-add-inline>label,.purchase-add-inline>button{grid-column:auto}.purchase-add-inline>label:first-child,.purchase-add-inline>#purchase-new-name-field,.purchase-add-inline>label:nth-last-of-type(1),.purchase-add-inline>#purchase-add-submit{grid-column:1/-1}.purchase-batch-dialog .purchase-batch-form{grid-template-columns:1fr}}
   `;
   documentRef.head.append(style);
 }
