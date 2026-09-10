@@ -1,4 +1,5 @@
 import { countryFlag } from "../core/data-localization.js?v=homealacarte-80";
+import { translate as translateUi } from "../core/ui-i18n.js?v=homealacarte-80";
 import {
   ALLERGEN_CODES,
   allergenCodesOverlap,
@@ -8,6 +9,11 @@ import {
 import { matchesSelectedNutriScores } from "./dishes/filters.js?v=homealacarte-77";
 import { dishAllergenBadges, dishAllergenCodes } from "./dishes/allergen-display.js?v=homealacarte-104";
 import { dishStockAvailability } from "../core/stock-availability.js?v=homealacarte-110";
+
+const DISH_FILTER_TRANSLATIONS = {
+  fr: { likedBy: "Aimé par" },
+  en: { likedBy: "Liked by" },
+};
 
 export { allergenCodesOverlap, countryFlag };
 
@@ -166,7 +172,7 @@ export function createDishesFeature({
     const people = [...new Set((state.snapshot.people || [])
       .map((person) => String(person?.name || "").trim())
       .filter(Boolean))].sort((left, right) => left.localeCompare(right));
-    const likedByLabel = state.language === "en" ? "Liked by" : "Aimé par";
+    const likedByLabel = translateUi(DISH_FILTER_TRANSLATIONS, state.language, "likedBy");
     select("#dish-liked-by-label").textContent = likedByLabel;
     select("#dish-liked-by-options").setAttribute("aria-label", likedByLabel);
     select("#dish-country-options").innerHTML = countries.map((country) => `
