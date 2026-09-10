@@ -1,0 +1,168 @@
+/* Follow-up refinements for compact grocery summaries, secondary navigation, and sticky grouped tables. */
+
+/* Keep the total summaries visually subordinate to the page title/actions. */
+.page-heading-with-summary {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.page-heading-with-summary > :first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+  margin-right: 0;
+}
+.heading-summary {
+  min-width: 0;
+  max-width: max-content;
+  min-height: 40px;
+  flex: 0 0 auto;
+  gap: 9px;
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.heading-summary > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.heading-summary span {
+  font-size: 8px;
+  line-height: 1.1;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.heading-summary strong {
+  font-size: 17px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.heading-summary .grocery-progress {
+  width: 76px;
+  gap: 3px;
+}
+.heading-summary .grocery-progress > span {
+  font-size: 8px;
+  line-height: 1;
+}
+.heading-summary .grocery-progress > div { height: 4px; }
+.stock-value-summary { min-width: 0; }
+
+/* Make the grocery/menu mode switch read as a secondary rail of the main sidebar,
+   rather than a separate pill-shaped control floating inside the page. */
+#grocery-view.active,
+#menu-view.active {
+  grid-template-columns: 148px minmax(0, 1fr);
+  column-gap: 18px;
+}
+#grocery-view > .planner-mode-switch,
+#menu-view > .planner-mode-switch {
+  top: 96px;
+  gap: 2px;
+  padding: 2px 0 2px 9px;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--line-strong);
+  border-radius: 0;
+}
+#grocery-view > .planner-mode-switch button,
+#menu-view > .planner-mode-switch button {
+  min-height: 34px;
+  gap: 7px;
+  padding: 7px 9px;
+  border-radius: 0 9px 9px 0;
+  color: var(--muted);
+  background: transparent;
+  box-shadow: none;
+  font-size: 11px;
+}
+#grocery-view > .planner-mode-switch button:hover,
+#menu-view > .planner-mode-switch button:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+#grocery-view > .planner-mode-switch button.active,
+#menu-view > .planner-mode-switch button.active {
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 var(--accent);
+}
+#grocery-view > .planner-mode-switch .mode-count,
+#menu-view > .planner-mode-switch .mode-count {
+  min-width: 19px;
+  margin-left: auto;
+  padding: 1px 5px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--ink) 7%, var(--surface));
+  font-size: 8px;
+}
+#grocery-view > .planner-mode-switch button.active .mode-count,
+#menu-view > .planner-mode-switch button.active .mode-count {
+  color: var(--accent-dark);
+  background: var(--surface);
+}
+
+/* The add form and column labels stay together. Group headings stick immediately
+   below that block instead of disappearing behind it while the page scrolls. */
+.household-sticky-table-controls {
+  isolation: isolate;
+}
+.household-sticky-table-controls > .household-add {
+  position: relative;
+  z-index: 2;
+}
+.household-sticky-table-controls > .stock-head,
+.household-sticky-table-controls > .custom-head,
+.household-sticky-table-controls > .purchase-history-head {
+  position: relative;
+  z-index: 3;
+}
+.stock-category-heading {
+  position: sticky;
+  top: calc(76px + var(--stock-sticky-controls-height, 0px));
+  z-index: 11;
+  box-shadow: 0 4px 8px rgba(66,52,39,.06);
+}
+.purchase-date-heading {
+  position: sticky;
+  top: calc(76px + var(--purchase-sticky-controls-height, 0px));
+  z-index: 11;
+  box-shadow: 0 4px 8px rgba(66,52,39,.06);
+}
+
+@media(max-width: 1080px) {
+  .page-heading-with-summary { flex-wrap: wrap; }
+}
+
+@media(max-width: 900px) {
+  .stock-category-heading,
+  .purchase-date-heading {
+    position: static;
+    box-shadow: none;
+  }
+}
+
+@media(max-width: 760px) {
+  #grocery-view > .planner-mode-switch,
+  #menu-view > .planner-mode-switch {
+    gap: 4px;
+    padding: 4px;
+    background: color-mix(in srgb, var(--ink) 6%, var(--surface));
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  #grocery-view > .planner-mode-switch button,
+  #menu-view > .planner-mode-switch button {
+    min-height: 38px;
+    padding: 8px 11px;
+    border-radius: 9px;
+  }
+  #grocery-view > .planner-mode-switch button.active,
+  #menu-view > .planner-mode-switch button.active {
+    color: white;
+    background: var(--accent);
+    box-shadow: none;
+  }
+}
