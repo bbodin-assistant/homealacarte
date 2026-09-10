@@ -63,6 +63,7 @@ const EMPTY_DATABASE_CONTENT = `${JSON.stringify({
 }, null, 2)}\n`;
 const worker = new Worker("./worker.js?v=homealacarte-110", { type: "module" });
 const state = createAppState(localStorage, getStorageStatus, defaultLocale(translations));
+globalThis.homealacarteState = state;
 const themeController = createThemeController(state, localStorage, document.documentElement.style);
 const applyColorTheme = themeController.apply;
 const randomizeColorTheme = themeController.randomize;

@@ -5,23 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Organisation privée du foyer, des menus et des courses.">
     <title>Home à la Carte</title>
+    <script>
+      if (!location.hash) history.replaceState(null, "", "#menu");
+    </script>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23b45e46'/%3E%3Cpath d='m13 31 19-16 19 16v19H13Z' fill='none' stroke='white' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M27 50V37h10v13M39 25c-1 8-6 12-13 11 1-7 6-11 13-11Z' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="./styles/tokens.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/base.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/layout.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/components.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/family.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/menu.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/grocery.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/catalogue.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/data-account.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/dishes.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/responsive.css?v=homealacarte-115">
-    <link rel="stylesheet" href="./styles/ui-refinements.css?v=homealacarte-115">
+    <link rel="stylesheet" href="./styles/tokens.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/base.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/layout.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/components.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/family.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/menu.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/grocery.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/grocery-spending.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/catalogue.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/data-account.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/dishes.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/responsive.css?v=homealacarte-116">
+    <link rel="stylesheet" href="./styles/ui-refinements.css?v=homealacarte-116">
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#family" data-tab="family" aria-label="Home à la Carte">
+      <a class="brand" href="#menu" data-tab="menu" aria-label="Home à la Carte">
         <svg viewBox="0 0 48 48" aria-hidden="true">
           <path d="m7 22 17-14 17 14v18H7Z"/>
           <path d="M20 40V28h8v12M31 18c-1 7-5 10-11 9 1-6 5-9 11-9Z"/>
@@ -50,11 +54,11 @@
     <div class="app-shell">
       <aside class="sidebar">
         <nav class="main-nav" aria-label="Navigation principale">
-          <button class="nav-item active" data-tab="family">
+          <button class="nav-item" data-tab="family">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="9" r="2"/><path d="M3 20v-3c0-4 2.5-7 6-7s6 3 6 7v3M15 13c3 0 5 2 5 5v2"/></svg>
             <span data-i18n="nav_family">Foyer</span>
           </button>
-          <button class="nav-item" data-tab="menu">
+          <button class="nav-item active" data-tab="menu">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M9 5v14M14 5v14"/></svg>
             <span data-i18n="nav_menu">Menu</span>
           </button>
@@ -78,7 +82,7 @@
           </button>
         </nav>
         <div class="sidebar-footer">
-          <small class="app-version" aria-label="Version de l’application">v115</small>
+          <small class="app-version" aria-label="Version de l’application">v116</small>
           <button id="about-open" class="secondary-action" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></svg>
             <span data-i18n="about">À propos</span>
@@ -103,11 +107,12 @@
     </div>
 
 {{ include: views/dialogs.html }}
-    <script type="module" src="./app.js?v=homealacarte-115"></script>
-    <script type="module" src="./features/sortable-grocery-tables.js?v=homealacarte-115"></script>
-    <script type="module" src="./features/menu-generator-refinements.js?v=homealacarte-115"></script>
-    <script type="module" src="./features/dish-ui-refinements.js?v=homealacarte-115"></script>
-    <script type="module" src="./features/receipt-purchases.js?v=homealacarte-115"></script>
-    <script type="module" src="./features/purchase-review-enhancements.js?v=homealacarte-115"></script>
+    <script type="module" src="./app.js?v=homealacarte-116"></script>
+    <script type="module" src="./features/grocery-spending.js?v=homealacarte-116"></script>
+    <script type="module" src="./features/sortable-grocery-tables.js?v=homealacarte-116"></script>
+    <script type="module" src="./features/menu-generator-refinements.js?v=homealacarte-116"></script>
+    <script type="module" src="./features/dish-ui-refinements.js?v=homealacarte-116"></script>
+    <script type="module" src="./features/receipt-purchases.js?v=homealacarte-116"></script>
+    <script type="module" src="./features/purchase-review-enhancements.js?v=homealacarte-116"></script>
   </body>
 </html>
