@@ -137,7 +137,7 @@ function purchaseRecords(snapshot, language) {
     }));
 }
 
-export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), language = "en") {
+export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), language) {
   const strings = stringsFor(language);
   const records = purchaseRecords(snapshot, language);
   const today = parseDateKey(dateKey(referenceDate));
