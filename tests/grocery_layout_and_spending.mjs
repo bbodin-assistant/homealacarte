@@ -87,16 +87,22 @@ const [
 assert.match(view, /page-heading-with-summary/);
 assert.match(view, /household-sticky-table-controls/);
 assert.match(view, /id="stock-head"/);
-assert.match(menuCss, /grid-template-columns: 164px minmax\(0, 1fr\)/);
+assert.match(menuCss, /\.grocery-subview\.active \{ display: block/);
 assert.match(groceryCss, /\.purchase-list \{ overflow: visible; \}/);
 assert.match(spending, /data-spending-month/);
 assert.match(layoutFollowup, /min-height: 38px/);
-assert.match(layoutFollowup, /margin-left: clamp\(-58px, -4vw, -22px\)/);
+assert.match(layoutFollowup, /\.sidebar \.planner-mode-switch/);
+assert.match(layoutFollowup, /\.nav-item\.active \+ \.planner-mode-switch/);
+assert.match(layoutFollowup, /#grocery-view\.active,[\s\S]*#menu-view\.active \{\s*display: block;/);
+assert.doesNotMatch(layoutFollowup, /margin-left: clamp\(-58px, -4vw, -22px\)/);
 assert.match(layoutFollowup, /--stock-sticky-controls-height/);
 assert.match(layoutFollowup, /--purchase-sticky-controls-height/);
 assert.match(stickyGroups, /ResizeObserver/);
 assert.match(stickyGroups, /purchase-sticky-controls/);
-assert.match(index, /grocery-layout-followup\.css/);
-assert.match(index, /grocery-sticky-groups\.js/);
+assert.match(index, /switcher\.classList\.add\("sidebar-subnav"\)/);
+assert.match(index, /insertAdjacentElement\("afterend", switcher\)/);
+assert.match(index, /grocery-layout-followup\.css\?v=homealacarte-118/);
+assert.match(index, /grocery-sticky-groups\.js\?v=homealacarte-118/);
+assert.match(index, />v118<\/small>/);
 
-console.log("Grocery and menu use compact integrated navigation, compact heading totals, page-scrolling tables, sticky group headings, and independent spending-month filters.");
+console.log("Grocery and menu use nested sidebar navigation, compact heading totals, page-scrolling tables, sticky group headings, and independent spending-month filters.");
