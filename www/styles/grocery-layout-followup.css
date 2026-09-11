@@ -1,4 +1,4 @@
-/* Follow-up refinements for compact grocery summaries, secondary navigation, and sticky grouped tables. */
+/* Follow-up refinements for compact grocery summaries, nested secondary navigation, and sticky grouped tables. */
 
 /* Keep the total summaries visually subordinate to the page title/actions. */
 .page-heading-with-summary {
@@ -50,58 +50,92 @@
 .heading-summary .grocery-progress > div { height: 4px; }
 .stock-value-summary { min-width: 0; }
 
-/* Make the grocery/menu mode switch read as a continuation of the main sidebar,
-   rather than a separate pill-shaped panel floating inside the page. */
+/* Menu and grocery keep their full page width. Their mode switches are moved
+   into the main sidebar by the small bootstrap in index.html. */
 #grocery-view.active,
 #menu-view.active {
-  grid-template-columns: 148px minmax(0, 1fr);
-  column-gap: 18px;
+  display: block;
 }
 #grocery-view > .planner-mode-switch,
 #menu-view > .planner-mode-switch {
-  top: 96px;
-  width: calc(100% + clamp(22px, 4vw, 58px));
-  gap: 2px;
-  margin-left: clamp(-58px, -4vw, -22px);
-  padding: 2px 0 2px 10px;
+  display: none;
+}
+.sidebar .main-nav { gap: 4px; }
+.sidebar .planner-mode-switch {
+  position: relative;
+  width: 100%;
+  display: none;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  margin: -4px 0 2px;
+  padding: 2px 0 4px 36px;
   background: transparent;
   border: 0;
-  border-left: 1px solid var(--line-strong);
   border-radius: 0;
 }
-#grocery-view > .planner-mode-switch button,
-#menu-view > .planner-mode-switch button {
-  min-height: 34px;
-  gap: 7px;
-  padding: 7px 9px;
-  border-radius: 0 9px 9px 0;
+.sidebar .nav-item.active + .planner-mode-switch {
+  display: grid;
+}
+.sidebar .planner-mode-switch::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 5px;
+  left: 25px;
+  width: 1px;
+  background: var(--line-strong);
+}
+.sidebar .planner-mode-switch button {
+  position: relative;
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 5px 8px;
   color: var(--muted);
   background: transparent;
+  border: 0;
+  border-radius: 8px;
   box-shadow: none;
-  font-size: 11px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.2;
 }
-#grocery-view > .planner-mode-switch button:hover,
-#menu-view > .planner-mode-switch button:hover {
+.sidebar .planner-mode-switch button:hover {
   color: var(--ink);
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
 }
-#grocery-view > .planner-mode-switch button.active,
-#menu-view > .planner-mode-switch button.active {
+.sidebar .planner-mode-switch button.active {
   color: var(--accent-dark);
-  background: var(--accent-soft);
-  box-shadow: inset 2px 0 var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+  box-shadow: none;
 }
-#grocery-view > .planner-mode-switch .mode-count,
-#menu-view > .planner-mode-switch .mode-count {
-  min-width: 19px;
+.sidebar .planner-mode-switch button.active::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--surface);
+}
+.sidebar .planner-mode-switch .mode-count {
+  min-width: 18px;
   margin-left: auto;
   padding: 1px 5px;
   color: var(--muted);
   background: color-mix(in srgb, var(--ink) 7%, var(--surface));
+  border-radius: 999px;
   font-size: 8px;
+  line-height: 1.4;
+  text-align: center;
 }
-#grocery-view > .planner-mode-switch button.active .mode-count,
-#menu-view > .planner-mode-switch button.active .mode-count {
+.sidebar .planner-mode-switch button.active .mode-count {
   color: var(--accent-dark);
   background: var(--surface);
 }
@@ -144,29 +178,40 @@
     position: static;
     box-shadow: none;
   }
-}
-
-@media(max-width: 760px) {
-  #grocery-view > .planner-mode-switch,
-  #menu-view > .planner-mode-switch {
-    width: 100%;
+  .sidebar .planner-mode-switch {
+    position: absolute;
+    right: 10px;
+    bottom: 72px;
+    left: 10px;
+    z-index: 60;
+    width: auto;
+    display: none;
+    flex-direction: row;
     gap: 4px;
-    margin-left: 0;
-    padding: 4px;
-    background: color-mix(in srgb, var(--ink) 6%, var(--surface));
-    border: 1px solid var(--line);
+    margin: 0;
+    padding: 5px;
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
     border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(47,43,39,.16);
   }
-  #grocery-view > .planner-mode-switch button,
-  #menu-view > .planner-mode-switch button {
-    min-height: 38px;
-    padding: 8px 11px;
-    border-radius: 9px;
+  .sidebar .nav-item.active + .planner-mode-switch {
+    display: flex;
   }
-  #grocery-view > .planner-mode-switch button.active,
-  #menu-view > .planner-mode-switch button.active {
-    color: white;
-    background: var(--accent);
-    box-shadow: none;
+  .sidebar .planner-mode-switch::before,
+  .sidebar .planner-mode-switch button.active::before {
+    display: none;
   }
+  .sidebar .planner-mode-switch button {
+    width: auto;
+    min-height: 36px;
+    flex: 1 0 auto;
+    justify-content: center;
+    padding: 7px 10px;
+    border-radius: 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .content { padding-bottom: 142px; }
 }
