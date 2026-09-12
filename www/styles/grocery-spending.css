@@ -35,6 +35,24 @@
 .spending-breakdown-row > div:first-child strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .spending-breakdown-row > div:first-child span { min-width: 23px; padding: 2px 6px; color: var(--muted); background: #f1ede5; border-radius: 999px; font-size: 8px; font-weight: 800; text-align: center; }
 .spending-breakdown-row > strong { font-size: 10px; text-align: right; }
+.spending-category-donut { padding: 18px; }
+.spending-donut-layout { display: grid; grid-template-columns: minmax(220px, .85fr) minmax(260px, 1.15fr); gap: 22px; align-items: center; }
+.spending-double-donut { position: relative; width: min(280px, 100%); aspect-ratio: 1; margin: 0 auto; }
+.spending-donut-ring { position: absolute; border-radius: 50%; }
+.spending-donut-outer { inset: 0; }
+.spending-donut-inner { inset: 20%; box-shadow: 0 0 0 4px var(--surface); }
+.spending-donut-hole { position: absolute; inset: 36%; display: grid; place-content: center; gap: 3px; padding: 6px; background: var(--surface); border-radius: 50%; text-align: center; box-shadow: 0 0 0 4px var(--surface); }
+.spending-donut-hole span { color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.spending-donut-hole strong { font-family: Georgia, serif; font-size: 14px; font-weight: 500; }
+.spending-donut-legend { display: grid; gap: 14px; min-width: 0; }
+.spending-donut-legend section { display: grid; gap: 5px; }
+.spending-donut-legend h3 { margin: 0 0 2px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.spending-donut-legend-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) 52px 82px; gap: 7px; align-items: center; min-width: 0; font-size: 9px; }
+.spending-donut-legend-row.is-subcategory { padding-left: 10px; }
+.spending-donut-swatch { width: 9px; height: 9px; background: var(--donut-color); border-radius: 3px; }
+.spending-donut-legend-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spending-donut-legend-row > small { color: var(--muted); text-align: right; }
+.spending-donut-legend-row > strong { font-size: 9px; text-align: right; }
 .spending-empty { margin: 0; padding: 18px; color: var(--muted); font-size: 11px; }
 .spending-products-card { margin-bottom: 0; }
 .spending-products-head, .spending-product-row { display: grid; grid-template-columns: minmax(180px, 1fr) 100px 110px; gap: 12px; align-items: center; padding: 10px 16px; }
@@ -54,5 +72,8 @@
   .spending-bar-row { grid-template-columns: 58px minmax(60px, 1fr) 80px; gap: 7px; }
   .spending-breakdown-row { grid-template-columns: minmax(100px, 1fr) 76px; }
   .spending-breakdown-track { grid-column: 1 / -1; grid-row: 2; }
+  .spending-donut-layout { grid-template-columns: 1fr; }
+  .spending-double-donut { width: min(240px, 78vw); }
+  .spending-donut-legend-row { grid-template-columns: 10px minmax(0, 1fr) 46px 76px; }
   .spending-products-head, .spending-product-row { grid-template-columns: minmax(130px, 1fr) 62px 86px; gap: 8px; padding-inline: 12px; }
 }

@@ -70,9 +70,9 @@ assert.deepEqual(stockPayload(state.stockDraft), [
 ]);
 
 const sortable = [
-  { name: "Soap", category: "Home", quantity: 3, added_at: "2026-08-27" },
-  { name: "Rice", category: "Food", quantity: 2.2, added_at: "2026-08-28" },
-  { name: "Old", category: "Food", quantity: 8, added_at: "" },
+  { name: "Soap", category: "Home", quantity: 3, quantity_unit: "unit", measure_unit: "bottle", notes: "Bathroom", added_at: "2026-08-27" },
+  { name: "Rice", category: "Food", quantity: 2.2, quantity_unit: "g", measure_unit: "bag", notes: "Pantry", added_at: "2026-08-28" },
+  { name: "Old", category: "Food", quantity: 8, quantity_unit: "unit", measure_unit: "box", notes: "", added_at: "" },
 ];
 assert.deepEqual(nextStockSort(null, "asc", "name"), { key: "name", direction: "asc" });
 assert.deepEqual(nextStockSort("name", "asc", "name"), { key: "name", direction: "desc" });
@@ -88,6 +88,8 @@ assert.deepEqual(
 );
 assert.deepEqual(sortStockRows(sortable, { key: "name", direction: "asc", locale: "en" }).map((row) => row.name), ["Old", "Rice", "Soap"]);
 assert.deepEqual(sortStockRows(sortable, { key: "quantity", direction: "desc", locale: "en" }).map((row) => row.name), ["Old", "Soap", "Rice"]);
+assert.deepEqual(sortStockRows(sortable, { key: "quantity_unit", direction: "asc", locale: "en" }).map((row) => row.name), ["Soap", "Old", "Rice"]);
+assert.deepEqual(sortStockRows(sortable, { key: "notes", direction: "asc", locale: "en" }).map((row) => row.name), ["Old", "Soap", "Rice"]);
 assert.deepEqual(sortStockRows(sortable, { key: "added_at", direction: "desc", locale: "en" }).map((row) => row.name), ["Rice", "Soap", "Old"]);
 
-console.log("Stock feature preserves payloads and unit conversions while default grouping is by category and sorting cycles ascending, descending, then grouped default.");
+console.log("Stock feature preserves payloads and unit conversions while default grouping is by category and all visible stock columns can be sorted.");
