@@ -71,17 +71,18 @@
               </section>
 
               <section class="panel auto-menu-section">
-                <div class="auto-menu-section-heading">
+                <div class="auto-menu-section-heading auto-menu-availability-heading">
                   <div><h2 data-i18n="availability">Présences</h2><p data-i18n="availability_intro">Cochez les jours où chaque personne mange à la maison.</p></div>
+                  <div id="auto-menu-date-controls" class="auto-menu-start-date-controls">
+                    <button class="button ghost compact" type="button" data-auto-date-shift="-1" data-i18n-title="previous_day" aria-label="Previous day">←</button>
+                    <label class="auto-menu-start-date">
+                      <span data-i18n="date">Date</span>
+                      <input id="auto-menu-start-date" type="date">
+                    </label>
+                    <button class="button ghost compact" type="button" data-auto-date-shift="1" data-i18n-title="next_day" aria-label="Next day">→</button>
+                  </div>
                 </div>
                 <div id="auto-menu-availability" class="table-scroll"></div>
-              </section>
-
-              <section class="panel auto-menu-section">
-                <div class="auto-menu-section-heading">
-                  <div><h2 data-i18n="slots_to_fill">Jours et repas à générer</h2><p data-i18n="slots_to_fill_intro">Chaque jour coché reçoit aussi les routines structurées du petit-déjeuner, des encas et du quotidien.</p></div>
-                </div>
-                <div id="auto-menu-slots" class="auto-menu-slots"></div>
               </section>
 
               <section class="panel auto-menu-section">

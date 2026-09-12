@@ -112,8 +112,10 @@ assert.match(stickyGroups, /ResizeObserver/);
 assert.match(stickyGroups, /purchase-sticky-controls/);
 assert.match(index, /switcher\.classList\.add\("sidebar-subnav"\)/);
 assert.match(index, /insertAdjacentElement\("afterend", switcher\)/);
-assert.match(index, /grocery-layout-followup\.css\?v=homealacarte-118/);
-assert.match(index, /grocery-sticky-groups\.js\?v=homealacarte-118/);
-assert.match(index, />v118<\/small>/);
+assert.match(index, /grocery-layout-followup\.css\?v=homealacarte-119/);
+assert.match(index, /grocery-sticky-groups\.js\?v=homealacarte-119/);
+assert.match(index, /menu-generator-presence\.css\?v=homealacarte-119/);
+assert.match(index, /app\.js\?v=homealacarte-119/);
+assert.match(index, />v119<\/small>/);
 
 console.log("Grocery and menu use nested sidebar navigation, compact heading totals, page-scrolling tables, sticky group headings, independent spending-month filters, and nested category spending data.");

@@ -1,0 +1,54 @@
+.auto-menu-availability-heading { align-items: flex-end; }
+.auto-menu-start-date-controls { display: flex; align-items: flex-end; gap: 7px; flex: 0 0 auto; }
+.auto-menu-start-date-controls > .button { min-width: 38px; min-height: 38px; padding: 8px 10px; }
+.auto-menu-start-date { display: grid; gap: 4px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.auto-menu-start-date input { min-height: 38px; padding: 8px 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 9px; font: inherit; text-transform: none; }
+.auto-menu-presence-stack { min-width: 88px; display: grid; gap: 6px; }
+.auto-menu-presence-meal { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 26px; color: var(--muted); font-size: 9px; font-weight: 800; white-space: nowrap; }
+.auto-menu-presence-meal input { flex: 0 0 auto; }
+.auto-menu-presence-meal.is-occupied { opacity: .4; }
+.auto-menu-presence-meal input:disabled { cursor: not-allowed; }
+.auto-menu-dish { grid-template-columns: 18px minmax(0, 1fr); align-items: start; }
+.auto-menu-dish > input { grid-row: 1 / span 2; margin-top: 1px; }
+.auto-menu-dish strong { grid-column: 2; min-width: 0; }
+.auto-menu-dish small { grid-column: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.auto-menu-dish-ineligible { width: 22px; height: 18px; display: grid; place-items: center; color: var(--muted); background: var(--surface-strong); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; line-height: 1; }
+.auto-menu-result-summary small { display: block; margin-top: 6px; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.auto-menu-preview-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--line); }
+.auto-menu-preview-heading h2 { margin: 0; }
+.auto-menu-preview-heading > span { color: var(--muted); font-size: 10px; }
+.auto-menu-proposal, .auto-menu-calories { padding: 0; }
+.auto-menu-proposal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px; background: var(--line); }
+.auto-menu-proposal-day { min-width: 0; background: var(--surface); }
+.auto-menu-proposal-day > header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--surface-strong); }
+.auto-menu-proposal-day > header strong { font-size: 11px; }
+.auto-menu-proposal-day > header span { color: var(--muted); font-size: 9px; }
+.auto-menu-proposal-meal { display: grid; gap: 4px; padding: 11px 12px; border-top: 1px solid var(--line); }
+.auto-menu-proposal-meal:first-child { border-top: 0; }
+.auto-menu-proposal-meal-name { width: fit-content; padding: 2px 6px; color: var(--accent-dark); background: var(--accent-soft); border-radius: 999px; font-size: 8px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.auto-menu-proposal-meal strong { min-width: 0; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.auto-menu-proposal-meal small { color: var(--muted); font-size: 9px; line-height: 1.35; }
+.auto-menu-calorie-chart { display: grid; gap: 15px; padding: 16px 18px 18px; }
+.auto-menu-calorie-row { display: grid; gap: 7px; }
+.auto-menu-calorie-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 10px; }
+.auto-menu-calorie-heading strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auto-menu-calorie-heading span { flex: 0 0 auto; color: var(--muted); font-size: 9px; }
+.auto-menu-calorie-track { position: relative; height: 18px; display: flex; overflow: visible; background: var(--surface-strong); border: 1px solid var(--line); border-radius: 999px; }
+.auto-menu-calorie-track > i { display: block; height: 100%; }
+.auto-menu-calorie-existing { background: var(--green-soft); }
+.auto-menu-calorie-generated { background: var(--accent); }
+.auto-menu-calorie-target { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); transform: translateX(-1px); }
+.auto-menu-calorie-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 8px; }
+.auto-menu-calorie-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.auto-menu-calorie-legend i { width: 8px; height: 8px; display: inline-block; border-radius: 2px; }
+.auto-menu-calorie-legend .is-existing { background: var(--green-soft); border: 1px solid var(--line-strong); }
+.auto-menu-calorie-legend .is-generated { background: var(--accent); }
+.auto-menu-calorie-legend .is-target { width: 2px; background: var(--ink); border-radius: 0; }
+@media(max-width:760px) {
+  .auto-menu-availability-heading { align-items: flex-start; flex-direction: column; }
+  .auto-menu-start-date-controls { width: 100%; }
+  .auto-menu-start-date { min-width: 0; flex: 1; }
+  .auto-menu-start-date input { width: 100%; }
+  .auto-menu-preview-heading { align-items: flex-start; flex-direction: column; }
+  .auto-menu-calorie-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+}
