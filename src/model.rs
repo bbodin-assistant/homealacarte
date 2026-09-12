@@ -352,6 +352,8 @@ pub struct AutoMenuAvailability {
     pub person_key: String,
     pub day: String,
     #[serde(default)]
+    pub meal: String,
+    #[serde(default)]
     pub date: String,
 }
 
