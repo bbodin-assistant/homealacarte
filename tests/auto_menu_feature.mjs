@@ -74,8 +74,10 @@ assert.doesNotMatch(view, /data-i18n="slots_to_fill"/);
 assert.match(styles, /\.auto-menu-presence-stack/);
 assert.match(styles, /\.auto-menu-calorie-track/);
 assert.match(styles, /\.auto-menu-result-summary small/);
+assert.match(styles, /\.auto-menu-dish-ineligible[^}]*color:\s*#b42318/s);
+assert.match(styles, /\.auto-menu-dish-ineligible[^}]*cursor:\s*help/s);
 assert.match(worker, /data\.generationRows/);
 assert.match(worker, /finally/);
 assert.match(worker, /engine\.replace_menu\(rows\)/);
 
-console.log("Automatic-menu feature supports start-date windows, meal-level attendance, integrated occupied-slot disabling, and visual proposal/calorie summaries.");
+console.log("Automatic-menu feature supports start-date windows, meal-level attendance, integrated occupied-slot disabling, clear ineligible-dish tooltips, and visual proposal/calorie summaries.");
