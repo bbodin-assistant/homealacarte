@@ -1,5 +1,5 @@
 use crate::loader::{localized_days, localized_meals};
-use crate::model::{AutoMenuProposal, AutoMenuRequest, Dataset};
+use crate::model::{AutoMenuProposal, AutoMenuRequest, AutoMenuSlot, Dataset};
 use super::{
     candidates::*,
     requirements::*,
@@ -25,6 +25,18 @@ pub(crate) struct DishDecision {
 struct PackageVariable {
     ingredient_index: usize,
     variable: Variable,
+}
+
+fn person_available_for_slot(
+    availability: &BTreeSet<(usize, String, String)>,
+    person_index: usize,
+    slot: &AutoMenuSlot,
+) -> bool {
+    availability.iter().any(|(candidate, day, meal)| {
+        *candidate == person_index
+            && day == &slot.day
+            && (meal.is_empty() || meal == &slot.meal)
+    })
 }
 
 pub(crate) fn solve_menu_once(
@@ -72,16 +84,22 @@ pub(crate) fn solve_menu_once(
         .map(|dish| (dish.key.as_str(), dish))
         .collect::<HashMap<_, _>>();
 
-    let mut availability = BTreeSet::new();
+    let mut slot_availability = BTreeSet::new();
     for entry in request.availability {
         let Some((person_index, _)) = people_by_key.get(entry.person_key.as_str()) else {
             return Err("auto_menu_invalid_availability".to_string());
         };
-        if !valid_days.contains(&entry.day) {
+        if !valid_days.contains(&entry.day)
+            || (!entry.meal.is_empty() && !valid_meals.contains(&entry.meal))
+        {
             return Err("auto_menu_invalid_availability".to_string());
         }
-        availability.insert((*person_index, entry.day));
+        slot_availability.insert((*person_index, entry.day, entry.meal));
     }
+    let availability = slot_availability
+        .iter()
+        .map(|(person_index, day, _)| (*person_index, day.clone()))
+        .collect::<BTreeSet<_>>();
     if availability.is_empty() {
         return Err("auto_menu_no_availability".to_string());
     }
@@ -99,7 +117,11 @@ pub(crate) fn solve_menu_once(
         {
             return Err("auto_menu_invalid_slot".to_string());
         }
-        if !availability.iter().any(|(_, day)| day == &slot.day) {
+        if !availability
+            .iter()
+            .any(|(person_index, day)| day == &slot.day
+                && person_available_for_slot(&slot_availability, *person_index, &slot))
+        {
             return Err("auto_menu_empty_slot_people".to_string());
         }
         slots.push(slot);
@@ -199,7 +221,11 @@ pub(crate) fn solve_menu_once(
             if value > target + request.kcal_threshold + EPSILON {
                 return Err("auto_menu_existing_over_target".to_string());
             }
-            let slot_count = slots.iter().filter(|slot| slot.day == *day).count() as f64;
+            let slot_count = slots
+                .iter()
+                .filter(|slot| slot.day == *day
+                    && person_available_for_slot(&slot_availability, *person_index, slot))
+                .count() as f64;
             if value + slot_count * maximum_candidate_kcal * request.max_portions
                 < target - request.kcal_threshold - EPSILON
             {
@@ -224,13 +250,26 @@ pub(crate) fn solve_menu_once(
         }
         for (day, (total_remaining, people_count)) in &shared_remaining_kcal {
             let remaining = total_remaining / *people_count as f64;
-            let slot_count = slots.iter().filter(|slot| &slot.day == day).count() as f64;
-            if slot_count * maximum_candidate_kcal * request.max_portions
-                < remaining - request.kcal_threshold - EPSILON
+            let slot_counts = availability
+                .iter()
+                .filter(|(_, available_day)| available_day == day)
+                .map(|(person_index, _)| {
+                    slots
+                        .iter()
+                        .filter(|slot| &slot.day == day
+                            && person_available_for_slot(&slot_availability, *person_index, slot))
+                        .count() as f64
+                })
+                .collect::<Vec<_>>();
+            let minimum_slots = slot_counts.iter().copied().fold(f64::INFINITY, f64::min);
+            let maximum_slots = slot_counts.iter().copied().fold(0.0, f64::max);
+            if minimum_slots.is_finite()
+                && minimum_slots * maximum_candidate_kcal * request.max_portions
+                    < remaining - request.kcal_threshold - EPSILON
             {
                 return Err("auto_menu_not_enough_kcal".to_string());
             }
-            if slot_count * minimum_candidate_kcal * request.min_portions
+            if maximum_slots * minimum_candidate_kcal * request.min_portions
                 > remaining + request.kcal_threshold + EPSILON
             {
                 return Err("auto_menu_too_many_kcal".to_string());
@@ -243,7 +282,8 @@ pub(crate) fn solve_menu_once(
     for slot in &slots {
         let slot_people = availability
             .iter()
-            .filter(|(_, day)| day == &slot.day)
+            .filter(|(person_index, day)| day == &slot.day
+                && person_available_for_slot(&slot_availability, *person_index, slot))
             .map(|(person_index, _)| *person_index)
             .collect::<Vec<_>>();
         let slot_has_favorites = slot_people.iter().any(|person_index| {
