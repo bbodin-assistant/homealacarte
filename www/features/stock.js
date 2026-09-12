@@ -91,6 +91,10 @@ export function sortStockRows(rows = [], { key = null, direction = "asc", locale
     if (key === "quantity") return Number(row.quantity) || 0;
     if (key === "added_at") return String(row.added_at || "");
     if (key === "category") return String(row.category || "");
+    if (key === "quantity_unit") {
+      return String(row.quantity_unit === "unit" ? row.measure_unit || "unit" : row.quantity_unit || "");
+    }
+    if (key === "notes") return String(row.notes || "");
     return String(row.name || "");
   };
   return [...rows].sort((left, right) => {
@@ -266,8 +270,8 @@ export function createStockFeature({
         <button type="button" data-stock-sort="category">${escapeHtml(translate("category"))}${sortIndicator(sortKey, sortDirection, "category")}</button>
         <button type="button" data-stock-sort="added_at">${escapeHtml(translate("date"))}${sortIndicator(sortKey, sortDirection, "added_at")}</button>
         <button type="button" data-stock-sort="quantity">${escapeHtml(translate("quantity"))}${sortIndicator(sortKey, sortDirection, "quantity")}</button>
-        <span>${escapeHtml(translate("unit"))}</span>
-        <span>${escapeHtml(translate("notes"))}</span>
+        <button type="button" data-stock-sort="quantity_unit">${escapeHtml(translate("unit"))}${sortIndicator(sortKey, sortDirection, "quantity_unit")}</button>
+        <button type="button" data-stock-sort="notes">${escapeHtml(translate("notes"))}${sortIndicator(sortKey, sortDirection, "notes")}</button>
         <span></span>
     `;
     select("#stock-list").innerHTML = rows;

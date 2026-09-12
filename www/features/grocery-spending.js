@@ -27,6 +27,10 @@ const STRINGS = {
     noPurchases: "No recorded purchases yet.",
     noPeriodPurchases: "No purchases recorded for this period.",
     unknownCategory: "Uncategorized",
+    unknownSubcategory: "Other",
+    categoryRing: "Categories",
+    subcategoryRing: "Subcategories",
+    total: "Total",
     unknownStore: "Store not specified",
   },
   fr: {
@@ -55,6 +59,10 @@ const STRINGS = {
     noPurchases: "Aucun achat enregistré pour le moment.",
     noPeriodPurchases: "Aucun achat enregistré sur cette période.",
     unknownCategory: "Sans catégorie",
+    unknownSubcategory: "Autre",
+    categoryRing: "Catégories",
+    subcategoryRing: "Sous-catégories",
+    total: "Total",
     unknownStore: "Magasin non renseigné",
   },
 };
@@ -124,19 +132,63 @@ function catalogueCategoryMap(snapshot, fallback) {
   return map;
 }
 
+function categoryParts(value, fallbackCategory, fallbackSubcategory) {
+  const parts = String(value || "").split("::")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return {
+    category: parts[0] || fallbackCategory,
+    subcategory: parts.slice(1).join(" › ") || fallbackSubcategory,
+  };
+}
+
+function aggregateCategoryBreakdown(rows) {
+  const byCategory = aggregate(rows, (row) => row.category);
+  const categoryOrder = new Map(byCategory.map((row, index) => [row.key, index]));
+  const totals = new Map();
+  rows.forEach((row) => {
+    const id = `${row.category}::${row.subcategory}`;
+    const current = totals.get(id) || {
+      key: row.subcategory,
+      category: row.category,
+      spend: 0,
+      count: 0,
+    };
+    current.spend += row.totalPrice;
+    current.count += 1;
+    totals.set(id, current);
+  });
+  const bySubcategory = [...totals.values()].sort((left, right) => (
+    (categoryOrder.get(left.category) ?? Number.MAX_SAFE_INTEGER)
+      - (categoryOrder.get(right.category) ?? Number.MAX_SAFE_INTEGER)
+    || right.spend - left.spend
+    || right.count - left.count
+    || left.key.localeCompare(right.key)
+  ));
+  return { byCategory, bySubcategory };
+}
+
 function purchaseRecords(snapshot, language) {
   const strings = stringsFor(language);
   const categories = catalogueCategoryMap(snapshot, strings.unknownCategory);
   return collectPurchaseHistory(snapshot)
     .filter((row) => row?.purchase && Number.isFinite(Number(row.purchase.totalPrice)))
-    .map((row) => ({
-      date: String(row.date || ""),
-      itemKey: String(row.itemKey || ""),
-      itemName: String(row.itemName || ""),
-      category: categories.get(String(row.itemKey || "")) || strings.unknownCategory,
-      store: String(row.purchase.store || "").trim() || strings.unknownStore,
-      totalPrice: Math.max(0, Number(row.purchase.totalPrice)),
-    }));
+    .map((row) => {
+      const parts = categoryParts(
+        categories.get(String(row.itemKey || "")) || strings.unknownCategory,
+        strings.unknownCategory,
+        strings.unknownSubcategory,
+      );
+      return {
+        date: String(row.date || ""),
+        itemKey: String(row.itemKey || ""),
+        itemName: String(row.itemName || ""),
+        category: parts.category,
+        subcategory: parts.subcategory,
+        store: String(row.purchase.store || "").trim() || strings.unknownStore,
+        totalPrice: Math.max(0, Number(row.purchase.totalPrice)),
+      };
+    });
 }
 
 export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), language, selectedMonths = {}) {
@@ -181,6 +233,7 @@ export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), lang
     monthly.push({ start: isoDate(start), spend: sum(dated.filter((row) => inRange(row, start, end))) });
   }
 
+  const categoryBreakdown = aggregateCategoryBreakdown(rowsForMonth(categoryMonth));
   return {
     currentWeek: sum(currentWeekRows),
     currentMonth: sum(currentMonthRows),
@@ -191,7 +244,8 @@ export function buildSpendingAnalysis(snapshot, referenceDate = new Date(), lang
     availableMonths,
     categoryMonth,
     storeMonth,
-    byCategory: aggregate(rowsForMonth(categoryMonth), (row) => row.category),
+    byCategory: categoryBreakdown.byCategory,
+    bySubcategory: categoryBreakdown.bySubcategory,
     byStore: aggregate(rowsForMonth(storeMonth), (row) => row.store),
     frequentProducts: aggregate(records, (row) => row.itemName).sort((left, right) => (
       right.count - left.count || right.spend - left.spend || left.key.localeCompare(right.key)
@@ -270,6 +324,62 @@ function breakdownRows(rows, language, emptyLabel) {
   }).join("");
 }
 
+const DONUT_HUES = [14, 82, 205, 318, 43, 164, 262, 352, 124, 226];
+
+function donutSegments(rows, total) {
+  let cursor = 0;
+  return rows.filter((row) => row.spend > 0).map((row) => {
+    const start = cursor;
+    cursor += total > 0 ? row.spend / total * 100 : 0;
+    return `${row.color} ${start.toFixed(3)}% ${cursor.toFixed(3)}%`;
+  }).join(", ");
+}
+
+function categoryDonut(categories, subcategories, language, strings) {
+  const total = categories.reduce((value, row) => value + row.spend, 0);
+  if (!categories.length || total <= 0) {
+    return `<p class="spending-empty">${escapeHtml(strings.noPeriodPurchases)}</p>`;
+  }
+  const colorByCategory = new Map();
+  const categoriesWithColors = categories.map((row, index) => {
+    const hue = DONUT_HUES[index % DONUT_HUES.length];
+    const color = `hsl(${hue} 46% 48%)`;
+    colorByCategory.set(row.key, { hue, color });
+    return { ...row, color };
+  });
+  const subcategoryIndex = new Map();
+  const subcategoriesWithColors = subcategories.map((row) => {
+    const parent = colorByCategory.get(row.category) || { hue: 0 };
+    const index = subcategoryIndex.get(row.category) || 0;
+    subcategoryIndex.set(row.category, index + 1);
+    const lightness = 36 + (index % 5) * 9;
+    return { ...row, color: `hsl(${parent.hue} 48% ${lightness}%)` };
+  });
+  const categoryGradient = donutSegments(categoriesWithColors, total);
+  const subcategoryGradient = donutSegments(subcategoriesWithColors, total);
+  const percent = (value) => new Intl.NumberFormat(language || undefined, {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(value / total);
+  const legend = (rows, nested = false) => rows.map((row) => `<div class="spending-donut-legend-row ${nested ? "is-subcategory" : ""}">
+    <i class="spending-donut-swatch" style="--donut-color:${row.color}"></i>
+    <span title="${escapeHtml(nested ? `${row.category} › ${row.key}` : row.key)}">${escapeHtml(row.key)}</span>
+    <small>${escapeHtml(percent(row.spend))}</small>
+    <strong>${escapeHtml(formatMoney(row.spend, language))}</strong>
+  </div>`).join("");
+  return `<div class="spending-donut-layout">
+    <div class="spending-double-donut" role="img" aria-label="${escapeHtml(`${strings.categoryRing} / ${strings.subcategoryRing}`)}">
+      <div class="spending-donut-ring spending-donut-outer" style="background:conic-gradient(${subcategoryGradient})"></div>
+      <div class="spending-donut-ring spending-donut-inner" style="background:conic-gradient(${categoryGradient})"></div>
+      <div class="spending-donut-hole"><span>${escapeHtml(strings.total)}</span><strong>${escapeHtml(formatMoney(total, language))}</strong></div>
+    </div>
+    <div class="spending-donut-legend">
+      <section><h3>${escapeHtml(strings.categoryRing)}</h3>${legend(categoriesWithColors)}</section>
+      <section><h3>${escapeHtml(strings.subcategoryRing)}</h3>${legend(subcategoriesWithColors, true)}</section>
+    </div>
+  </div>`;
+}
+
 function frequentRows(rows, language, strings) {
   if (!rows.length) return `<p class="spending-empty">${escapeHtml(strings.noPurchases)}</p>`;
   return `<div class="spending-products-head" aria-hidden="true">
@@ -313,7 +423,7 @@ function renderPanel(panel, state, selectedMonths = {}) {
   <div class="spending-analysis-grid">
     <section class="panel spending-card">
       <header><div><h2>${escapeHtml(strings.categories)}</h2><p>${escapeHtml(strings.categoriesIntro)}</p></div>${monthSelect("category", analysis.categoryMonth, analysis.availableMonths, language, strings)}</header>
-      <div class="spending-breakdown">${breakdownRows(analysis.byCategory, language, strings.noPeriodPurchases)}</div>
+      <div class="spending-category-donut">${categoryDonut(analysis.byCategory, analysis.bySubcategory, language, strings)}</div>
     </section>
     <section class="panel spending-card">
       <header><div><h2>${escapeHtml(strings.stores)}</h2><p>${escapeHtml(strings.storesIntro)}</p></div>${monthSelect("store", analysis.storeMonth, analysis.availableMonths, language, strings)}</header>
