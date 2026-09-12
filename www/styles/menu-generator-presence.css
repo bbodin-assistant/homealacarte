@@ -12,7 +12,7 @@
 .auto-menu-dish > input { grid-row: 1 / span 2; margin-top: 1px; }
 .auto-menu-dish strong { grid-column: 2; min-width: 0; }
 .auto-menu-dish small { grid-column: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.auto-menu-dish-ineligible { width: 22px; height: 18px; display: grid; place-items: center; color: var(--muted); background: var(--surface-strong); border: 1px solid var(--line); border-radius: 999px; font-size: 12px; line-height: 1; }
+.auto-menu-dish-ineligible { width: 24px; height: 24px; display: grid; place-items: center; color: #b42318; background: transparent; border: 0; border-radius: 999px; font-size: 20px; font-weight: 900; line-height: 1; cursor: help; overflow: visible; }
 .auto-menu-result-summary small { display: block; margin-top: 6px; color: var(--muted); font-size: 9px; line-height: 1.35; }
 .auto-menu-preview-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--line); }
 .auto-menu-preview-heading h2 { margin: 0; }
