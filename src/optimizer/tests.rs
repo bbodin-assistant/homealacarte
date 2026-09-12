@@ -59,6 +59,15 @@ fn dish(key: &str, ingredient: &str) -> Dish {
     }
 }
 
+fn availability(person: &str, day: &str, meal: &str) -> crate::model::AutoMenuAvailability {
+    crate::model::AutoMenuAvailability {
+        person_key: person.to_string(),
+        day: day.to_string(),
+        meal: meal.to_string(),
+        date: String::new(),
+    }
+}
+
 #[test]
 fn generator_applies_daily_choices_and_never_rules() {
     let mut stock = BTreeMap::new();
@@ -123,11 +132,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             max_portions: 1.0,
             portion_step: 0.05,
             same_portion_for_everyone: false,
-            availability: vec![crate::model::AutoMenuAvailability {
-                person_key: "person".to_string(),
-                day: "Monday".to_string(),
-                date: String::new(),
-            }],
+            availability: vec![availability("person", "Monday", "Lunch")],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Monday".to_string(),
                 meal: "Lunch".to_string(),
@@ -154,11 +159,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             max_portions: 1.0,
             portion_step: 0.05,
             same_portion_for_everyone: false,
-            availability: vec![crate::model::AutoMenuAvailability {
-                person_key: "person".to_string(),
-                day: "Monday".to_string(),
-                date: String::new(),
-            }],
+            availability: vec![availability("person", "Monday", "Lunch")],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Monday".to_string(),
                 meal: "Lunch".to_string(),
@@ -181,11 +182,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             max_portions: 1.0,
             portion_step: 0.05,
             same_portion_for_everyone: false,
-            availability: vec![crate::model::AutoMenuAvailability {
-                person_key: "person".to_string(),
-                day: "Saturday".to_string(),
-                date: String::new(),
-            }],
+            availability: vec![availability("person", "Saturday", "Lunch")],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Saturday".to_string(),
                 meal: "Lunch".to_string(),
@@ -211,11 +208,7 @@ fn generator_applies_daily_choices_and_never_rules() {
             max_portions: 1.0,
             portion_step: 0.05,
             same_portion_for_everyone: false,
-            availability: vec![crate::model::AutoMenuAvailability {
-                person_key: "person".to_string(),
-                day: "Saturday".to_string(),
-                date: String::new(),
-            }],
+            availability: vec![availability("person", "Saturday", "Lunch")],
             slots: vec![crate::model::AutoMenuSlot {
                 day: "Saturday".to_string(),
                 meal: "Lunch".to_string(),
@@ -240,16 +233,8 @@ fn generator_applies_daily_choices_and_never_rules() {
             portion_step: 0.05,
             same_portion_for_everyone: false,
             availability: vec![
-                crate::model::AutoMenuAvailability {
-                    person_key: "person".to_string(),
-                    day: "Monday".to_string(),
-                    date: String::new(),
-                },
-                crate::model::AutoMenuAvailability {
-                    person_key: "person".to_string(),
-                    day: "Tuesday".to_string(),
-                    date: String::new(),
-                },
+                availability("person", "Monday", "Lunch"),
+                availability("person", "Tuesday", "Lunch"),
             ],
             slots: vec![
                 crate::model::AutoMenuSlot {
@@ -281,16 +266,8 @@ fn generator_applies_daily_choices_and_never_rules() {
             portion_step: 0.05,
             same_portion_for_everyone: false,
             availability: vec![
-                crate::model::AutoMenuAvailability {
-                    person_key: "person".to_string(),
-                    day: "Monday".to_string(),
-                    date: String::new(),
-                },
-                crate::model::AutoMenuAvailability {
-                    person_key: "person".to_string(),
-                    day: "Tuesday".to_string(),
-                    date: String::new(),
-                },
+                availability("person", "Monday", "Lunch"),
+                availability("person", "Tuesday", "Lunch"),
             ],
             slots: vec![
                 crate::model::AutoMenuSlot {
@@ -358,21 +335,9 @@ fn generator_can_force_one_shared_portion_for_everyone() {
         portion_step: 1.0,
         same_portion_for_everyone: false,
         availability: vec![
-            crate::model::AutoMenuAvailability {
-                person_key: "adult".to_string(),
-                day: "Monday".to_string(),
-                date: String::new(),
-            },
-            crate::model::AutoMenuAvailability {
-                person_key: "child".to_string(),
-                day: "Monday".to_string(),
-                date: String::new(),
-            },
-            crate::model::AutoMenuAvailability {
-                person_key: "visitor".to_string(),
-                day: "Monday".to_string(),
-                date: String::new(),
-            },
+            availability("adult", "Monday", "Lunch"),
+            availability("child", "Monday", "Lunch"),
+            availability("visitor", "Monday", "Lunch"),
         ],
         slots: vec![crate::model::AutoMenuSlot {
             day: "Monday".to_string(),
@@ -396,4 +361,71 @@ fn generator_can_force_one_shared_portion_for_everyone() {
     assert_eq!(shared.rows.len(), 1);
     assert_eq!(shared.rows[0].people.len(), 2);
     assert!(!shared.rows[0].people.iter().any(|person| person == "visitor"));
+}
+
+#[test]
+fn generator_respects_meal_specific_availability() {
+    let dataset = Dataset {
+        ingredients: vec![ingredient("food", 0.0)],
+        dishes: vec![dish("lunch_dish", "food"), dish("dinner_dish", "food")],
+        people: vec![
+            Person {
+                key: "lunch_person".to_string(),
+                name: "Lunch person".to_string(),
+                kcal_target: Some(100.0),
+                kind: "adult".to_string(),
+                description: String::new(),
+                food_rules: vec![],
+            },
+            Person {
+                key: "dinner_person".to_string(),
+                name: "Dinner person".to_string(),
+                kcal_target: Some(100.0),
+                kind: "adult".to_string(),
+                description: String::new(),
+                food_rules: vec![],
+            },
+        ],
+        menu: vec![],
+        stock: BTreeMap::new(),
+        stock_units: BTreeMap::new(),
+        stock_notes: BTreeMap::new(),
+        stock_added_at: BTreeMap::new(),
+        household_items: vec![],
+        household_needs: BTreeMap::new(),
+        household_need_notes: BTreeMap::new(),
+        household_stock: BTreeMap::new(),
+        source_hash: String::new(),
+    };
+    let proposal = generate_menu(
+        &dataset,
+        "en",
+        AutoMenuRequest {
+            kcal_threshold: 0.0,
+            min_portions: 1.0,
+            max_portions: 1.0,
+            portion_step: 1.0,
+            same_portion_for_everyone: false,
+            availability: vec![
+                availability("lunch_person", "Monday", "Lunch"),
+                availability("dinner_person", "Monday", "Dinner"),
+            ],
+            slots: vec![
+                crate::model::AutoMenuSlot {
+                    day: "Monday".to_string(),
+                    meal: "Lunch".to_string(),
+                },
+                crate::model::AutoMenuSlot {
+                    day: "Monday".to_string(),
+                    meal: "Dinner".to_string(),
+                },
+            ],
+            candidate_dish_keys: vec!["lunch_dish".to_string(), "dinner_dish".to_string()],
+        },
+    )
+    .unwrap();
+    let lunch = proposal.rows.iter().find(|row| row.meal == "Lunch").unwrap();
+    let dinner = proposal.rows.iter().find(|row| row.meal == "Dinner").unwrap();
+    assert_eq!(lunch.people, vec!["lunch_person"]);
+    assert_eq!(dinner.people, vec!["dinner_person"]);
 }
