@@ -212,6 +212,40 @@ fn unknown_sections_are_rejected_instead_of_silently_dropped() {
 }
 
 #[test]
+fn personal_data_reports_all_source_structure_and_key_errors() {
+    let error = consolidate_personal_sources(
+        vec![
+            SourceFile {
+                path: "a.json".to_string(),
+                content: r#"{"items":[{"key":"twarog"}]}"#.to_string(),
+            },
+            SourceFile {
+                path: "b.json".to_string(),
+                content: r#"{"items":[{"key":"twarog"},{"key":"   "}]} "#.to_string(),
+            },
+            SourceFile {
+                path: "c.json".to_string(),
+                content: r#"[]"#.to_string(),
+            },
+            SourceFile {
+                path: "d.json".to_string(),
+                content: r#"{"items":{}}"#.to_string(),
+            },
+        ],
+        "fr",
+    )
+    .unwrap_err();
+
+    assert!(error.contains("4 personal data validation errors"));
+    assert!(error.contains(
+        "b.json.items[0]: duplicate item key \"twarog\"; first defined at a.json.items[0]"
+    ));
+    assert!(error.contains("b.json.items[1]: empty item key"));
+    assert!(error.contains("c.json: top level must be an object"));
+    assert!(error.contains("d.json: section items must be an array"));
+}
+
+#[test]
 fn merge_keeps_rich_base_records_and_applies_explicit_enrichments() {
     let base = r#"{
       "items": [
