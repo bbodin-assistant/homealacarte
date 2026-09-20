@@ -633,7 +633,7 @@ export function mountGrocerySpendingAnalysis() {
     const category = event.target.closest?.("[data-donut-category]");
     if (!category) return;
     const key = category.dataset.donutCategory || "";
-    selectedCategory = selectedCategory === key ? "" : key;
+    selectedCategory = key;
     rerender();
   });
   panel.addEventListener("keydown", (event) => {
