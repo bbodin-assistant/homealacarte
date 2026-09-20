@@ -453,7 +453,10 @@ function categoryDonut(categories, subcategories, language, strings, selectedCat
       <span title="${escapeHtml(nested ? `${row.category} › ${row.key}` : row.key)}">${escapeHtml(row.key)}</span>
       <small>${escapeHtml(percent(row.spend))}</small>
       <strong>${escapeHtml(formatMoney(row.spend, language))}</strong>`;
-    if (nested) return `<div class="spending-donut-legend-row is-subcategory">${content}</div>`;
+    if (nested) {
+      const selected = selectedCategory === row.category;
+      return `<button type="button" class="spending-donut-legend-row is-subcategory${selected ? " is-selected" : ""}" data-donut-category="${escapeHtml(row.category)}" aria-pressed="${selected ? "true" : "false"}">${content}</button>`;
+    }
     const selected = selectedCategory === row.key;
     return `<button type="button" class="spending-donut-legend-row is-category${selected ? " is-selected" : ""}" data-donut-category="${escapeHtml(row.key)}" aria-pressed="${selected ? "true" : "false"}">${content}</button>`;
   }).join("");
