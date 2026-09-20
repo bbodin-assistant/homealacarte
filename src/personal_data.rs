@@ -89,11 +89,100 @@ fn section(
     }
 }
 
+fn collect_source_validation_errors(sources: &[SourceFile]) -> Vec<String> {
+    let mut errors = Vec::new();
+    let mut seen_items = HashMap::<String, String>::new();
+    let mut seen_dishes = HashMap::<String, String>::new();
+    let mut seen_people = HashMap::<String, String>::new();
+
+    for source in sources {
+        let document: Value = match serde_json::from_str(&source.content) {
+            Ok(document) => document,
+            Err(error) => {
+                errors.push(format!("{}: invalid JSON: {error}", source.path));
+                continue;
+            }
+        };
+        let Some(object) = document.as_object() else {
+            errors.push(format!("{}: top level must be an object", source.path));
+            continue;
+        };
+
+        let unknown = object
+            .keys()
+            .filter(|key| !CURRENT_SECTIONS.contains(&key.as_str()))
+            .cloned()
+            .collect::<Vec<_>>();
+        if !unknown.is_empty() {
+            errors.push(format!(
+                "{}: unsupported sections: {}",
+                source.path,
+                unknown.join(", ")
+            ));
+        }
+        if !CURRENT_SECTIONS.iter().any(|name| object.contains_key(*name)) {
+            errors.push(format!(
+                "{}: no current data section (expected one of {})",
+                source.path,
+                CURRENT_SECTIONS.join(", ")
+            ));
+        }
+
+        for (section_name, label, seen) in [
+            ("items", "item", &mut seen_items),
+            ("dishes", "dish", &mut seen_dishes),
+            ("people", "person", &mut seen_people),
+        ] {
+            let Some(section) = object.get(section_name) else {
+                continue;
+            };
+            let Some(rows) = section.as_array() else {
+                errors.push(format!(
+                    "{}: section {section_name} must be an array",
+                    source.path
+                ));
+                continue;
+            };
+            for (index, row) in rows.iter().enumerate() {
+                let location = format!("{}.{section_name}[{index}]", source.path);
+                let key = row
+                    .get("key")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .unwrap_or("");
+                if key.is_empty() {
+                    errors.push(format!("{location}: empty {label} key"));
+                    continue;
+                }
+                if let Some(first_location) = seen.get(key) {
+                    errors.push(format!(
+                        "{location}: duplicate {label} key {key:?}; first defined at {first_location}"
+                    ));
+                } else {
+                    seen.insert(key.to_string(), location);
+                }
+            }
+        }
+    }
+
+    errors
+}
+
 pub fn consolidate_personal_sources(
     mut sources: Vec<SourceFile>,
     language: &str,
 ) -> Result<(String, PersonalDataReport), String> {
     sources.sort_by(|left, right| left.path.cmp(&right.path));
+    let validation_errors = collect_source_validation_errors(&sources);
+    if !validation_errors.is_empty() {
+        let count = validation_errors.len();
+        return Err(format!(
+            "{count} personal data validation error{}:\n- {}",
+            if count == 1 { "" } else { "s" },
+            validation_errors.join("\n- ")
+        ));
+    }
+
     let mut items = Vec::new();
     let mut dishes = Vec::new();
     let mut people = Vec::new();

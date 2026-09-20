@@ -53,6 +53,8 @@ pub(crate) struct IngredientInput {
     pub(crate) purchase_quantity_unit: String,
     #[serde(default)]
     pub(crate) purchase_item_key: String,
+    #[serde(default)]
+    pub(crate) generic_item_key: String,
     #[serde(default = "one")]
     pub(crate) purchase_grams_per_gram: f64,
 }

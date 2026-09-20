@@ -1,7 +1,7 @@
 use crate::engine::Engine;
 use crate::model::*;
 use crate::price_history::preserve_price_history;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 impl Engine {
     pub fn add_dish(&mut self, input: DishCreateInput) -> Result<AppSnapshot, String> {
@@ -43,6 +43,7 @@ impl Engine {
             );
             validate_ingredient(&ingredient)?;
             validate_purchase_reference(&next, &ingredient)?;
+            validate_generic_reference(&next, &ingredient)?;
             if next
                 .ingredients
                 .iter()
@@ -82,6 +83,7 @@ impl Engine {
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
         validate_purchase_reference(dataset, &input)?;
         validate_purchase_target(dataset, &input)?;
+        validate_generic_reference(dataset, &input)?;
         let index = dataset
             .ingredients
             .iter()
@@ -127,6 +129,7 @@ impl Engine {
         let dataset = self.dataset.as_mut().ok_or("no dataset loaded")?;
         validate_purchase_reference(dataset, &input)?;
         validate_purchase_target(dataset, &input)?;
+        validate_generic_reference(dataset, &input)?;
         if dataset.ingredients.iter().any(|item| item.key == input.key)
             || dataset.household_items.iter().any(|item| item.key == input.key)
             || dataset.dishes.iter().any(|item| item.key == input.key)
@@ -243,6 +246,18 @@ impl Engine {
                 return Err(format!(
                     "item is still used as the purchase form for: {}",
                     used_as_purchase_item.join(", ")
+                ));
+            }
+            let used_as_generic_item = dataset
+                .ingredients
+                .iter()
+                .filter(|ingredient| ingredient.generic_item_key == key)
+                .map(|ingredient| ingredient.name.clone())
+                .collect::<Vec<_>>();
+            if !used_as_generic_item.is_empty() {
+                return Err(format!(
+                    "item is still used as the generic ingredient for: {}",
+                    used_as_generic_item.join(", ")
                 ));
             }
             dataset.ingredients.remove(ingredient_index);
@@ -449,6 +464,34 @@ fn validate_ingredient(ingredient: &Ingredient) -> Result<(), String> {
     }
     validate_price_history(&ingredient.price_history, None)?;
     Ok(())
+}
+
+fn validate_generic_reference(dataset: &Dataset, ingredient: &Ingredient) -> Result<(), String> {
+    if ingredient.generic_item_key.is_empty() {
+        return Ok(());
+    }
+    if ingredient.generic_item_key == ingredient.key {
+        return Err("an ingredient cannot be its own generic item".to_string());
+    }
+
+    let mut seen = HashSet::from([ingredient.key.clone()]);
+    let mut current_key = ingredient.generic_item_key.clone();
+    loop {
+        if !seen.insert(current_key.clone()) {
+            return Err(format!(
+                "ingredient generic hierarchy contains a cycle at: {current_key}"
+            ));
+        }
+        let current = dataset
+            .ingredients
+            .iter()
+            .find(|item| item.key == current_key)
+            .ok_or_else(|| format!("ingredient references unknown generic item: {current_key}"))?;
+        if current.generic_item_key.is_empty() {
+            return Ok(());
+        }
+        current_key = current.generic_item_key.clone();
+    }
 }
 
 fn validate_purchase_reference(dataset: &Dataset, ingredient: &Ingredient) -> Result<(), String> {
