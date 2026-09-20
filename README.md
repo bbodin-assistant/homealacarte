@@ -102,6 +102,34 @@ conflicts. Both inputs must already use the current JSON format. The command
 writes the ignored `private-import/homealacarte-merged.json` plus a complete
 ignored audit at `private-import/homealacarte-merge-audit.json`.
 
+## Supabase JSON command-line tools
+
+The reusable Supabase account download/upload tools live in the public
+`scripts/` directory and contain no account-specific configuration. Supply the
+account and project values at runtime:
+
+```bash
+HOMEALACARTE_EMAIL='user@example.com' \
+SUPABASE_PROJECT_URL='https://PROJECT.supabase.co' \
+SUPABASE_PUBLISHABLE_KEY='publishable-key' \
+python3 scripts/download_supabase_json.py homealacarte_data.json
+```
+
+The password is prompted securely unless `HOMEALACARTE_PASSWORD` is supplied.
+To upload a consolidated document:
+
+```bash
+HOMEALACARTE_EMAIL='user@example.com' \
+SUPABASE_PROJECT_URL='https://PROJECT.supabase.co' \
+SUPABASE_PUBLISHABLE_KEY='publishable-key' \
+python3 scripts/upload_supabase_json.py homealacarte_data.json
+```
+
+Uploads use the same revision-checked Supabase RPC as the application. If the
+online revision changed after it was read, the upload stops rather than
+overwriting newer data. `--language` accepts an application locale tag and
+otherwise preserves the existing account language when possible.
+
 ## Data format
 
 The current consolidated schema has these top-level collections:
