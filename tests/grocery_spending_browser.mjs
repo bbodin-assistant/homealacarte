@@ -65,7 +65,7 @@ await waitFor(
 await evaluate(`(() => {
   const now = new Date();
   const pad = (value) => String(value).padStart(2, "0");
-  const date = \`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}\`;
+  const date = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
   const observation = (total, id) => ({
     date,
     price: total,
