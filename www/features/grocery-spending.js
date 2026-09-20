@@ -346,11 +346,14 @@ function donutSlices(rows, total) {
 
 function donutPoint(percent, radius) {
   const angle = percent / 100 * Math.PI * 2 - Math.PI / 2;
-  return {
-    x: DONUT_VIEWBOX.cx + Math.cos(angle) * radius,
-    y: DONUT_VIEWBOX.cy + Math.sin(angle) * radius,
-    side: Math.cos(angle) >= 0 ? 1 : -1,
-  };
+  return { x: DONUT_VIEWBOX.cx + Math.cos(angle) * radius, y: DONUT_VIEWBOX.cy + Math.sin(angle) * radius, side: Math.cos(angle) >= 0 ? 1 : -1 };
+}
+
+function donutSeparators(slices, radius, strokeWidth) {
+  return slices.map((row) => {
+    const inner = donutPoint(row.start, radius - strokeWidth / 2 - 1), outer = donutPoint(row.start, radius + strokeWidth / 2 + 1);
+    return `<line class="spending-donut-separator" x1="${inner.x.toFixed(1)}" y1="${inner.y.toFixed(1)}" x2="${outer.x.toFixed(1)}" y2="${outer.y.toFixed(1)}"></line>`;
+  }).join("");
 }
 
 function spreadDonutLabels(rows) {
@@ -399,21 +402,19 @@ function donutLabels(subcategorySlices, selectedCategory) {
 
 function donutSegment(row, radius, strokeWidth, kind, language, selectedCategory) {
   const nested = kind === "subcategory";
+  const categoryKey = nested ? row.category : row.key;
   const label = nested ? `${row.category} › ${row.key}` : row.key;
   const tooltip = `${label} — ${formatMoney(row.spend, language)}`;
-  const selected = !nested && selectedCategory === row.key;
-  const categoryAttribute = nested ? "" : ` data-donut-category="${escapeHtml(row.key)}"`;
-  const role = nested ? "img" : "button";
-  const pressed = nested ? "" : ` aria-pressed="${selected ? "true" : "false"}"`;
+  const selected = selectedCategory === categoryKey;
   return `<circle
-    class="spending-donut-segment spending-donut-${kind}-segment${selected ? " is-selected" : ""}"
+    class="spending-donut-segment spending-donut-${kind}-segment${selected && !nested ? " is-selected" : ""}"
     cx="${DONUT_VIEWBOX.cx}" cy="${DONUT_VIEWBOX.cy}" r="${radius}"
-    fill="none" stroke="${row.color}" stroke-width="${strokeWidth}"
+    fill="none" stroke="${row.color}" stroke-width="${strokeWidth}" stroke-linecap="butt"
     pathLength="100" stroke-dasharray="${row.size.toFixed(3)} ${(100 - row.size).toFixed(3)}"
     stroke-dashoffset="${(-row.start).toFixed(3)}"
     transform="rotate(-90 ${DONUT_VIEWBOX.cx} ${DONUT_VIEWBOX.cy})"
-    tabindex="0" role="${role}" aria-label="${escapeHtml(tooltip)}"${pressed}${categoryAttribute}
-    data-donut-tooltip="${escapeHtml(tooltip)}"></circle>`;
+    tabindex="0" role="button" aria-label="${escapeHtml(tooltip)}" aria-pressed="${selected ? "true" : "false"}"
+    data-donut-category="${escapeHtml(categoryKey)}" data-donut-tooltip="${escapeHtml(tooltip)}"></circle>`;
 }
 
 function categoryDonut(categories, subcategories, language, strings, selectedCategory = "") {
@@ -447,7 +448,9 @@ function categoryDonut(categories, subcategories, language, strings, selectedCat
       <span title="${escapeHtml(nested ? `${row.category} › ${row.key}` : row.key)}">${escapeHtml(row.key)}</span>
       <small>${escapeHtml(percent(row.spend))}</small>
       <strong>${escapeHtml(formatMoney(row.spend, language))}</strong>`;
-    if (nested) return `<div class="spending-donut-legend-row is-subcategory">${content}</div>`;
+    if (nested) {
+      const selected = selectedCategory === row.category; return `<button type="button" class="spending-donut-legend-row is-subcategory${selected ? " is-selected" : ""}" data-donut-category="${escapeHtml(row.category)}" aria-pressed="${selected ? "true" : "false"}">${content}</button>`;
+    }
     const selected = selectedCategory === row.key;
     return `<button type="button" class="spending-donut-legend-row is-category${selected ? " is-selected" : ""}" data-donut-category="${escapeHtml(row.key)}" aria-pressed="${selected ? "true" : "false"}">${content}</button>`;
   }).join("");
@@ -456,8 +459,10 @@ function categoryDonut(categories, subcategories, language, strings, selectedCat
       <svg class="spending-donut-svg" viewBox="0 0 ${DONUT_VIEWBOX.width} ${DONUT_VIEWBOX.height}" role="group" aria-label="${escapeHtml(`${strings.categoryRing} / ${strings.subcategoryRing}`)}">
         <circle class="spending-donut-track" cx="${DONUT_VIEWBOX.cx}" cy="${DONUT_VIEWBOX.cy}" r="${DONUT_OUTER_RADIUS}" fill="none" stroke-width="44"></circle>
         ${subcategorySlices.map((row) => donutSegment(row, DONUT_OUTER_RADIUS, 44, "subcategory", language, selectedCategory)).join("")}
+        ${donutSeparators(subcategorySlices, DONUT_OUTER_RADIUS, 44)}
         <circle class="spending-donut-track" cx="${DONUT_VIEWBOX.cx}" cy="${DONUT_VIEWBOX.cy}" r="${DONUT_INNER_RADIUS}" fill="none" stroke-width="42"></circle>
         ${categorySlices.map((row) => donutSegment(row, DONUT_INNER_RADIUS, 42, "category", language, selectedCategory)).join("")}
+        ${donutSeparators(categorySlices, DONUT_INNER_RADIUS, 48)}
         ${donutLabels(subcategorySlices, selectedCategory)}
       </svg>
       <div class="spending-donut-hole"><span>${escapeHtml(strings.total)}</span><strong>${escapeHtml(formatMoney(total, language))}</strong></div>
@@ -628,7 +633,7 @@ export function mountGrocerySpendingAnalysis() {
     const category = event.target.closest?.("[data-donut-category]");
     if (!category) return;
     const key = category.dataset.donutCategory || "";
-    selectedCategory = selectedCategory === key ? "" : key;
+    selectedCategory = key;
     rerender();
   });
   panel.addEventListener("keydown", (event) => {
