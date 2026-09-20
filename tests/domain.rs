@@ -16,6 +16,9 @@ mod menu;
 #[path = "domain/grocery.rs"]
 mod grocery;
 
+#[path = "domain/grocery_specializations.rs"]
+mod grocery_specializations;
+
 #[path = "domain/export.rs"]
 mod export;
 
