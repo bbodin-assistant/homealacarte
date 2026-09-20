@@ -84,6 +84,7 @@ Agent rules:
     "es": "Tomate"
   },
   "category": "Produce::Vegetables",
+  "generic_item_key": "vegetable",
   "custom": false,
   "measure_unit": "g",
   "grams": 100.0,
@@ -131,10 +132,18 @@ Notes:
   `purchase_unit` when `price` is the price of one `purchase_unit`. Every `price_history`
   observation carries its own `price_basis`; observations may therefore preserve the basis
   printed or inferred from each source without losing comparability.
+- `generic_item_key` optionally points from a more specific ingredient to a less specific
+  ingredient that it can satisfy. The relationship is directional: stock of the specialized
+  item counts toward a recipe requirement for the generic item, but generic stock does not
+  satisfy a recipe that explicitly requires the specialized item. Generic references must
+  target another existing food item and the hierarchy must be acyclic.
+- When both generic and specialized requirements exist, specialized stock is reserved for the
+  specialized requirement first; only leftover specialized stock is applied to the generic need.
 - When recipes deliberately use a non-purchasable form such as cooked rice, `purchase_item_key`
   may reference the corresponding purchasable food and `purchase_grams_per_gram` gives the
   purchasable grams required per recipe gram (for example `0.3333333333` for dry rice per gram
   of cooked rice). The target must be another existing food item and the factor must be positive.
+  This purchase-form conversion is distinct from `generic_item_key`.
 - `allergens` contains the canonical allergen codes documented under food rules. Nut allergens
   must use explicit named nut codes; generic nut-group codes are not supported.
 - Keys use lowercase `snake_case` and must remain identical in every language.
