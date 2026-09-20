@@ -47,6 +47,7 @@ fn the_item_catalogue_edits_general_items_and_deletes_safely() {
             purchase_quantity: 100.0,
             purchase_quantity_unit: "g".to_string(),
             purchase_item_key: String::new(),
+            generic_item_key: String::new(),
             purchase_grams_per_gram: 1.0,
         })
         .unwrap();
