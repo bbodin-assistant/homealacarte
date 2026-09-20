@@ -346,17 +346,12 @@ function donutSlices(rows, total) {
 
 function donutPoint(percent, radius) {
   const angle = percent / 100 * Math.PI * 2 - Math.PI / 2;
-  return {
-    x: DONUT_VIEWBOX.cx + Math.cos(angle) * radius,
-    y: DONUT_VIEWBOX.cy + Math.sin(angle) * radius,
-    side: Math.cos(angle) >= 0 ? 1 : -1,
-  };
+  return { x: DONUT_VIEWBOX.cx + Math.cos(angle) * radius, y: DONUT_VIEWBOX.cy + Math.sin(angle) * radius, side: Math.cos(angle) >= 0 ? 1 : -1 };
 }
 
 function donutSeparators(slices, radius, strokeWidth) {
   return slices.map((row) => {
-    const inner = donutPoint(row.start, radius - strokeWidth / 2 - 1);
-    const outer = donutPoint(row.start, radius + strokeWidth / 2 + 1);
+    const inner = donutPoint(row.start, radius - strokeWidth / 2 - 1), outer = donutPoint(row.start, radius + strokeWidth / 2 + 1);
     return `<line class="spending-donut-separator" x1="${inner.x.toFixed(1)}" y1="${inner.y.toFixed(1)}" x2="${outer.x.toFixed(1)}" y2="${outer.y.toFixed(1)}"></line>`;
   }).join("");
 }
@@ -454,8 +449,7 @@ function categoryDonut(categories, subcategories, language, strings, selectedCat
       <small>${escapeHtml(percent(row.spend))}</small>
       <strong>${escapeHtml(formatMoney(row.spend, language))}</strong>`;
     if (nested) {
-      const selected = selectedCategory === row.category;
-      return `<button type="button" class="spending-donut-legend-row is-subcategory${selected ? " is-selected" : ""}" data-donut-category="${escapeHtml(row.category)}" aria-pressed="${selected ? "true" : "false"}">${content}</button>`;
+      const selected = selectedCategory === row.category; return `<button type="button" class="spending-donut-legend-row is-subcategory${selected ? " is-selected" : ""}" data-donut-category="${escapeHtml(row.category)}" aria-pressed="${selected ? "true" : "false"}">${content}</button>`;
     }
     const selected = selectedCategory === row.key;
     return `<button type="button" class="spending-donut-legend-row is-category${selected ? " is-selected" : ""}" data-donut-category="${escapeHtml(row.key)}" aria-pressed="${selected ? "true" : "false"}">${content}</button>`;
