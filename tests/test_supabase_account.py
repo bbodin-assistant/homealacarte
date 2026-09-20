@@ -73,7 +73,7 @@ class DocumentConversionTests(unittest.TestCase):
 
     def test_schema_version_matches_public_application(self):
         bootstrap = (ROOT / "www" / "core" / "bootstrap.js").read_text(encoding="utf-8")
-        match = re.search(r"const DATA_SCHEMA_VERSION = (\\d+);", bootstrap)
+        match = re.search(r"const DATA_SCHEMA_VERSION = (\d+);", bootstrap)
         self.assertIsNotNone(match)
         self.assertEqual(int(match.group(1)), DATA_SCHEMA_VERSION)
 
