@@ -74,6 +74,31 @@ assert.deepEqual(
   [{ key: "Home shop", spend: 7, count: 1 }],
 );
 
+const allAnalysis = buildSpendingAnalysis(
+  snapshot,
+  new Date("2026-09-10T12:00:00Z"),
+  "en",
+  { category: "all", store: "all" },
+);
+assert.equal(allAnalysis.categoryMonth, "all");
+assert.equal(allAnalysis.storeMonth, "all");
+assert.deepEqual(
+  allAnalysis.byCategory.map(({ key, spend, count }) => ({ key, spend, count })),
+  [
+    { key: "Produce", spend: 10, count: 1 },
+    { key: "Dairy", spend: 8, count: 2 },
+    { key: "Home", spend: 7, count: 1 },
+  ],
+);
+assert.deepEqual(
+  allAnalysis.byStore.map(({ key, spend, count }) => ({ key, spend, count })),
+  [
+    { key: "Market", spend: 15, count: 2 },
+    { key: "Home shop", spend: 7, count: 1 },
+    { key: "Corner shop", spend: 3, count: 1 },
+  ],
+);
+
 const [
   view,
   menuCss,
@@ -99,6 +124,9 @@ assert.match(view, /id="stock-head"/);
 assert.match(menuCss, /\.grocery-subview\.active \{ display: block/);
 assert.match(groceryCss, /\.purchase-list \{ overflow: visible; \}/);
 assert.match(spending, /data-spending-month/);
+assert.match(spending, /<option value="all"/);
+assert.match(spending, /entirePeriod: "Entire period"/);
+assert.match(spending, /entirePeriod: "Toute la période"/);
 assert.match(spending, /categoryDonut\(analysis\.byCategory, analysis\.bySubcategory/);
 assert.match(spendingCss, /\.spending-double-donut/);
 assert.match(spending, /<svg class="spending-donut-svg"/);
