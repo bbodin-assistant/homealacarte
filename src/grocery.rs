@@ -103,6 +103,105 @@ pub(crate) fn ingredient_requirements_from(
     totals
 }
 
+fn specialization_depth(
+    key: &str,
+    ingredients: &HashMap<String, &Ingredient>,
+) -> usize {
+    let mut depth = 0;
+    let mut current = key;
+    let mut seen = HashSet::new();
+    while let Some(ingredient) = ingredients.get(current) {
+        if ingredient.generic_item_key.is_empty() || !seen.insert(current.to_string()) {
+            break;
+        }
+        depth += 1;
+        current = &ingredient.generic_item_key;
+    }
+    depth
+}
+
+fn stock_satisfies_requirement(
+    stock_key: &str,
+    requirement_key: &str,
+    ingredients: &HashMap<String, &Ingredient>,
+) -> bool {
+    let mut current = stock_key;
+    let mut seen = HashSet::new();
+    loop {
+        if current == requirement_key {
+            return true;
+        }
+        if !seen.insert(current.to_string()) {
+            return false;
+        }
+        let Some(ingredient) = ingredients.get(current) else {
+            return false;
+        };
+        if ingredient.generic_item_key.is_empty() {
+            return false;
+        }
+        current = &ingredient.generic_item_key;
+    }
+}
+
+fn consume_stock_for_requirements(
+    requirements: &mut HashMap<String, f64>,
+    available_stock: &mut BTreeMap<String, f64>,
+    ingredients: &HashMap<String, &Ingredient>,
+) {
+    let mut requirement_keys = requirements.keys().cloned().collect::<Vec<_>>();
+    requirement_keys.sort_by(|left, right| {
+        specialization_depth(right, ingredients)
+            .cmp(&specialization_depth(left, ingredients))
+            .then(left.cmp(right))
+    });
+
+    for requirement_key in requirement_keys {
+        let Some(required) = requirements.get_mut(&requirement_key) else {
+            continue;
+        };
+        if *required <= EPSILON {
+            continue;
+        }
+
+        let mut stock_keys = available_stock
+            .iter()
+            .filter(|(stock_key, quantity)| {
+                **quantity > EPSILON
+                    && stock_satisfies_requirement(stock_key, &requirement_key, ingredients)
+            })
+            .map(|(stock_key, _)| stock_key.clone())
+            .collect::<Vec<_>>();
+        stock_keys.sort_by(|left, right| {
+            let left_exact = left == &requirement_key;
+            let right_exact = right == &requirement_key;
+            right_exact
+                .cmp(&left_exact)
+                .then(
+                    specialization_depth(left, ingredients)
+                        .cmp(&specialization_depth(right, ingredients)),
+                )
+                .then(left.cmp(right))
+        });
+
+        for stock_key in stock_keys {
+            if *required <= EPSILON {
+                break;
+            }
+            let Some(stocked) = available_stock.get_mut(&stock_key) else {
+                continue;
+            };
+            let consumed = (*required).min(*stocked);
+            *required -= consumed;
+            *stocked -= consumed;
+        }
+
+        if *required <= EPSILON {
+            *required = 0.0;
+        }
+    }
+}
+
 fn purchase_requirements_from(
     dataset: &Dataset,
     current_date: &str,
@@ -112,8 +211,22 @@ fn purchase_requirements_from(
         .iter()
         .map(|item| (item.key.clone(), item))
         .collect::<HashMap<_, _>>();
+    let mut remaining_requirements = ingredient_requirements_from(dataset, current_date);
+    let mut available_stock = dataset.stock.clone();
+
+    // First consume stock against recipe ingredients themselves. Specific requirements
+    // are processed before generic ones so generic needs only use leftover specialized stock.
+    consume_stock_for_requirements(
+        &mut remaining_requirements,
+        &mut available_stock,
+        &ingredients,
+    );
+
     let mut purchase_totals = HashMap::new();
-    for (key, required_grams) in ingredient_requirements_from(dataset, current_date) {
+    for (key, required_grams) in remaining_requirements {
+        if required_grams <= EPSILON {
+            continue;
+        }
         let ingredient = ingredients
             .get(&key)
             .ok_or_else(|| format!("grocery references missing ingredient: {key}"))?;
@@ -125,22 +238,14 @@ fn purchase_requirements_from(
                 ingredient.purchase_grams_per_gram,
             )
         };
-        let source_stock = if purchase_key == ingredient.key {
-            0.0
-        } else {
-            dataset.stock.get(&ingredient.key).copied().unwrap_or(0.0) * factor
-        };
         *purchase_totals.entry(purchase_key.to_string()).or_insert(0.0) +=
-            (required_grams * factor - source_stock).max(0.0);
+            required_grams * factor;
     }
-    for (key, stocked) in &dataset.stock {
-        if let Some(total) = purchase_totals.get_mut(key) {
-            *total = (*total - stocked).max(0.0);
-            if *total <= EPSILON {
-                *total = 0.0;
-            }
-        }
-    }
+
+    // Recipe forms can map to a generic purchase item. Apply the same hierarchy again
+    // after conversion so specialized stock can satisfy that generic purchase requirement.
+    consume_stock_for_requirements(&mut purchase_totals, &mut available_stock, &ingredients);
+
     Ok(purchase_totals)
 }
 
