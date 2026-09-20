@@ -113,6 +113,8 @@ pub struct Ingredient {
     pub purchase_quantity_unit: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub purchase_item_key: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub generic_item_key: String,
     #[serde(
         default = "default_purchase_grams_per_gram",
         skip_serializing_if = "is_default_purchase_grams_per_gram"
@@ -201,6 +203,7 @@ mod purchase_pricing_tests {
             purchase_quantity: 1000.0,
             purchase_quantity_unit: "ml".to_string(),
             purchase_item_key: String::new(),
+            generic_item_key: String::new(),
             purchase_grams_per_gram: 1.0,
         }
     }
