@@ -84,7 +84,6 @@ Agent rules:
     "es": "Tomate"
   },
   "category": "Produce::Vegetables",
-  "generic_item_key": "vegetable",
   "custom": false,
   "measure_unit": "g",
   "grams": 100.0,
