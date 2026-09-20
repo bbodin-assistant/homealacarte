@@ -9,7 +9,7 @@ PERSONAL_OVERLAY_DIR ?= ./perso-data
 PERSONAL_MERGED_IMPORT ?= ./private-import/homealacarte-merged.json
 PERSONAL_MERGE_AUDIT ?= ./private-import/homealacarte-merge-audit.json
 
-.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-architecture test-browser-startup test-catalogue-allergens-browser test-spending-browser test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
+.PHONY: build rust-build web-build personal-data merge-personal-data serve test test-domain test-web test-architecture test-browser-startup test-catalogue-allergens-browser test-spending-browser test-supabase-tools test-reset-demo test-personal-data test-personal-import test-item-details test-item-usage-people test-grocery-item-click test-grocery-total test-dish-ingredient-details test-dish-nutriscore-filter test-dish-scheduling test-catalogue-filters test-add-to-needs-button test-catalogue-add test-price-history-labels release-check clean
 
 build: rust-build web-build
 
@@ -33,6 +33,9 @@ test:
 
 test-domain:
 	cargo test --test domain
+
+test-supabase-tools:
+	$(PYTHON) -m unittest discover -s tests -p 'test_supabase_account.py' -v
 
 test-web:
 	$(PYTHON) scripts/check_source_boundaries.py
@@ -165,7 +168,7 @@ test-price-history-labels:
 test-architecture:
 	python3 scripts/check_source_boundaries.py
 
-release-check: test test-web build test-spending-browser
+release-check: test test-web test-supabase-tools build test-spending-browser
 	python3 scripts/release_check.py
 
 clean:
