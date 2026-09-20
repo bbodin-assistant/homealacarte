@@ -308,8 +308,6 @@ const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
 assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(app, new RegExp(`feature-composition\\.js\\?v=homealacarte-${appVersion}`));
 assert.match(app, /worker\.js\?v=homealacarte-110/);
-const appVersion = index.match(/class="app-version"[^>]*>v(\d+)</)?.[1];
-assert.ok(appVersion, "index.html must expose a numeric app version");
 assert.match(index, new RegExp(`app\\.js\\?v=homealacarte-${appVersion}`));
 assert.match(index, new RegExp(`features\\/receipt-purchases\\.js\\?v=homealacarte-${appVersion}`));
 assert.match(index, new RegExp(`features\\/purchase-review-enhancements\\.js\\?v=homealacarte-${appVersion}`));
