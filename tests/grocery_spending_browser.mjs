@@ -95,7 +95,10 @@ await waitFor(
   "the Produce category segment",
 );
 
-await evaluate(`document.querySelector('.spending-donut-category-segment[data-donut-category="Produce"]').dispatchEvent(new MouseEvent("click", { bubbles: true }))`);
+await waitFor(
+  `(() => { const node = document.querySelector('.spending-donut-category-segment[data-donut-category="Produce"]'); if (!node) return false; node.dispatchEvent(new MouseEvent("click", { bubbles: true })); return true; })()`,
+  "clicking the Produce category segment",
+);
 await waitFor(
   `JSON.stringify(${labelsExpression}) === JSON.stringify(${JSON.stringify(expectedLabels)})`,
   "Produce subcategory labels after clicking the category",
@@ -103,7 +106,10 @@ await waitFor(
 const categoryLabels = await evaluate(labelsExpression);
 assert.deepEqual(categoryLabels, expectedLabels);
 
-await evaluate(`document.querySelector('.spending-donut-subcategory-segment[data-donut-category="Produce"]').dispatchEvent(new MouseEvent("click", { bubbles: true }))`);
+await waitFor(
+  `(() => { const node = document.querySelector('.spending-donut-subcategory-segment[data-donut-category="Produce"]'); if (!node) return false; node.dispatchEvent(new MouseEvent("click", { bubbles: true })); return true; })()`,
+  "clicking a Produce subcategory segment",
+);
 await waitFor(
   `JSON.stringify(${labelsExpression}) === JSON.stringify(${JSON.stringify(expectedLabels)})`,
   "Produce subcategory labels after clicking a subcategory",
