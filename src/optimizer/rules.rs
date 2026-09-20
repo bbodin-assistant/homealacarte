@@ -280,6 +280,7 @@ mod preference_tests {
             purchase_quantity: 100.0,
             purchase_quantity_unit: "g".to_string(),
             purchase_item_key: String::new(),
+            generic_item_key: String::new(),
             purchase_grams_per_gram: 1.0,
         }
     }

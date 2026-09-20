@@ -156,3 +156,35 @@ fn a_household_only_dataset_is_valid() {
     assert_eq!(snapshot.household_items.len(), 1);
     assert_eq!(snapshot.household_items[0].key, "soap_test");
 }
+
+
+#[test]
+fn ingredient_generic_references_must_exist_and_remain_acyclic() {
+    let mut missing_parent = synthetic_dataset();
+    missing_parent.content = missing_parent.content.replacen(
+        r#""key": "tomato_test","#,
+        r#""key": "tomato_test",
+              "generic_item_key": "missing_generic_test","#,
+        1,
+    );
+    let error = homealacarte_web::load_dataset(vec![missing_parent], "en").unwrap_err();
+    assert!(error.contains("references missing generic item: missing_generic_test"));
+
+    let mut cycle = synthetic_dataset();
+    cycle.content = cycle
+        .content
+        .replacen(
+            r#""key": "tomato_test","#,
+            r#""key": "tomato_test",
+              "generic_item_key": "bread_test","#,
+            1,
+        )
+        .replacen(
+            r#""key": "bread_test","#,
+            r#""key": "bread_test",
+              "generic_item_key": "tomato_test","#,
+            1,
+        );
+    let error = homealacarte_web::load_dataset(vec![cycle], "en").unwrap_err();
+    assert!(error.contains("generic hierarchy contains a cycle"));
+}

@@ -115,6 +115,7 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
         purchase_quantity: 1.0,
         purchase_quantity_unit: "leaves".to_string(),
         purchase_item_key: String::new(),
+        generic_item_key: String::new(),
         purchase_grams_per_gram: 1.0,
     };
     let snapshot = engine
@@ -184,6 +185,7 @@ fn a_custom_dish_ingredient_can_be_completed_and_round_tripped() {
             purchase_quantity: 10.0,
             purchase_quantity_unit: "leaves".to_string(),
             purchase_item_key: String::new(),
+            generic_item_key: String::new(),
             purchase_grams_per_gram: 1.0,
         })
         .unwrap();

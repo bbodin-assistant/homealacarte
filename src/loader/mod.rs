@@ -195,6 +195,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
             purchase_quantity: input.purchase_quantity,
             purchase_quantity_unit: purchase_quantity_unit.to_string(),
             purchase_item_key: input.purchase_item_key.trim().to_string(),
+            generic_item_key: input.generic_item_key.trim().to_string(),
             purchase_grams_per_gram: input.purchase_grams_per_gram,
         });
     }
@@ -204,6 +205,40 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
         .map(|item| (item.key.clone(), item))
         .collect();
     for ingredient in &ingredients {
+        if !ingredient.generic_item_key.is_empty() {
+            if ingredient.generic_item_key == ingredient.key {
+                return Err(format!(
+                    "ingredient {} cannot reference itself as its generic item",
+                    ingredient.key
+                ));
+            }
+            if !ingredient_by_key.contains_key(&ingredient.generic_item_key) {
+                return Err(format!(
+                    "ingredient {} references missing generic item: {}",
+                    ingredient.key, ingredient.generic_item_key
+                ));
+            }
+
+            let mut seen = HashSet::new();
+            let mut current = ingredient;
+            while !current.generic_item_key.is_empty() {
+                if !seen.insert(current.key.clone()) {
+                    return Err(format!(
+                        "ingredient generic hierarchy contains a cycle at: {}",
+                        current.key
+                    ));
+                }
+                current = ingredient_by_key
+                    .get(&current.generic_item_key)
+                    .ok_or_else(|| {
+                        format!(
+                            "ingredient {} references missing generic item: {}",
+                            current.key, current.generic_item_key
+                        )
+                    })?;
+            }
+        }
+
         if ingredient.purchase_grams_per_gram <= 0.0
             || !ingredient.purchase_grams_per_gram.is_finite()
         {
