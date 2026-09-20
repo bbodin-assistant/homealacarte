@@ -413,7 +413,7 @@ function donutSegment(row, radius, strokeWidth, kind, language, selectedCategory
     stroke-dashoffset="${(-row.start).toFixed(3)}"
     transform="rotate(-90 ${DONUT_VIEWBOX.cx} ${DONUT_VIEWBOX.cy})"
     tabindex="0" role="${role}" aria-label="${escapeHtml(tooltip)}"${pressed}${categoryAttribute}
-    data-donut-tooltip="${escapeHtml(tooltip)}"><title>${escapeHtml(tooltip)}</title></circle>`;
+    data-donut-tooltip="${escapeHtml(tooltip)}"></circle>`;
 }
 
 function categoryDonut(categories, subcategories, language, strings, selectedCategory = "") {
@@ -453,7 +453,7 @@ function categoryDonut(categories, subcategories, language, strings, selectedCat
   }).join("");
   return `<div class="spending-donut-layout">
     <div class="spending-double-donut" data-donut-chart>
-      <svg class="spending-donut-svg" viewBox="0 0 ${DONUT_VIEWBOX.width} ${DONUT_VIEWBOX.height}" role="img" aria-label="${escapeHtml(`${strings.categoryRing} / ${strings.subcategoryRing}`)}">
+      <svg class="spending-donut-svg" viewBox="0 0 ${DONUT_VIEWBOX.width} ${DONUT_VIEWBOX.height}" role="group" aria-label="${escapeHtml(`${strings.categoryRing} / ${strings.subcategoryRing}`)}">
         <circle class="spending-donut-track" cx="${DONUT_VIEWBOX.cx}" cy="${DONUT_VIEWBOX.cy}" r="${DONUT_OUTER_RADIUS}" fill="none" stroke-width="44"></circle>
         ${subcategorySlices.map((row) => donutSegment(row, DONUT_OUTER_RADIUS, 44, "subcategory", language, selectedCategory)).join("")}
         <circle class="spending-donut-track" cx="${DONUT_VIEWBOX.cx}" cy="${DONUT_VIEWBOX.cy}" r="${DONUT_INNER_RADIUS}" fill="none" stroke-width="42"></circle>
