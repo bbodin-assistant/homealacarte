@@ -481,7 +481,7 @@ function frequentRows(rows, language, strings) {
   </div>`).join("")}`;
 }
 
-function renderPanel(panel, state, selectedMonths = {}) {
+function renderPanel(panel, state, selectedMonths = {}, selectedCategory = "") {
   const language = state?.language || document.documentElement.lang || "en";
   const analysis = buildSpendingAnalysis(state?.snapshot, new Date(), language, selectedMonths);
   const strings = analysis.strings;
@@ -513,7 +513,7 @@ function renderPanel(panel, state, selectedMonths = {}) {
   <div class="spending-analysis-grid">
     <section class="panel spending-card">
       <header><div><h2>${escapeHtml(strings.categories)}</h2><p>${escapeHtml(strings.categoriesIntro)}</p></div>${monthSelect("category", analysis.categoryMonth, analysis.availableMonths, language, strings)}</header>
-      <div class="spending-category-donut">${categoryDonut(analysis.byCategory, analysis.bySubcategory, language, strings)}</div>
+      <div class="spending-category-donut">${categoryDonut(analysis.byCategory, analysis.bySubcategory, language, strings, selectedCategory)}</div>
     </section>
     <section class="panel spending-card">
       <header><div><h2>${escapeHtml(strings.stores)}</h2><p>${escapeHtml(strings.storesIntro)}</p></div>${monthSelect("store", analysis.storeMonth, analysis.availableMonths, language, strings)}</header>
@@ -559,6 +559,7 @@ export function mountGrocerySpendingAnalysis() {
   const { button, panel } = ui;
   let active = false;
   const selectedMonths = { category: "", store: "" };
+  let selectedCategory = "";
 
   const deactivate = () => {
     active = false;
@@ -588,17 +589,81 @@ export function mountGrocerySpendingAnalysis() {
     event?.preventDefault();
     event?.stopPropagation();
     active = true;
-    renderPanel(panel, globalThis.homealacarteState, selectedMonths);
+    renderPanel(panel, globalThis.homealacarteState, selectedMonths, selectedCategory);
     enforce();
   };
 
+  const rerender = () => {
+    renderPanel(panel, globalThis.homealacarteState, selectedMonths, selectedCategory);
+    enforce();
+  };
+
+  const donutTooltipFor = (target) => target?.closest?.("[data-donut-chart]")?.querySelector?.("[data-donut-tooltip-box]");
+
+  const hideDonutTooltip = (target) => {
+    const tooltip = donutTooltipFor(target);
+    tooltip?.classList.remove("is-visible");
+  };
+
+  const showDonutTooltip = (target, event) => {
+    const tooltip = donutTooltipFor(target);
+    const chart = target?.closest?.("[data-donut-chart]");
+    if (!tooltip || !chart) return;
+    tooltip.textContent = target.dataset.donutTooltip || "";
+    tooltip.classList.add("is-visible");
+    if (event?.clientX == null || event?.clientY == null) {
+      tooltip.style.left = "50%";
+      tooltip.style.top = "10px";
+      return;
+    }
+    const bounds = chart.getBoundingClientRect();
+    const x = Math.min(Math.max(event.clientX - bounds.left, 72), bounds.width - 72);
+    const y = Math.min(Math.max(event.clientY - bounds.top - 14, 20), bounds.height - 20);
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+  };
+
   button.addEventListener("click", activate);
+  panel.addEventListener("click", (event) => {
+    const category = event.target.closest?.("[data-donut-category]");
+    if (!category) return;
+    const key = category.dataset.donutCategory || "";
+    selectedCategory = selectedCategory === key ? "" : key;
+    rerender();
+  });
+  panel.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const category = event.target.closest?.("[data-donut-category]");
+    if (!category) return;
+    event.preventDefault();
+    category.click();
+  });
+  panel.addEventListener("pointerover", (event) => {
+    const target = event.target.closest?.("[data-donut-tooltip]");
+    if (target) showDonutTooltip(target, event);
+  });
+  panel.addEventListener("pointermove", (event) => {
+    const target = event.target.closest?.("[data-donut-tooltip]");
+    if (target) showDonutTooltip(target, event);
+  });
+  panel.addEventListener("pointerout", (event) => {
+    const target = event.target.closest?.("[data-donut-tooltip]");
+    if (target && !target.contains(event.relatedTarget)) hideDonutTooltip(target);
+  });
+  panel.addEventListener("focusin", (event) => {
+    const target = event.target.closest?.("[data-donut-tooltip]");
+    if (target) showDonutTooltip(target);
+  });
+  panel.addEventListener("focusout", (event) => {
+    const target = event.target.closest?.("[data-donut-tooltip]");
+    if (target) hideDonutTooltip(target);
+  });
   panel.addEventListener("change", (event) => {
     const select = event.target.closest?.("[data-spending-month]");
     if (!select) return;
     selectedMonths[select.dataset.spendingMonth] = select.value;
-    renderPanel(panel, globalThis.homealacarteState, selectedMonths);
-    enforce();
+    if (select.dataset.spendingMonth === "category") selectedCategory = "";
+    rerender();
   });
   document.addEventListener("click", (event) => {
     if (event.target.closest("[data-grocery-mode], [data-tab]")) deactivate();
@@ -608,7 +673,7 @@ export function mountGrocerySpendingAnalysis() {
   if (purchaseList && typeof MutationObserver !== "undefined") {
     new MutationObserver(() => {
       if (!active) return;
-      renderPanel(panel, globalThis.homealacarteState, selectedMonths);
+      renderPanel(panel, globalThis.homealacarteState, selectedMonths, selectedCategory);
       enforce();
     }).observe(purchaseList, { childList: true, subtree: true });
   }
@@ -617,7 +682,7 @@ export function mountGrocerySpendingAnalysis() {
   languageSelect?.addEventListener("change", () => {
     if (!active) return;
     queueMicrotask(() => {
-      renderPanel(panel, globalThis.homealacarteState, selectedMonths);
+      renderPanel(panel, globalThis.homealacarteState, selectedMonths, selectedCategory);
       enforce();
     });
   });
