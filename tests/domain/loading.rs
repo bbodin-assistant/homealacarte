@@ -3,6 +3,32 @@ use homealacarte_web::{AppConfig, Engine, SourceFile};
 use crate::support::synthetic_dataset;
 
 #[test]
+fn missing_ingredient_prices_remain_incomplete_without_fabricated_history() {
+    for price in [None, Some(serde_json::Value::Null)] {
+        let mut source = synthetic_dataset();
+        let mut document: serde_json::Value = serde_json::from_str(&source.content).unwrap();
+        let item = document["items"][0].as_object_mut().unwrap();
+        item.remove("price");
+        item.remove("price_history");
+        item.remove("price_checked_at");
+        item.insert("incomplete".into(), false.into());
+        if let Some(price) = price {
+            item.insert("price".into(), price);
+        }
+        source.content = document.to_string();
+        let dataset = homealacarte_web::load_dataset(vec![source.clone()], "en").unwrap();
+        assert!(dataset.ingredients[0].incomplete);
+        assert_eq!(dataset.ingredients[0].price, 0.0);
+        assert!(dataset.ingredients[0].price_history.is_empty());
+
+        document["items"][0]["price"] = (-1.0).into();
+        source.content = document.to_string();
+        let error = homealacarte_web::load_dataset(vec![source], "en").unwrap_err();
+        assert!(error.contains("invalid price"));
+    }
+}
+
+#[test]
 fn unsupported_data_shapes_are_rejected() {
     let unsupported_section = SourceFile {
         path: "unsupported.json".to_string(),

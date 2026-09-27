@@ -3,11 +3,11 @@ use crate::model::PriceObservation;
 pub(crate) fn normalize_price_history(
     mut history: Vec<PriceObservation>,
     current_date: &str,
-    current_price: f64,
+    current_price: Option<f64>,
     current_price_basis: &str,
     current_description: &str,
 ) -> Result<Vec<PriceObservation>, String> {
-    if !current_price.is_finite() || current_price < 0.0 {
+    if current_price.is_some_and(|price| !price.is_finite() || price < 0.0) {
         return Err("price history contains an invalid current price".to_string());
     }
     if !matches!(current_price_basis.trim(), "kg" | "purchase_unit") {
@@ -18,7 +18,8 @@ pub(crate) fn normalize_price_history(
     } else {
         current_description.trim()
     };
-    if !history.iter().any(|entry| {
+    if let Some(current_price) = current_price
+        && !history.iter().any(|entry| {
             entry.date.trim() == current_date.trim()
                 && entry.price == current_price
                 && entry.price_basis == current_price_basis.trim()

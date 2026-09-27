@@ -148,6 +148,7 @@ Notes:
 - Keys use lowercase `snake_case` and must remain identical in every language.
 - Localize the display `name` rather than creating separate item records for different languages.
 - Unknown numeric values must be omitted or `null`; placeholder strings such as `MISSINGVALUE` are not valid.
+- An omitted or `null` food `price` marks the loaded item incomplete and adds no price-history observation. It contributes zero to known-cost calculations until a price is supplied; this does not mean the item is free.
 
 ## 5. Dish
 

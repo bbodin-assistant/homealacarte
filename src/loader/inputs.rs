@@ -36,7 +36,8 @@ pub(crate) struct IngredientInput {
     pub(crate) category: String,
     pub(crate) source: String,
     pub(crate) url: String,
-    pub(crate) price: f64,
+    #[serde(default)]
+    pub(crate) price: Option<f64>,
     pub(crate) price_basis: String,
     #[serde(default)]
     pub(crate) price_source: String,

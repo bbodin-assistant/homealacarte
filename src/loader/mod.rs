@@ -131,8 +131,10 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
             input.measure_unit.trim().to_string()
         };
         let price_basis = input.price_basis.trim();
-        if !input.price.is_finite()
-            || input.price < 0.0
+        // Missing prices contribute no known cost, but keep the item incomplete.
+        let price = input.price.unwrap_or(0.0);
+        if !price.is_finite()
+            || price < 0.0
             || !matches!(price_basis, "kg" | "purchase_unit")
         {
             return Err(format!("{path}: ingredient {key} has an invalid price or price basis"));
@@ -160,7 +162,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
             key,
             name: input.name.trim().to_string(),
             custom: input.custom,
-            incomplete: input.incomplete,
+            incomplete: input.incomplete || input.price.is_none(),
             allergens,
             grams: input.grams,
             kcal: input.kcal,
@@ -175,7 +177,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
             category: crate::locale::canonical_category(&input.category),
             source: input.source.trim().to_string(),
             url: input.url.trim().to_string(),
-            price: input.price,
+            price,
             price_basis: price_basis.to_string(),
             price_source: input.price_source.trim().to_string(),
             price_checked_at: input.price_checked_at.trim().to_string(),
@@ -341,7 +343,7 @@ pub fn load_dataset(mut sources: Vec<SourceFile>, _language: &str) -> Result<Dat
         let price_history = normalize_price_history(
             input.price_history,
             input.last_bought_at.as_deref().unwrap_or(""),
-            input.estimated_price,
+            Some(input.estimated_price),
             "purchase_unit",
             input.notes.as_deref().unwrap_or(""),
         )?;
